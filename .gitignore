@@ -14,3 +14,6 @@ wheels/
 
 # Node
 node_modules/
+
+# Local data / databases
+backend/data/

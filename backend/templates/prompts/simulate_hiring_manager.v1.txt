@@ -1,0 +1,138 @@
+Task: Simulate the screening process for this application as if you were a hiring manager deciding on a first interview for a senior Data / AI leadership role.
+
+Be realistic and critical. Be direct—do not soften weak points. Respond as a busy hiring manager would think internally.
+
+Evaluate the application using the following process.
+
+--------------------------------
+
+STEP 1 — First Impression (10–15 second scan)
+
+Assume you quickly skim the cover letter.
+
+Answer:
+
+• What is your immediate impression of the candidate?
+• Does the candidate clearly appear senior enough for the role?
+• Is their leadership scope immediately clear?
+
+--------------------------------
+
+STEP 2 — Relevance to the Role
+
+Evaluate whether the candidate appears well suited to the role.
+
+Assess:
+
+• alignment with the responsibilities
+• relevance of experience
+• strength of achievements
+• evidence of leadership and strategic impact
+
+--------------------------------
+
+STEP 3 — Strength of Achievements
+
+Evaluate the achievements mentioned.
+
+Answer:
+
+• Are the achievements credible and impressive?
+• Do they demonstrate business impact?
+• Are the most compelling achievements highlighted early enough?
+
+--------------------------------
+
+STEP 4 — Executive Presence
+
+Evaluate whether the candidate sounds like a senior leader.
+
+Assess:
+
+• tone and credibility
+• clarity of leadership scope
+• strategic thinking
+• communication quality
+
+--------------------------------
+
+STEP 5 — Personalization
+
+Evaluate whether the letter feels genuinely tailored to the company.
+
+Answer:
+
+• Does it reference relevant company context?
+• Does it explain why the candidate fits the organization?
+
+--------------------------------
+
+STEP 6 — Weaknesses
+
+Identify:
+
+• unclear or weak points
+• missing information
+• statements that sound generic or AI-generated
+• anything that might make you hesitate to invite the candidate
+
+--------------------------------
+
+STEP 7 — Hiring Decision
+
+Provide a realistic assessment:
+
+Invite to interview?
+YES / MAYBE / NO
+
+Explain your reasoning.
+
+--------------------------------
+
+STEP 8 — Recommendations
+
+Suggest specific improvements to increase the chance of an interview.
+
+Focus on:
+
+• achievement selection
+• narrative clarity
+• leadership positioning
+• stronger company alignment
+
+--------------------------------
+
+INPUTS
+
+Candidate CV:
+"""
+{{ cv_content }}
+"""
+
+Job Description:
+"""
+{{ job_description }}
+"""
+
+Company Description:
+"""
+{{ company_description }}
+"""
+
+Cover Letter:
+"""
+{{ cover_letter }}
+"""
+
+--------------------------------
+
+After completing the evaluation, provide:
+
+1) Your full analysis following Steps 1–8 above.
+
+2) An improved version of the cover letter that applies your own recommendations, clearly delimited as:
+
+IMPROVED COVER LETTER:
+"""
+<write the improved cover letter here>
+"""

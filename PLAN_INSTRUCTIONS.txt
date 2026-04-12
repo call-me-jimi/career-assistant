@@ -1,0 +1,26 @@
+let's plan a new application similar to the one in the folder "app". the new app in the folder assistant and with the name "Personal Application Assistant" 
+  is supposed to be an agentic solution of the other app with extended   
+  functionality. the new app is supposed to be a personal application assistant supporting the user with 1. creating a professional cover letter given    
+  the user's CV and job information, 2. helping the users with formulating answers to specific about their career, e.g., motivation or experience related     
+  questions and salary. read carefully the app/README.md and app/CLAUDE.md files to fully understand the old project. deep  
+  dive into the old code when needed. the new app implements an assistant which will have a conversation with the applicant, e.g., starting with asking   
+  the name of the applicant and job url and asking follow-up questions if needed. keep the user in the loop, e.g., asking if information was correctly    
+  extracted. be inspired by the implemented workflow in the old old and leverage the optimized system and user prompts for creating candidates and job profile, 
+  creating cover letters, evaluating the cover letters with a hiring manager similation. consider the feedback from the hireing manage simulation to improve 
+  the cover letter and so on until an almost perfect cover letter is created or a maximal number of iterations is reach. return the best cover letter. 
+  show the cover letter to the user for review, ask if more questions need to be answered and finally give the user the opportunity to export everything. 
+  think hard about a suited agentic framework with full observability.                                                                                   
+                                                                                                                                                          
+  do not implement anything right now. ask me clarifying questions. let's spend enough time for the planning.                                             
+                                                                                                                                                          
+ here are ideas for the design:
+ 1. landing page, similar to the one in the old app. a big button leads to the conversation view
+ 2. divide the conversation view into 2 parts: left (around 2/3 of the width) contains the chat. right (around 1/3) shows all LLM interactions. 
+ 3. the left side is a typical chat view. messages are framed and have a background color. print also the actions as one liner. show a spinner when an 
+    action is still going on
+ 4. on right side, each LLM interaction is shown as a card with
+     - timestamp
+     - model
+     - input/output tokens
+     - processing time
+    show a spinner

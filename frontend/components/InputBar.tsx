@@ -1,0 +1,216 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { InterruptPayload } from "../lib/types";
+import { API_BASE } from "../lib/ws";
+
+type Props = {
+  pending: InterruptPayload | null;
+  onSend: (value: unknown) => void;
+  onUserMessage: (text: string) => void;
+  disabled?: boolean;
+};
+
+type QuickReply = {
+  label: string;
+  value: string;
+};
+
+function quickRepliesFor(kind?: string): QuickReply[] {
+  switch (kind) {
+    case "confirm_info":
+      return [{ label: "Yes, looks good", value: "yes" }];
+    case "classify_flow":
+      return [
+        { label: "Direct", value: "direct" },
+        { label: "Recruiter", value: "recruiter" },
+      ];
+    case "cl_review":
+      return [{ label: "Accept", value: "accept" }];
+    case "qa_menu":
+      return [
+        { label: "Motivation", value: "motivation" },
+        { label: "Salary", value: "salary" },
+        { label: "Experience", value: "experience" },
+        { label: "Done", value: "done" },
+      ];
+    case "export_choice":
+      return [
+        { label: "All", value: "all" },
+        { label: "PDF", value: "pdf" },
+        { label: "Markdown", value: "md" },
+        { label: "JSON", value: "json" },
+        { label: "Google Sheets", value: "sheets" },
+        { label: "None", value: "none" },
+      ];
+    case "post_export":
+      return [
+        { label: "Yes", value: "yes" },
+        { label: "No, all done", value: "no" },
+      ];
+    default:
+      return [];
+  }
+}
+
+export default function InputBar({ pending, onSend, onUserMessage, disabled }: Props) {
+  const [text, setText] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const kind = pending?.kind;
+
+  useEffect(() => {
+    if (pending && !disabled && kind !== "upload_cv") {
+      textareaRef.current?.focus();
+    }
+  }, [pending, disabled, kind]);
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${API_BASE}/api/uploads/cv`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      onUserMessage(`Uploaded ${file.name} (${data.chars} chars).`);
+      onSend({ cv_text: data.cv_text });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function submitText(override?: string) {
+    const trimmed = (override ?? text).trim();
+    if (!trimmed) return;
+    onUserMessage(trimmed);
+
+    let value: unknown = trimmed;
+    if (kind === "collect_job") {
+      value = /^https?:\/\//i.test(trimmed)
+        ? { url: trimmed }
+        : { text: trimmed };
+    } else if (kind === "confirm_info") {
+      if (["yes", "y", "ok"].includes(trimmed.toLowerCase())) {
+        value = "yes";
+      } else {
+        const patch: Record<string, string> = {};
+        trimmed.split("\n").forEach((line) => {
+          const m = line.match(/^\s*([a-z_]+)\s*:\s*(.+)$/i);
+          if (m) patch[m[1].toLowerCase()] = m[2].trim();
+        });
+        value = Object.keys(patch).length ? patch : trimmed;
+      }
+    }
+    onSend(value);
+    setText("");
+  }
+
+  if (kind === "upload_cv") {
+    return (
+      <div className="border-t border-border p-4 flex items-center gap-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleUpload(f);
+          }}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading || disabled}
+          className="px-5 py-3 rounded-xl bg-accent text-bg font-medium disabled:opacity-50"
+        >
+          {uploading ? "Uploading…" : "Upload CV (PDF)"}
+        </button>
+        <button
+          onClick={() => onSend({})}
+          className="px-4 py-3 rounded-xl border border-border text-subtle"
+        >
+          Skip
+        </button>
+      </div>
+    );
+  }
+
+  const quickReplies = pending && !disabled ? quickRepliesFor(kind) : [];
+
+  return (
+    <div className="border-t border-border p-4 space-y-2">
+      <div className="flex gap-3">
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submitText();
+            }
+          }}
+          disabled={disabled || !pending}
+          placeholder={
+            !pending
+              ? "Waiting for the assistant…"
+              : placeholderFor(kind)
+          }
+          rows={2}
+          className="flex-1 rounded-xl bg-panel border border-border p-3 text-text placeholder:text-subtle focus:outline-none focus:border-accent resize-none"
+        />
+        <button
+          onClick={() => submitText()}
+          disabled={disabled || !pending || !text.trim()}
+          className="px-5 py-3 rounded-xl bg-accent text-bg font-medium disabled:opacity-50"
+        >
+          Send
+        </button>
+      </div>
+      {quickReplies.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-subtle">Quick reply:</span>
+          {quickReplies.map((qr) => (
+            <button
+              key={qr.value}
+              onClick={() => submitText(qr.value)}
+              className="px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-sm text-accent hover:bg-accent/15 hover:border-accent transition-colors"
+            >
+              {qr.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function placeholderFor(kind?: string): string {
+  switch (kind) {
+    case "ask_name":
+      return "Your name…";
+    case "collect_job":
+    case "collect_job_text":
+      return "Paste a job URL or the full job description…";
+    case "ask_field:job_title":
+      return "e.g. Senior Backend Engineer";
+    case "ask_field:company_name":
+      return "e.g. Acme Corp";
+    case "confirm_info":
+      return "yes — or corrections like `company: Acme`";
+    case "classify_flow":
+      return "direct or recruiter";
+    case "cl_review":
+      return "accept, or describe revisions…";
+    case "qa_menu":
+      return "motivation / salary / experience / custom question / done";
+    case "export_choice":
+      return "pdf md json sheets — or `all` / `none`";
+    default:
+      return "Your reply…";
+  }
+}

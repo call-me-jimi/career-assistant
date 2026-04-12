@@ -1,0 +1,50 @@
+Task: Simulate the screening of this application as an experienced hiring manager deciding on a first interview. Be realistic, direct, and critical — do not soften weak points.
+
+Evaluate the cover letter against the CV, job description, and company context across the following dimensions:
+
+1. First impression (does seniority and scope read within a 10-second skim?)
+2. Relevance to the role (alignment with responsibilities and requirements)
+3. Strength of achievements (credibility, business impact, early placement)
+4. Executive presence (tone, leadership scope, strategic thinking, communication)
+5. Personalization (genuine company context, explanation of fit)
+6. Weaknesses (unclear points, generic/AI-sounding phrasing, missing information)
+
+Return ONLY a single JSON object matching this schema — no prose, no code fences, no commentary:
+
+{
+  "overall_score": <float, 0.0-10.0>,
+  "decision": "<YES | MAYBE | NO>",
+  "first_impression": "<short paragraph>",
+  "strengths": ["<bullet>", "<bullet>"],
+  "weaknesses": ["<bullet>", "<bullet>"],
+  "suggestions": ["<concrete, actionable improvement>", "<another>"],
+  "reasoning": "<short paragraph explaining the overall score and decision>"
+}
+
+Scoring guidance:
+- 9.0-10.0: Clear interview. Strong fit, credible achievements, tailored, executive tone.
+- 7.5-8.9: Likely interview with minor improvements.
+- 6.0-7.4: On the fence. Needs meaningful rework to be competitive.
+- < 6.0: Would not progress. Major gaps in fit, personalization, or seniority signals.
+
+INPUTS
+
+Candidate CV:
+"""
+{{ cv_content }}
+"""
+
+Job Description:
+"""
+{{ job_description }}
+"""
+
+Company Description:
+"""
+{{ company_description }}
+"""
+
+Cover Letter:
+"""
+{{ cover_letter }}
+"""

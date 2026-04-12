@@ -1,0 +1,61 @@
+Task: From the CV below, extract a structured candidate evidence profile.
+
+Emphasise leadership impact, organisational scope, and measurable business outcomes rather than technology lists alone.
+
+Return exactly the following sections.
+
+1. Leadership Profile
+Write 2–3 sentences describing the candidate's leadership identity and career focus.
+Use only evidence supported by the CV.
+If a point is interpretive, label it "inferred from CV."
+
+2. Core Leadership Strengths
+List 5–7 concise bullet points.
+Each bullet should describe a leadership capability or operating strength supported by the CV.
+
+3. Strategic Experience
+List examples where the candidate defined, shaped, or implemented business-wide, function-wide, or platform-wide data / AI / analytics / engineering strategy.
+For each example, distinguish:
+- Direct evidence
+- Why it matters
+
+4. Technical and Platform Expertise
+Summarise relevant technologies, platforms, architectural experience, and delivery environments only to the extent they support role relevance.
+Group related capabilities where possible rather than listing tools without context.
+
+5. Key Achievements
+List 5 achievements that demonstrate measurable business outcomes.
+For each achievement include:
+- What was done
+- Business result
+- Metric(s), if stated
+If no metric is stated, write "metric not stated."
+
+6. Leadership Scope
+Summarise the following using only CV evidence:
+- Team scope
+- Organisational remit
+- Stakeholder groups led or influenced
+- Cross-functional leadership
+- Geographic or business-unit scope, if stated
+For any missing point, write "not stated."
+
+7. Business Impact Themes
+Summarise recurring patterns of impact such as:
+- revenue growth
+- operational efficiency
+- cost reduction
+- product innovation
+- customer or client impact
+- platform modernisation
+Only include themes clearly supported by the CV.
+
+8. Evidence Gaps / Unknowns
+List any important leadership-scope or business-context details that are not stated in the CV and therefore should not be assumed later.
+
+--------------------------------
+
+CV Content:
+"""
+{{ cv_content }}
+"""

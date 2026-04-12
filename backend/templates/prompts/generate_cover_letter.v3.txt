@@ -1,0 +1,143 @@
+Write a tailored cover letter for the following role.
+
+Your objective is to maximise the probability that a hiring manager invites the candidate to interview.
+
+Use the supplied materials as the only source of truth.
+Do not invent experience, scope, tools, domain expertise, or achievements.
+If evidence is adjacent rather than exact, position it carefully and credibly.
+
+--------------------------------------------------
+ROLE INFORMATION
+
+Company:
+{{ company_name }}
+
+Job Title:
+{{ job_title }}
+
+--------------------------------------------------
+OUTPUT REQUIREMENTS
+
+Length:
+260–340 words
+
+Format:
+4 paragraphs, no bullets
+
+Voice:
+First person
+
+Tone:
+- senior
+- measured
+- commercially minded
+- concise
+- credible to an experienced hiring manager
+- natural, not promotional
+
+--------------------------------------------------
+PRIMARY OBJECTIVE
+
+Write a letter that makes the candidate feel like a plausible, high-value match for this exact role.
+
+Do not simply summarise the profile.
+Do not write a generic executive cover letter.
+Do not optimise for elegance over relevance.
+
+--------------------------------------------------
+PRIORITISATION ORDER
+
+Prioritise, in order:
+1. Clear match to the role's core leadership problem
+2. Leadership scope and ownership
+3. Execution credibility and business impact
+4. Company-specific relevance
+5. Concise and credible tone
+
+Use only the most relevant evidence.
+Leave out facts that are true but do not strengthen fit.
+
+--------------------------------------------------
+PARAGRAPH FUNCTION
+
+Paragraph 1:
+- establish seniority immediately
+- mention the Job Title and Company explicitly
+- establish current or comparable leadership scope
+- show why this is a credible next step, not a random application
+
+Paragraph 2:
+- show leadership in building teams, setting direction, and driving execution
+- emphasise operating ownership, not abstract strategy
+- if supported, include technical leadership, platform ownership, production delivery, hiring, coaching, architecture, or cross-functional delivery signals
+
+Paragraph 3:
+- include 2–3 outcomes that best prove fit
+- prioritise outcomes that reduce hiring doubt
+- integrate metrics naturally where stated
+- do not overload the paragraph with too many examples
+
+Paragraph 4:
+- explain why the candidate is a strong fit for this specific company and role
+- refer to the company context with specificity
+- avoid generic praise
+- close directly and with restraint
+
+--------------------------------------------------
+SPECIAL GUIDANCE FOR ADJACENT FIT
+
+If the candidate is not an exact match:
+- do not hide the adjacency
+- frame transferable relevance through comparable scope, leadership context, operating rigor, production delivery, or business outcomes
+- avoid overstating direct domain expertise that is not supported
+
+If the role is engineering, platform, or production-oriented:
+- prioritise evidence of technical leadership, system ownership, engineering standards, architecture decisions, ML or data platform operations, multidisciplinary delivery, hiring, and coaching
+- do not let the letter read like a pure analytics or strategy profile unless that is what the role requires
+
+--------------------------------------------------
+STYLE RULES
+
+Avoid:
+- generic enthusiasm
+- inflated claims
+- abstract corporate language
+- phrases that could fit any AI or data leadership role
+- repeating the job description back to the company
+
+Do not use:
+- "I am excited to apply"
+- "passionate about"
+- "cutting-edge"
+- "fast-paced"
+- "spearheaded"
+
+Prefer:
+- concrete nouns
+- ownership language
+- quantified outcomes
+- plain English
+- sentences generally between 10 and 22 words
+
+--------------------------------------------------
+INPUTS
+
+Candidate Profile:
+"""
+{{ candidate_profile }}
+"""
+
+Alignment Strategy:
+"""
+{{ alignment_strategy }}
+"""
+
+Job Description:
+"""
+{{ job_description }}
+"""
+
+Company Description:
+"""
+{{ company_description }}
+"""

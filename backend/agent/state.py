@@ -1,0 +1,75 @@
+"""LangGraph state for the Personal Application Assistant."""
+
+from __future__ import annotations
+
+from typing import Annotated, Any, Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class CoverLetterVersion(BaseModel):
+    version_id: str
+    text: str
+    iteration: int
+    hm_score: float | None = None
+    hm_feedback: dict[str, Any] | None = None
+
+
+class QAItem(BaseModel):
+    kind: Literal["motivation", "salary", "experience", "custom"]
+    question: str
+    answer: str = ""
+
+
+class ExportResult(BaseModel):
+    kind: str  # "pdf" | "md" | "json" | "sheets"
+    path: str
+
+
+def _last_write_wins(a: Any, b: Any) -> Any:
+    return b if b is not None else a
+
+
+class ApplicationState(BaseModel):
+    """Full application state. LangGraph merges partial updates per node return."""
+
+    session_id: str
+
+    # Applicant / profile
+    applicant_name: str = ""
+    profile_id: str | None = None
+    cv_text: str = ""
+    candidate_profile: str = ""
+
+    # Job / company
+    job_url: str = ""
+    job_raw_text: str = ""
+    job_title: str = ""
+    company_name: str = ""
+    job_description: str = ""
+    company_description: str = ""
+    location: str = ""
+    job_source_type: Literal["direct", "recruiter", ""] = ""
+
+    # Strategy
+    alignment_strategy: str = ""
+    inferred_role_context: str = ""
+    positioning_strategy: str = ""
+
+    # Cover letter loop
+    cover_letter_versions: list[CoverLetterVersion] = Field(default_factory=list)
+    best_version_id: str | None = None
+    cover_letter: str = ""  # the selected best
+    hm_iterations: int = 0
+
+    # Q&A
+    qa_items: list[QAItem] = Field(default_factory=list)
+
+    # Export
+    export_selection: list[str] = Field(default_factory=list)
+    export_results: list[ExportResult] = Field(default_factory=list)
+
+    # Phase tracking (for UI / sessions table)
+    phase: str = "greeting"
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)

@@ -1,0 +1,77 @@
+Task: Decide how the candidate should position themselves for this opportunity when applying through a recruiter and the client organisation is not fully disclosed.
+
+Your objective is to help produce a recruiter-facing cover letter that sounds credible, senior, and flexible enough for an undisclosed client, while still feeling specific and evidence-based.
+
+Prioritise experiences that show:
+- leadership of teams or functions
+- strategic influence tied to execution
+- transformation of data, AI, analytics, ML, engineering, or platform capabilities
+- measurable business value
+- operating ownership and cross-functional leadership
+
+Avoid foregrounding purely technical achievements unless they clearly demonstrate leadership or business impact.
+
+Return exactly the following sections.
+
+1. Fit Type
+Classify the candidate's fit as one of:
+- Direct fit to the brief
+- Strong adjacent fit
+- Leadership fit with domain adjacency
+- Broad leadership fit, exact mandate unclear
+Then explain briefly.
+
+2. Candidate Strengths Most Relevant to This Opportunity
+List the 4–6 strongest reasons this candidate is credible for the likely opportunity described by the recruiter ad.
+
+3. Best Achievements to Highlight
+Select the 3–4 achievements that most strengthen the candidate's positioning.
+For each one, include:
+- Achievement
+- Why it is relevant to the likely brief
+- What concern or doubt it helps reduce
+
+4. Leadership Themes to Emphasize
+Identify the leadership themes that should appear in the cover letter.
+Focus on themes that remain credible even when the client is undisclosed.
+
+5. Likely Recruiter or Client Concerns
+Identify the most plausible reasons the candidate might be screened out, seen as adjacent, or require explanation.
+
+6. How to Address Those Concerns
+For each concern, explain how the cover letter should reduce that concern using supported evidence and careful framing.
+
+7. Claims to Avoid
+List claims, assumptions, or wording the candidate should avoid because they would:
+- overstate fit
+- presume facts about the client
+- sound too generic
+- rely on weak evidence
+
+8. Narrative Strategy for the Cover Letter
+Explain the most credible positioning angle for a recruiter-facing application where the client is unknown.
+
+9. Recommended Paragraph Emphasis
+Provide guidance for each paragraph:
+- Paragraph 1: what it must establish
+- Paragraph 2: what leadership and ownership evidence to emphasise
+- Paragraph 3: which outcomes to use as proof
+- Paragraph 4: how to express interest while staying flexible about the undisclosed client
+
+--------------------------------
+INPUTS
+
+Candidate Profile:
+"""
+{{ candidate_profile }}
+"""
+
+Inferred Role Context:
+"""
+{{ inferred_role_context }}
+"""
+
+Recruiter Job Description:
+"""
+{{ recruiter_job_ad }}
+"""

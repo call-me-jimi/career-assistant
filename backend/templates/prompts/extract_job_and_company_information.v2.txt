@@ -1,0 +1,70 @@
+Task: Analyse the job description and company context below in light of the candidate profile.
+
+Your goal is to surface what the hiring manager is most likely to care about and what matters for tailoring a strong cover letter.
+
+Return exactly the following sections.
+
+1. Core Responsibilities
+Identify the 5 most important responsibilities.
+Separate:
+- Explicitly stated in the job description
+- Likely central based on the wording and emphasis of the posting
+
+2. Key Skills and Qualifications
+List the 5 most critical capabilities or qualifications.
+Prioritise what appears most decision-relevant, not what appears most often.
+
+3. Leadership Expectations
+Describe what type of leader the company likely wants in this role.
+Address:
+- operating style
+- level of ownership
+- scale or ambiguity
+- stakeholder expectations
+Label inferred points as "likely inferred."
+
+4. Business Problems This Role Likely Solves
+Separate into:
+- Problems explicitly indicated by the job description
+- Problems likely inferred from the company context and role framing
+
+5. Strategic Priorities of the Company
+Identify major business goals, initiatives, or organisational priorities that are explicitly stated in the company description.
+Then add any "likely inferred" priorities separately.
+
+6. Data / AI / Analytics / Engineering Relevance
+Explain how data, analytics, AI, ML, or platform/engineering capability likely supports the company's strategy and this role.
+Use only what is supported by the supplied materials.
+
+7. Important Keywords and Themes
+List concepts, priorities, and phrases that should appear naturally in the cover letter.
+Prioritise themes that improve perceived fit.
+
+8. Hiring Manager Priorities
+Summarise what the hiring manager is probably valuing most in a candidate for this role.
+Keep this practical and selective.
+
+9. Potential Candidate Risks or Gaps
+Based on the candidate profile, identify likely areas where this candidate may appear weaker, more adjacent, or less directly proven for this role.
+Do not overstate risk.
+Do not invent missing experience.
+Only identify plausible concerns supported by the comparison.
+
+10. How the Letter Should Handle Those Risks
+For each risk or gap, explain how the cover letter should address it credibly using supported evidence.
+Also note any claims that should be avoided.
+
+Job Description:
+"""
+{{ job_description }}
+"""
+
+Company Description:
+"""
+{{ company_description }}
+"""
+
+Candidate Profile:
+"""
+{{ candidate_profile }}
+"""

@@ -1,0 +1,71 @@
+Task: Identify the strongest alignment between the candidate and the role for cover-letter positioning.
+
+Prioritise evidence of:
+- leadership of teams or organisations
+- measurable business impact
+- strategic influence tied to execution
+- transformation of data, AI, analytics, ML, engineering, or platform capabilities
+- production delivery and operating ownership where relevant
+
+Avoid foregrounding purely technical wins unless they clearly demonstrate business value or leadership relevance.
+
+Return exactly the following sections.
+
+1. Fit Type
+Classify the candidate's fit as one of:
+- Direct fit
+- Strong adjacent fit
+- Leadership fit with domain adjacency
+- Strategic fit, execution evidence weaker
+Then explain the classification briefly.
+
+2. Top Fit Signals
+List the 4–6 strongest reasons this candidate is credible for this role.
+
+3. Best Achievements to Highlight
+Select the 3–4 achievements that should be used or considered for the cover letter.
+For each one, include:
+- Achievement
+- Why it matters for this role
+- Which likely hiring concern it helps reduce
+
+4. Leadership Themes to Emphasize
+Identify the most relevant leadership themes to foreground.
+Examples may include:
+- functional ownership
+- organisational scaling
+- team building
+- platform modernisation
+- AI adoption
+- cross-functional execution
+- commercial impact
+Only include themes supported by the inputs.
+
+5. Likely Hiring Concerns
+List the most plausible reasons this candidate could be rejected or doubted for this role.
+
+6. How to Address Those Concerns
+For each likely concern, explain how the letter should reduce that concern using supported evidence and careful framing.
+
+7. Claims to Avoid
+List claims, emphases, or wording that the cover letter should avoid because they would overstate fit, sound generic, or rely on weak evidence.
+
+8. Recommended Narrative for the Cover Letter
+Provide a concise positioning narrative that explains the most credible angle for this candidate.
+
+9. Recommended Paragraph Emphasis
+Provide guidance for each paragraph:
+- Paragraph 1: what it must establish
+- Paragraph 2: what leadership/ownership evidence to emphasise
+- Paragraph 3: which outcomes to prove fit with
+- Paragraph 4: how to frame company-specific fit and close
+
+Candidate Profile:
+"""
+{{ candidate_profile }}
+"""
+
+Job and Company Analysis:
+"""
+{{ job_profile }}
+"""

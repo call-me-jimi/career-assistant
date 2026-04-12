@@ -1,0 +1,68 @@
+Task: From the recruiter job description below, infer the likely hiring context and role characteristics.
+
+This is not a fact-finding exercise about a verified client. Your goal is to extract what can be said credibly, what is only likely, and what remains unclear.
+
+Return exactly the following sections.
+
+1. Likely Seniority and Functional Shape of the Role
+Summarise:
+- likely seniority level
+- likely functional remit
+- whether this appears more strategic, operational, transformation-oriented, platform-oriented, or mixed
+For each point, distinguish:
+- Explicit in ad
+- Likely inferred
+- Unclear from ad
+
+2. Likely Company Stage
+Assess whether the ad most likely points to:
+- startup
+- scale-up
+- enterprise
+- unclear / mixed
+Explain the evidence briefly and give a confidence level: High / Medium / Low.
+
+3. Likely Industry or Business Context
+Identify the most plausible industry, sector, or business context suggested by the ad.
+If the ad does not support a clear view, say "unclear from ad."
+Give a confidence level: High / Medium / Low.
+
+4. Likely Data / AI / Analytics / Platform Maturity
+Infer the likely maturity level of the organisation's data / AI / analytics / platform capability.
+Explain what in the ad suggests this.
+Label any inference clearly.
+
+5. Core Responsibilities of the Role
+Identify the most important likely responsibilities.
+Separate:
+- responsibilities explicitly stated
+- responsibilities likely implied by the ad's wording and emphasis
+
+6. Business Challenges the Client Likely Faces
+Infer the business or organisational challenges this hire is likely intended to address.
+Use only the ad text as the basis.
+Label inferred points clearly.
+
+7. What the Client Likely Needs from a Senior Leader
+Describe what the organisation likely needs from this hire in leadership terms.
+Examples may include:
+- building teams
+- raising delivery discipline
+- defining strategy
+- scaling platforms
+- operationalising AI
+- aligning with commercial priorities
+Only include needs supported by the ad.
+
+8. Signals That Should Shape the Application
+List the most important themes, phrases, and signals the application should reflect.
+
+9. Uncertainties and Claims to Avoid
+List:
+- what remains unclear from the ad
+- what should not be claimed later as if verified fact about the client
+
+Recruiter Job Description:
+"""
+{{ recruiter_job_ad }}
+"""

@@ -1,0 +1,41 @@
+Task: Compare these cover letter drafts for the same job application and pick the single strongest one for this specific role.
+
+Job title: {{ job_title }}
+Company: {{ company_name }}
+Job source type: {{ job_source_type }}
+
+Job description:
+{{ job_description }}
+
+Company description:
+{{ company_description }}
+
+Candidate profile (if any):
+{{ candidate_profile }}
+
+Alignment strategy (if any):
+{{ alignment_strategy }}
+
+Positioning strategy (if any):
+{{ positioning_strategy }}
+
+Inferred role context (if any, e.g. recruiter workflow):
+{{ inferred_role_context }}
+
+Drafts appear below as **Version 1**, **Version 2**, … in order. Use **only** those labels (e.g. "Version 2") when you discuss or compare drafts in your reasoning. Do **not** mention raw IDs, UUIDs, or hex strings in the reasoning text.
+
+{% for v in versions %}
+--- Version {{ loop.index }} ---
+{{ v.content }}
+
+{% endfor %}
+
+Id mapping (for the JSON field only — do not repeat these ids in "reasoning"):
+{% for v in versions %}
+- Version {{ loop.index }} → id: {{ v.id }}
+{% endfor %}
+
+Respond with ONLY a single JSON object, no markdown code fences, no other text. Shape:
+{"recommended_version_id": "<exact id string from the mapping above for your chosen version, or null if none are suitable>", "reasoning": "<2 to 6 clear sentences. Compare only using the names Version 1, Version 2, … — tone, evidence of fit, clarity, length, and any risks. Never put UUIDs or hex ids in this string.>"}
+
+If every draft is weak or empty of substance, set recommended_version_id to null and explain in reasoning using only Version N labels.

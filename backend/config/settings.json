@@ -1,0 +1,74 @@
+{
+  "default_llm": {
+    "provider": "anthropic",
+    "model_name": "claude-sonnet-4-6",
+    "base_url": null,
+    "api_key": null
+  },
+  "task_llm_configs": {
+    "candidate_profile": {
+      "provider": "anthropic",
+      "model_name": "claude-haiku-4-5-20251001",
+      "base_url": null,
+      "api_key": null
+    },
+    "extract_job_and_company_information": {
+      "provider": "anthropic",
+      "model_name": "claude-haiku-4-5-20251001",
+      "base_url": null,
+      "api_key": null
+    },
+    "alignment_strategy": {
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-6",
+      "base_url": null,
+      "api_key": null
+    },
+    "infer_role": {
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-6",
+      "base_url": null,
+      "api_key": null
+    },
+    "position_candidate": {
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-6",
+      "base_url": null,
+      "api_key": null
+    },
+    "cover_letter_generation": {
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-6",
+      "base_url": null,
+      "api_key": null
+    },
+    "simulate_hiring_manager": {
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-6",
+      "base_url": null,
+      "api_key": null
+    },
+    "refine_cover_letter": {
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-6",
+      "base_url": null,
+      "api_key": null
+    },
+    "qa": {
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-6",
+      "base_url": null,
+      "api_key": null
+    }
+  },
+  "model_pricing": {
+    "claude-opus-4-6": { "input_per_mtok": 15.0, "output_per_mtok": 75.0 },
+    "claude-sonnet-4-6": { "input_per_mtok": 3.0, "output_per_mtok": 15.0 },
+    "claude-haiku-4-5-20251001": { "input_per_mtok": 0.8, "output_per_mtok": 4.0 }
+  },
+  "max_hm_iterations": 3,
+  "quality_threshold": 8.5,
+  "language": "English",
+  "currency": "EUR",
+  "default_export_folder": "~/JobApplications"
+}

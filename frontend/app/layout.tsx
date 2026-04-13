@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Personal Application Assistant",
-  description: "Agentic, conversational cover letter and Q&A assistant.",
+  title: "Personal Career Assistant",
+  description: "Agentic career helper: cover letters, interview prep, and career advice.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

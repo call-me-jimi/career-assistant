@@ -15,6 +15,12 @@ import type {
 } from "../../lib/types";
 import { connectSession } from "../../lib/ws";
 
+const ASSISTANT_LABELS: Record<string, string> = {
+  cover_letter: "Cover Letter",
+  interview_prep: "Interview Prep",
+  career_advisor: "Career Advisor",
+};
+
 function SessionView() {
   const params = useSearchParams();
   const sessionId = params.get("id") || "";
@@ -23,12 +29,17 @@ function SessionView() {
   const [cards, setCards] = useState<LLMCard[]>([]);
   const [pending, setPending] = useState<InterruptPayload | null>(null);
   const [done, setDone] = useState(false);
+  const [assistantType, setAssistantType] = useState<string>("");
   const sendRef = useRef<(v: unknown) => void>(() => {});
 
   useEffect(() => {
     if (!sessionId) return;
     const conn = connectSession(sessionId, handleEvent);
     sendRef.current = conn.send;
+    fetch(`/api/sessions/${sessionId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => data && setAssistantType(data.assistant_type || ""))
+      .catch(() => {});
     return () => conn.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
@@ -120,17 +131,24 @@ function SessionView() {
   const header = useMemo(
     () => (
       <header className="h-14 px-6 flex items-center justify-between border-b border-border">
-        <a
-          href="/"
-          onClick={(e) => {
-            if (!done && !confirm("Leaving will end this session. Continue?")) {
-              e.preventDefault();
-            }
-          }}
-          className="font-semibold hover:text-accent"
-        >
-          Personal Application Assistant
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="/"
+            onClick={(e) => {
+              if (!done && !confirm("Leaving will end this session. Continue?")) {
+                e.preventDefault();
+              }
+            }}
+            className="font-semibold hover:text-accent"
+          >
+            Personal Career Assistant
+          </a>
+          {assistantType && ASSISTANT_LABELS[assistantType] && (
+            <span className="px-2 py-0.5 text-xs rounded-full border border-accent/40 text-accent">
+              {ASSISTANT_LABELS[assistantType]}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-4 text-xs">
           <a
             href={`/session/details?id=${sessionId}`}
@@ -159,7 +177,7 @@ function SessionView() {
         </div>
       </header>
     ),
-    [sessionId],
+    [sessionId, done, assistantType],
   );
 
   return (

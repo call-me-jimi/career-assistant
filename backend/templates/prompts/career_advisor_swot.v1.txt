@@ -1,0 +1,22 @@
+Write a SWOT summary for this candidate, grounded in their profile and the transcript of our conversation so far.
+
+Follow the section structure defined in the system prompt. Do not invent facts. Where evidence is thin, rely on the conversation transcript over the profile.
+
+--------------------------------------------------
+CANDIDATE PROFILE
+"""
+{{ candidate_profile }}
+"""
+
+--------------------------------------------------
+CANDIDATE CV (raw)
+"""
+{{ cv_content }}
+"""
+
+--------------------------------------------------
+CONVERSATION TRANSCRIPT (most recent last)
+{{ transcript }}
+--------------------------------------------------
+
+Produce the SWOT document now, in Markdown. Output the four sections only.

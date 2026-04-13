@@ -9,14 +9,19 @@ from typing import Any
 from backend.storage.db import connect
 
 
-async def create_session() -> str:
+ASSISTANT_TYPES = ("cover_letter", "interview_prep", "career_advisor")
+
+
+async def create_session(assistant_type: str = "cover_letter") -> str:
+    if assistant_type not in ASSISTANT_TYPES:
+        raise ValueError(f"Unknown assistant_type: {assistant_type}")
     session_id = str(uuid.uuid4())
     now = time.time()
     async with connect() as db:
         await db.execute(
-            "INSERT INTO sessions (session_id, applicant_name, phase, created_at, last_activity) "
-            "VALUES (?, NULL, 'greeting', ?, ?)",
-            (session_id, now, now),
+            "INSERT INTO sessions (session_id, applicant_name, phase, assistant_type, created_at, last_activity) "
+            "VALUES (?, NULL, 'greeting', ?, ?, ?)",
+            (session_id, assistant_type, now, now),
         )
         await db.commit()
     return session_id
@@ -56,7 +61,7 @@ async def touch_session(
 async def get_session(session_id: str) -> dict[str, Any] | None:
     async with connect() as db:
         cur = await db.execute(
-            "SELECT session_id, applicant_name, phase, created_at, last_activity "
+            "SELECT session_id, applicant_name, phase, assistant_type, created_at, last_activity "
             "FROM sessions WHERE session_id=?",
             (session_id,),
         )
@@ -67,6 +72,7 @@ async def get_session(session_id: str) -> dict[str, Any] | None:
         "session_id": row[0],
         "applicant_name": row[1],
         "phase": row[2],
-        "created_at": row[3],
-        "last_activity": row[4],
+        "assistant_type": row[3],
+        "created_at": row[4],
+        "last_activity": row[5],
     }

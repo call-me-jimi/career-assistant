@@ -17,14 +17,32 @@ def _format_saved_at(ts: float | int | None) -> str:
     return datetime.fromtimestamp(float(ts), tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
 
 
+_INTRO_BY_ASSISTANT = {
+    "cover_letter": (
+        "Hi! I'm your Personal Career Assistant — cover letter mode. I'll walk you through "
+        "creating a tailored cover letter and preparing for application questions."
+    ),
+    "interview_prep": (
+        "Hi! I'm your Interview Prep assistant. I'll prepare a tailored briefing for "
+        "your upcoming interview — likely questions, positioning, stories to rehearse, "
+        "and how to handle the most probable hiring concerns."
+    ),
+    "career_advisor": (
+        "Hi! I'm your Career Advisor. We'll have an open conversation about your "
+        "experience so you can clarify your strengths, spot weaknesses, and sharpen how "
+        "you talk about your career. You can ask for a SWOT summary at any time."
+    ),
+}
+
+
 async def greeting_node(state: ApplicationState) -> dict:
     sid = state.session_id
     details_url = f"/session/details?id={sid}"
+    intro = _INTRO_BY_ASSISTANT.get(state.assistant_type, _INTRO_BY_ASSISTANT["cover_letter"])
     emit_message(
         sid,
-        "Hi! I'm your Personal Application Assistant. I'll walk you through creating a "
-        "tailored cover letter and preparing for application questions.\n\n"
-        f"You can review and edit all extracted information at any time on the "
+        f"{intro}\n\n"
+        f"You can review and edit the information we gather on the "
         f"[Details page]({details_url}).\n\n"
         "First — what's your name?",
         key="greeting:welcome",
@@ -58,10 +76,17 @@ async def greeting_node(state: ApplicationState) -> dict:
     update: dict = {"applicant_name": applicant_name, "phase": "cv_intake"}
     if matched_profile:
         update["profile_id"] = matched_profile["profile_id"]
+        if state.assistant_type == "career_advisor":
+            next_hint = "We can dive straight into the conversation."
+        else:
+            next_hint = (
+                "Now share the job you're applying for. Paste the URL of the posting, "
+                "or the job description text directly."
+            )
         emit_message(
             sid,
             f"Welcome back, {applicant_name}! I'll use your saved profile — no need to upload a CV again.\n\n"
-            "Now share the job you're applying for. Paste the URL of the posting, or the job description text directly.",
+            f"{next_hint}",
         )
     else:
         emit_message(sid, f"Great to meet you, {applicant_name}!")

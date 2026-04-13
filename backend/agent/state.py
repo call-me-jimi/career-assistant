@@ -21,6 +21,11 @@ class QAItem(BaseModel):
     answer: str = ""
 
 
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class ExportResult(BaseModel):
     kind: str  # "pdf" | "md" | "json" | "sheets"
     path: str
@@ -30,10 +35,14 @@ def _last_write_wins(a: Any, b: Any) -> Any:
     return b if b is not None else a
 
 
+ASSISTANT_TYPE = Literal["cover_letter", "interview_prep", "career_advisor"]
+
+
 class ApplicationState(BaseModel):
     """Full application state. LangGraph merges partial updates per node return."""
 
     session_id: str
+    assistant_type: ASSISTANT_TYPE = "cover_letter"
 
     # Applicant / profile
     applicant_name: str = ""
@@ -64,6 +73,14 @@ class ApplicationState(BaseModel):
 
     # Q&A
     qa_items: list[QAItem] = Field(default_factory=list)
+
+    # Interview prep
+    interview_context: str = ""
+    interview_briefing: str = ""
+
+    # Career advisor
+    advisor_transcript: list[ChatTurn] = Field(default_factory=list)
+    advisor_swot: str = ""
 
     # Export
     export_selection: list[str] = Field(default_factory=list)

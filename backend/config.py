@@ -110,6 +110,9 @@ KNOWN_TASKS: list[str] = [
     "simulate_hiring_manager",
     "refine_cover_letter",
     "qa",
+    "interview_briefing",
+    "career_advisor_chat",
+    "career_advisor_swot",
 ]
 
 

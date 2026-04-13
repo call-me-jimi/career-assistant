@@ -17,9 +17,14 @@ from backend.tools import exporters
 
 async def export_node(state: ApplicationState) -> dict:
     sid = state.session_id
+    artifact_hint = {
+        "cover_letter": "your cover letter and Q&A",
+        "interview_prep": "your interview briefing",
+        "career_advisor": "the conversation and (if you generated one) your SWOT",
+    }.get(state.assistant_type, "your session")
     emit_message(
         sid,
-        "Time to export. Which formats would you like?\n\n"
+        f"Time to export {artifact_hint}. Which formats would you like?\n\n"
         "Reply with any combination of: `pdf`, `md`, `json`, `sheets`, or `all`. "
         "Say `none` to skip.",
         key="export:prompt",
@@ -61,16 +66,17 @@ async def export_node(state: ApplicationState) -> dict:
             action_finish(sid, aid, status="error")
             emit_message(sid, f"✗ {kind} export failed: {exc}")
 
-    emit_message(
-        sid,
-        "Anything else you'd like to work on? Reply `yes` to go back to questions, "
-        "or `no` to wrap up.",
-        key=f"export:followup:{len(results)}",
-    )
-    follow = interrupt({"kind": "post_export"})
-    follow_text = (follow or "").strip().lower() if isinstance(follow, str) else ""
-    if follow_text.startswith("y"):
-        return {"export_results": results, "phase": "qa_menu"}
+    if state.assistant_type == "cover_letter":
+        emit_message(
+            sid,
+            "Anything else you'd like to work on? Reply `yes` to go back to questions, "
+            "or `no` to wrap up.",
+            key=f"export:followup:{len(results)}",
+        )
+        follow = interrupt({"kind": "post_export"})
+        follow_text = (follow or "").strip().lower() if isinstance(follow, str) else ""
+        if follow_text.startswith("y"):
+            return {"export_results": results, "phase": "qa_menu"}
 
-    emit_message(sid, "All done — good luck with your application!")
+    emit_message(sid, "All done — good luck!")
     return {"export_results": results, "phase": "done"}

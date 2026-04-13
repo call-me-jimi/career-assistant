@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
 from backend.storage.profiles import list_profiles
-from backend.storage.sessions import create_session, get_session
+from backend.storage.sessions import ASSISTANT_TYPES, create_session, get_session
 from backend.storage.traces import get_trace, list_traces
 
 router = APIRouter(prefix="/api")
@@ -21,11 +21,18 @@ def _cost_for(model: str | None, input_tokens: int, output_tokens: int, pricing:
     return (input_tokens / 1_000_000.0) * p.input_per_mtok + (output_tokens / 1_000_000.0) * p.output_per_mtok
 
 
+class StartSessionPayload(BaseModel):
+    assistant_type: str = "cover_letter"
+
+
 @router.post("/sessions")
-async def start_session() -> dict:
-    session_id = await create_session()
+async def start_session(payload: StartSessionPayload | None = None) -> dict:
+    assistant_type = (payload.assistant_type if payload else "cover_letter") or "cover_letter"
+    if assistant_type not in ASSISTANT_TYPES:
+        raise HTTPException(400, f"unknown assistant_type: {assistant_type}")
+    session_id = await create_session(assistant_type)
     registry.get_or_start(session_id)
-    return {"session_id": session_id}
+    return {"session_id": session_id, "assistant_type": assistant_type}
 
 
 @router.get("/sessions/{session_id}")
@@ -66,11 +73,14 @@ async def trace_detail(session_id: str, card_id: str) -> dict:
 
 
 @router.get("/graph/mermaid")
-async def graph_mermaid() -> dict:
+async def graph_mermaid(assistant_type: str = "cover_letter") -> dict:
     """Return the static LangGraph topology as a Mermaid source string."""
-    from backend.agent.graph import build_graph
+    from backend.agent.runner import GRAPH_BUILDERS
 
-    compiled = build_graph(checkpointer=None)
+    builder = GRAPH_BUILDERS.get(assistant_type)
+    if builder is None:
+        raise HTTPException(400, f"unknown assistant_type: {assistant_type}")
+    compiled = builder(checkpointer=None)
     mermaid = compiled.get_graph().draw_mermaid()
     return {"mermaid": mermaid}
 
@@ -97,6 +107,9 @@ EDITABLE_FIELDS = {
     "inferred_role_context",
     "positioning_strategy",
     "cover_letter",
+    "interview_context",
+    "interview_briefing",
+    "advisor_swot",
 }
 
 

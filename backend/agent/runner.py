@@ -15,9 +15,17 @@ from langgraph.types import Command
 
 from backend.agent.checkpoint import get_checkpointer
 from backend.agent.graph import build_graph
+from backend.agent.graph_advisor import build_advisor_graph
+from backend.agent.graph_interview import build_interview_graph
 from backend.agent.state import ApplicationState
 from backend.observability.event_bus import bus
-from backend.storage.sessions import touch_session
+from backend.storage.sessions import get_session, touch_session
+
+GRAPH_BUILDERS = {
+    "cover_letter": build_graph,
+    "interview_prep": build_interview_graph,
+    "career_advisor": build_advisor_graph,
+}
 
 log = logging.getLogger("assistant.runner")
 
@@ -68,11 +76,18 @@ class SessionRunner:
 
     async def run(self) -> None:
         try:
+            session_row = await get_session(self.session_id)
+            assistant_type = (session_row or {}).get("assistant_type") or "cover_letter"
+            builder = GRAPH_BUILDERS.get(assistant_type, build_graph)
+
             async with get_checkpointer() as checkpointer:
-                graph = build_graph(checkpointer)
+                graph = builder(checkpointer)
                 self._graph = graph
                 config = self._config()
-                initial = ApplicationState(session_id=self.session_id).model_dump()
+                initial = ApplicationState(
+                    session_id=self.session_id,
+                    assistant_type=assistant_type,  # type: ignore[arg-type]
+                ).model_dump()
 
                 next_input: Any = initial
                 while True:

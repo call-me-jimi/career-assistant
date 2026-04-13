@@ -406,13 +406,24 @@ function GraphView() {
     return map;
   }, [traces]);
 
-  // Fetch graph source
+  // Fetch graph source (scoped to the session's assistant type)
   useEffect(() => {
-    fetch("/api/graph/mermaid")
-      .then((r) => r.json())
-      .then((d) => setMermaidSrc(d.mermaid || ""))
-      .catch((e) => setError(`Could not load graph: ${e}`));
-  }, []);
+    if (!sessionId) return;
+    (async () => {
+      try {
+        const info = await fetch(`/api/sessions/${sessionId}`).then((r) =>
+          r.ok ? r.json() : null,
+        );
+        const at = (info && info.assistant_type) || "cover_letter";
+        const d = await fetch(
+          `/api/graph/mermaid?assistant_type=${encodeURIComponent(at)}`,
+        ).then((r) => r.json());
+        setMermaidSrc(d.mermaid || "");
+      } catch (e) {
+        setError(`Could not load graph: ${e}`);
+      }
+    })();
+  }, [sessionId]);
 
   // Fetch session state + traces
   useEffect(() => {

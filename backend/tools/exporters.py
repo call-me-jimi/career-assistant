@@ -26,7 +26,7 @@ def _ensure_folder(state: dict[str, Any]) -> Path:
     base = resolved_export_folder()
     base.mkdir(parents=True, exist_ok=True)
 
-    company = state.get("company_name") or "Company"
+    company = state.get("company_name") or state.get("applicant_name") or "Session"
     date_str = time.strftime("%Y.%m.%d")
 
     folder_name = _sanitize_filename(f"{company} - {date_str}")
@@ -50,18 +50,21 @@ def export_markdown(state: dict[str, Any]) -> str:
     folder = _ensure_folder(state)
     path = folder / "application.md"
     lines = [
-        f"# Application — {state.get('company_name') or ''}",
+        f"# Session — {state.get('company_name') or state.get('applicant_name') or ''}",
         "",
         f"**Applicant:** {state.get('applicant_name') or ''}",
-        f"**Job title:** {state.get('job_title') or ''}",
-        f"**Company:** {state.get('company_name') or ''}",
-        f"**URL:** {state.get('job_url') or ''}",
-        "",
-        "## Cover letter",
-        "",
-        state.get("cover_letter") or "",
-        "",
     ]
+    if state.get("job_title"):
+        lines.append(f"**Job title:** {state.get('job_title')}")
+    if state.get("company_name"):
+        lines.append(f"**Company:** {state.get('company_name')}")
+    if state.get("job_url"):
+        lines.append(f"**URL:** {state.get('job_url')}")
+    lines.append("")
+
+    if state.get("cover_letter"):
+        lines += ["## Cover letter", "", state["cover_letter"], ""]
+
     qa = state.get("qa_items") or []
     if qa:
         lines.append("## Questions & Answers")
@@ -71,6 +74,13 @@ def export_markdown(state: dict[str, Any]) -> str:
             lines.append("")
             lines.append(item.get("answer", ""))
             lines.append("")
+
+    if state.get("interview_briefing"):
+        lines += ["## Interview briefing", "", state["interview_briefing"], ""]
+
+    if state.get("advisor_swot"):
+        lines += ["## Career SWOT", "", state["advisor_swot"], ""]
+
     path.write_text("\n".join(lines))
     log.info("wrote markdown %s", path)
     return str(path)
@@ -89,17 +99,33 @@ def export_pdf(state: dict[str, Any]) -> str:
     from weasyprint import HTML
 
     folder = _ensure_folder(state)
-    path = folder / "cover_letter.pdf"
-    cover_letter = (state.get("cover_letter") or "").replace("\n", "<br/>")
+
+    if state.get("cover_letter"):
+        body_text = state["cover_letter"]
+        title = state.get("job_title") or "Cover letter"
+        filename = "cover_letter.pdf"
+    elif state.get("interview_briefing"):
+        body_text = state["interview_briefing"]
+        title = f"Interview briefing — {state.get('job_title') or state.get('company_name') or ''}"
+        filename = "interview_briefing.pdf"
+    elif state.get("advisor_swot"):
+        body_text = state["advisor_swot"]
+        title = "Career SWOT"
+        filename = "career_swot.pdf"
+    else:
+        raise RuntimeError("Nothing to export as PDF yet.")
+
+    path = folder / filename
+    body_html = body_text.replace("\n", "<br/>")
     html = f"""
     <html><head><meta charset='utf-8'><style>
       body {{ font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.5; color: #222; margin: 2.5cm; }}
       h1 {{ font-size: 16pt; }}
       .meta {{ color: #666; font-size: 9pt; margin-bottom: 1.5em; }}
     </style></head><body>
-      <h1>{state.get('job_title') or 'Cover letter'}</h1>
+      <h1>{title}</h1>
       <div class='meta'>{state.get('company_name') or ''} — {state.get('applicant_name') or ''}</div>
-      <div>{cover_letter}</div>
+      <div>{body_html}</div>
     </body></html>
     """
     HTML(string=html).write_pdf(str(path))

@@ -10,12 +10,13 @@ DB_PATH = DATA_DIR / "assistant.sqlite"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS profiles (
-    profile_id    TEXT PRIMARY KEY,
-    name          TEXT NOT NULL,
-    cv_text       TEXT NOT NULL,
+    profile_id      TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    applicant_name  TEXT,
+    cv_text         TEXT NOT NULL,
     candidate_profile TEXT NOT NULL,
-    created_at    REAL NOT NULL,
-    updated_at    REAL NOT NULL
+    created_at      REAL NOT NULL,
+    updated_at      REAL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -61,6 +62,11 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         await db.execute(
             "ALTER TABLE sessions ADD COLUMN assistant_type TEXT NOT NULL DEFAULT 'cover_letter'"
         )
+
+    cur = await db.execute("PRAGMA table_info(profiles)")
+    profile_cols = {row[1] for row in await cur.fetchall()}
+    if "applicant_name" not in profile_cols:
+        await db.execute("ALTER TABLE profiles ADD COLUMN applicant_name TEXT")
 
 
 async def init_db() -> None:

@@ -34,8 +34,8 @@ async def extract_info_node(state: ApplicationState) -> dict:
     except Exception:
         parsed = {}
 
-    job_title = parsed.get("job_title") or parsed.get("title") or ""
-    company_name = parsed.get("company_name") or parsed.get("company") or ""
+    job_title = parsed.get("job_title") or parsed.get("title") or state.job_title
+    company_name = parsed.get("company_name") or parsed.get("company") or state.company_name
     job_description = parsed.get("job_description") or result.text
     company_description = parsed.get("company_description") or ""
     location = parsed.get("location") or ""

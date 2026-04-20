@@ -1,7 +1,7 @@
 {
   "default_llm": {
     "provider": "anthropic",
-    "model_name": "claude-sonnet-4-6",
+    "model_name": "claude-sonnet-4-5",
     "base_url": null,
     "api_key": null
   },
@@ -37,20 +37,20 @@
       "api_key": null
     },
     "cover_letter_generation": {
-      "provider": "anthropic",
-      "model_name": "claude-opus-4-6",
+      "provider": "openai",
+      "model_name": "gpt-5.4",
       "base_url": null,
       "api_key": null
     },
     "simulate_hiring_manager": {
       "provider": "anthropic",
-      "model_name": "claude-opus-4-6",
+      "model_name": "claude-opus-4-7",
       "base_url": null,
       "api_key": null
     },
     "refine_cover_letter": {
       "provider": "anthropic",
-      "model_name": "claude-opus-4-6",
+      "model_name": "gpt-5.4",
       "base_url": null,
       "api_key": null
     },
@@ -62,13 +62,22 @@
     }
   },
   "model_pricing": {
-    "claude-opus-4-6": { "input_per_mtok": 15.0, "output_per_mtok": 75.0 },
-    "claude-sonnet-4-6": { "input_per_mtok": 3.0, "output_per_mtok": 15.0 },
-    "claude-haiku-4-5-20251001": { "input_per_mtok": 0.8, "output_per_mtok": 4.0 }
+    "claude-opus-4-7": {
+      "input_per_mtok": 15.0,
+      "output_per_mtok": 75.0
+    },
+    "claude-sonnet-4-6": {
+      "input_per_mtok": 3.0,
+      "output_per_mtok": 15.0
+    },
+    "claude-haiku-4-5-20251001": {
+      "input_per_mtok": 0.8,
+      "output_per_mtok": 4.0
+    }
   },
   "max_hm_iterations": 3,
   "quality_threshold": 8.5,
   "language": "English",
   "currency": "EUR",
-  "default_export_folder": "~/JobApplications"
+  "default_export_folder": "~/JobApplications/Applications"
 }

@@ -91,7 +91,10 @@ export default function LandingPage() {
         {error && (
           <p className="text-sm text-err whitespace-pre-wrap">{error}</p>
         )}
-        <div>
+        <div className="flex gap-6 justify-center">
+          <a href="/profiles" className="text-sm text-accent hover:underline">
+            Profiles →
+          </a>
           <a href="/settings" className="text-sm text-accent hover:underline">
             Settings →
           </a>

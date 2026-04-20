@@ -39,28 +39,31 @@ async def greeting_node(state: ApplicationState) -> dict:
     sid = state.session_id
     details_url = f"/session/details?id={sid}"
     intro = _INTRO_BY_ASSISTANT.get(state.assistant_type, _INTRO_BY_ASSISTANT["cover_letter"])
+    profiles = (await list_profiles())[:10]
+    if profiles:
+        lines = []
+        for i, p in enumerate(profiles, start=1):
+            label = p["name"]
+            candidate = p.get("applicant_name")
+            if candidate and candidate != label:
+                label = f"{label} ({candidate})"
+            lines.append(f"{i}. **{label}** — saved {_format_saved_at(p.get('updated_at') or p.get('created_at'))}")
+        profiles_block = (
+            "\n\nYou have saved profiles:\n\n"
+            + "\n".join(lines)
+            + "\n\n_Pick a number to reuse a profile, or type your name to start fresh._"
+        )
+    else:
+        profiles_block = "\n\nFirst — what's your name?"
+
     emit_message(
         sid,
         f"{intro}\n\n"
         f"You can review and edit the information we gather on the "
-        f"[Details page]({details_url}).\n\n"
-        "First — what's your name?",
+        f"[Details page]({details_url})."
+        f"{profiles_block}",
         key="greeting:welcome",
     )
-
-    profiles = (await list_profiles())[:10]
-    if profiles:
-        lines = [
-            f"{i}. **{p['name']}** — saved {_format_saved_at(p.get('updated_at') or p.get('created_at'))}"
-            for i, p in enumerate(profiles, start=1)
-        ]
-        emit_message(
-            sid,
-            "You have saved profiles:\n\n"
-            + "\n".join(lines)
-            + "\n\n_Reply with the number (e.g. `1`) to reuse a profile and skip the CV upload._",
-            key="greeting:profiles_hint",
-        )
 
     answer = interrupt({"kind": "ask_name", "profiles": profiles})
     raw = (answer or "").strip()

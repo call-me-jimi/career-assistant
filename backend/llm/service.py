@@ -54,12 +54,14 @@ def build_chat_model(task: str | None = None):
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
 
-        return ChatAnthropic(
-            model=cfg.model_name,
-            api_key=api_key,
-            max_tokens=4096,
-            temperature=0.7,
-        ), cfg
+        kwargs_anthropic: dict[str, Any] = {
+            "model": cfg.model_name,
+            "api_key": api_key,
+            "max_tokens": 4096,
+        }
+        if not cfg.model_name.lower().startswith("claude-opus-4"):
+            kwargs_anthropic["temperature"] = 0.7
+        return ChatAnthropic(**kwargs_anthropic), cfg
     if provider == "openai":
         from langchain_openai import ChatOpenAI
 

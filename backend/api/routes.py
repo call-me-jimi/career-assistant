@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
-from backend.storage.profiles import list_profiles
+from backend.storage.profiles import delete_profile, get_profile, list_profiles
 from backend.storage.sessions import ASSISTANT_TYPES, create_session, get_session
 from backend.storage.traces import get_trace, list_traces
 
@@ -46,6 +46,22 @@ async def session_info(session_id: str) -> dict:
 @router.get("/profiles")
 async def profiles() -> dict:
     return {"profiles": await list_profiles()}
+
+
+@router.get("/profiles/{profile_id}")
+async def profile_detail(profile_id: str) -> dict:
+    p = await get_profile(profile_id)
+    if not p:
+        raise HTTPException(404, "profile not found")
+    return p
+
+
+@router.delete("/profiles/{profile_id}")
+async def remove_profile(profile_id: str) -> dict:
+    deleted = await delete_profile(profile_id)
+    if not deleted:
+        raise HTTPException(404, "profile not found")
+    return {"ok": True}
 
 
 @router.get("/sessions/{session_id}/traces")

@@ -21,6 +21,7 @@ async def cv_intake_node(state: ApplicationState) -> dict:
             return {
                 "cv_text": profile["cv_text"],
                 "candidate_profile": profile["candidate_profile"] if isinstance(profile["candidate_profile"], str) else str(profile["candidate_profile"]),
+                "profile_reused": True,
                 "phase": "collect_job",
             }
 
@@ -67,6 +68,7 @@ async def cv_intake_node(state: ApplicationState) -> dict:
     profile_name = label or default_label
     pid = await save_profile(
         name=profile_name,
+        applicant_name=state.applicant_name or None,
         cv_text=cv_text,
         candidate_profile=result.text,
     )

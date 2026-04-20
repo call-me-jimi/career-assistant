@@ -47,6 +47,7 @@ class ApplicationState(BaseModel):
     # Applicant / profile
     applicant_name: str = ""
     profile_id: str | None = None
+    profile_reused: bool = False  # True only when an existing profile was loaded via greeting
     cv_text: str = ""
     candidate_profile: str = ""
 

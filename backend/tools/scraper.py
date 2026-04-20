@@ -30,7 +30,7 @@ def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "lxml")
 
-    for tag in soup(["script", "style", "noscript", "svg", "iframe"]):
+    for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "header", "footer", "aside"]):
         tag.decompose()
 
     title = (soup.title.string.strip() if soup.title and soup.title.string else "")

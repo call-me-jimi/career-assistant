@@ -14,11 +14,11 @@ async def list_profiles() -> list[dict[str, Any]]:
     async with connect() as db:
         db.row_factory = None
         cur = await db.execute(
-            "SELECT profile_id, name, created_at, updated_at FROM profiles ORDER BY updated_at DESC"
+            "SELECT profile_id, name, applicant_name, created_at, updated_at FROM profiles ORDER BY updated_at DESC"
         )
         rows = await cur.fetchall()
     return [
-        {"profile_id": r[0], "name": r[1], "created_at": r[2], "updated_at": r[3]}
+        {"profile_id": r[0], "name": r[1], "applicant_name": r[2], "created_at": r[3], "updated_at": r[4]}
         for r in rows
     ]
 
@@ -51,11 +51,19 @@ async def get_profile(profile_id: str) -> dict[str, Any] | None:
     }
 
 
+async def delete_profile(profile_id: str) -> bool:
+    async with connect() as db:
+        cur = await db.execute("DELETE FROM profiles WHERE profile_id = ?", (profile_id,))
+        await db.commit()
+    return (cur.rowcount or 0) > 0
+
+
 async def save_profile(
     *,
     name: str,
     cv_text: str,
     candidate_profile: Any,
+    applicant_name: str | None = None,
     profile_id: str | None = None,
 ) -> str:
     pid = profile_id or str(uuid.uuid4())
@@ -68,15 +76,16 @@ async def save_profile(
     async with connect() as db:
         await db.execute(
             """
-            INSERT INTO profiles (profile_id, name, cv_text, candidate_profile, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO profiles (profile_id, name, applicant_name, cv_text, candidate_profile, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(profile_id) DO UPDATE SET
                 name=excluded.name,
+                applicant_name=excluded.applicant_name,
                 cv_text=excluded.cv_text,
                 candidate_profile=excluded.candidate_profile,
                 updated_at=excluded.updated_at
             """,
-            (pid, name, cv_text, data, now, now),
+            (pid, name, applicant_name, cv_text, data, now, now),
         )
         await db.commit()
     return pid

@@ -37,8 +37,8 @@
       "api_key": null
     },
     "cover_letter_generation": {
-      "provider": "openai",
-      "model_name": "gpt-5.4",
+      "provider": "anthropic",
+      "model_name": "claude-opus-4-7",
       "base_url": null,
       "api_key": null
     },
@@ -50,7 +50,7 @@
     },
     "refine_cover_letter": {
       "provider": "anthropic",
-      "model_name": "gpt-5.4",
+      "model_name": "claude-opus-4-7",
       "base_url": null,
       "api_key": null
     },
@@ -79,5 +79,9 @@
   "quality_threshold": 8.5,
   "language": "English",
   "currency": "EUR",
-  "default_export_folder": "~/JobApplications/Applications"
+  "default_export_folder": "~/JobApplications/Applications",
+  "google_sheets_spreadsheet_id": "1DThUDCcraVoCAz2bB255dXPvBirsFMw4GJPypjEPxN0",
+  "learning_enabled": true,
+  "synthesis_window_n": 5,
+  "inline_surface_threshold": 3
 }

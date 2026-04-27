@@ -1,0 +1,21 @@
+CURRENT PLAYBOOK (JSON)
+"""
+{{ current_playbook }}
+"""
+
+CURRENT CANDIDATE PROFILE
+"""
+{{ current_candidate_profile }}
+"""
+
+THIS SESSION — SIGNALS
+"""
+{{ this_session_signals }}
+"""
+
+RECENT PRIOR APPLICATIONS (most recent first, JSON array)
+"""
+{{ recent_applications }}
+"""
+
+Return the updated playbook and optional suggestion as a single JSON object, per the system instructions.

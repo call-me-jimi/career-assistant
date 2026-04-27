@@ -7,8 +7,15 @@ from pydantic import BaseModel
 
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
+from backend.storage.playbook import get_playbook, remove_playbook_item
 from backend.storage.profiles import delete_profile, get_profile, list_profiles
 from backend.storage.sessions import ASSISTANT_TYPES, create_session, get_session
+from backend.storage.suggestions import (
+    approve_suggestion,
+    count_pending,
+    list_pending,
+    reject_suggestion,
+)
 from backend.storage.traces import get_trace, list_traces
 
 router = APIRouter(prefix="/api")
@@ -45,7 +52,10 @@ async def session_info(session_id: str) -> dict:
 
 @router.get("/profiles")
 async def profiles() -> dict:
-    return {"profiles": await list_profiles()}
+    rows = await list_profiles()
+    for r in rows:
+        r["pending_suggestion_count"] = await count_pending(r["profile_id"])
+    return {"profiles": rows}
 
 
 @router.get("/profiles/{profile_id}")
@@ -105,6 +115,7 @@ class SettingsPayload(BaseModel):
     default_llm: LLMConfig
     task_llm_configs: dict[str, LLMConfig]
     model_pricing: dict[str, ModelPricing] = {}
+    google_sheets_spreadsheet_id: str = ""
 
 
 EDITABLE_FIELDS = {
@@ -208,6 +219,7 @@ async def get_settings() -> dict:
         "task_llm_configs": {k: v.model_dump() for k, v in s.task_llm_configs.items()},
         "model_pricing": {k: v.model_dump() for k, v in s.model_pricing.items()},
         "known_tasks": KNOWN_TASKS,
+        "google_sheets_spreadsheet_id": s.google_sheets_spreadsheet_id,
     }
 
 
@@ -219,5 +231,55 @@ async def update_settings(payload: SettingsPayload) -> dict:
         k: v for k, v in payload.task_llm_configs.items() if v.provider and v.model_name
     }
     s.model_pricing = {k: v for k, v in payload.model_pricing.items() if k.strip()}
+    s.google_sheets_spreadsheet_id = payload.google_sheets_spreadsheet_id
     save_settings(s)
+    return {"ok": True}
+
+
+@router.get("/profiles/{profile_id}/playbook")
+async def profile_playbook(profile_id: str) -> dict:
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+    return await get_playbook(profile_id)
+
+
+@router.delete("/profiles/{profile_id}/playbook/{category}/{index}")
+async def delete_playbook_item(profile_id: str, category: str, index: int) -> dict:
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+    removed = await remove_playbook_item(profile_id, category, index)
+    if not removed:
+        raise HTTPException(404, "playbook item not found")
+    return {"ok": True}
+
+
+@router.get("/profiles/{profile_id}/suggestions")
+async def profile_suggestions(profile_id: str) -> dict:
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+    return {
+        "suggestions": await list_pending(profile_id),
+        "pending_count": await count_pending(profile_id),
+    }
+
+
+@router.post("/profiles/{profile_id}/suggestions/{suggestion_id}/approve")
+async def approve_profile_suggestion(profile_id: str, suggestion_id: int) -> dict:
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+    result = await approve_suggestion(suggestion_id)
+    if not result:
+        raise HTTPException(404, "suggestion not found or not pending")
+    if result["profile_id"] != profile_id:
+        raise HTTPException(404, "suggestion not found for this profile")
+    return {"ok": True, "suggestion": result}
+
+
+@router.post("/profiles/{profile_id}/suggestions/{suggestion_id}/reject")
+async def reject_profile_suggestion(profile_id: str, suggestion_id: int) -> dict:
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+    ok = await reject_suggestion(suggestion_id)
+    if not ok:
+        raise HTTPException(404, "suggestion not found or not pending")
     return {"ok": True}

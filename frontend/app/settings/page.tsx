@@ -19,9 +19,43 @@ type SettingsPayload = {
   task_llm_configs: Record<string, LLMConfig>;
   model_pricing: Record<string, ModelPricing>;
   known_tasks: string[];
+  google_sheets_spreadsheet_id: string;
 };
 
 const PROVIDERS = ["anthropic", "openai", "ollama"];
+
+const PROVIDER_MODELS: Record<string, string[]> = {
+  anthropic: [
+    "claude-opus-4-7",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+    "claude-opus-4-5",
+    "claude-sonnet-4-5",
+    "claude-haiku-4-5",
+  ],
+  openai: [
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
+    "gpt-5.4-pro",
+    "gpt-5.2",
+    "gpt-5.2-pro",
+    "gpt-5.1",
+    "gpt-5",
+    "gpt-5-pro",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o3",
+    "o3-mini",
+    "o1",
+    "o1-mini",
+    "gpt-4-turbo",
+    "gpt-4",
+    "gpt-3.5-turbo",
+  ],
+};
 
 function emptyCfg(): LLMConfig {
   return { provider: "", model_name: "", base_url: "" };
@@ -37,6 +71,7 @@ function SettingsView() {
   const [taskCfgs, setTaskCfgs] = useState<Record<string, LLMConfig>>({});
   const [pricing, setPricing] = useState<Record<string, ModelPricing>>({});
   const [newPriceModel, setNewPriceModel] = useState("");
+  const [sheetsId, setSheetsId] = useState("");
   const [status, setStatus] = useState<string>("");
 
   useEffect(() => {
@@ -51,6 +86,7 @@ function SettingsView() {
         }
         setTaskCfgs(filled);
         setPricing(data.model_pricing || {});
+        setSheetsId(data.google_sheets_spreadsheet_id || "");
         setLoaded(true);
       })
       .catch((e) => setStatus(`Load failed: ${e}`));
@@ -92,6 +128,7 @@ function SettingsView() {
         default_llm: defaultLlm,
         task_llm_configs: cleanTasks,
         model_pricing: pricing,
+        google_sheets_spreadsheet_id: sheetsId,
       }),
     });
     if (res.ok) {
@@ -202,6 +239,21 @@ function SettingsView() {
           </div>
         </section>
 
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Google Sheets export</h2>
+          <p className="text-sm text-subtle">
+            Spreadsheet ID to append cover letter exports to. Overrides the{" "}
+            <code className="font-mono text-xs">GOOGLE_SHEETS_SPREADSHEET_ID</code> env var.
+          </p>
+          <input
+            type="text"
+            value={sheetsId}
+            onChange={(e) => setSheetsId(e.target.value)}
+            placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
+            className="w-full bg-panel2 border border-border rounded px-2 py-1 text-sm font-mono"
+          />
+        </section>
+
         <div className="flex items-center gap-4">
           <button
             onClick={save}
@@ -227,7 +279,7 @@ function CfgRow({
     <div className="grid grid-cols-[1fr_1fr_1fr] gap-2">
       <select
         value={cfg.provider || ""}
-        onChange={(e) => onChange({ provider: e.target.value })}
+        onChange={(e) => onChange({ provider: e.target.value, model_name: "" })}
         className="bg-panel2 border border-border rounded px-2 py-1 text-sm"
       >
         <option value="">(default)</option>
@@ -237,13 +289,28 @@ function CfgRow({
           </option>
         ))}
       </select>
-      <input
-        type="text"
-        value={cfg.model_name || ""}
-        onChange={(e) => onChange({ model_name: e.target.value })}
-        placeholder="model name"
-        className="bg-panel2 border border-border rounded px-2 py-1 text-sm"
-      />
+      {PROVIDER_MODELS[cfg.provider] ? (
+        <select
+          value={cfg.model_name || ""}
+          onChange={(e) => onChange({ model_name: e.target.value })}
+          className="bg-panel2 border border-border rounded px-2 py-1 text-sm"
+        >
+          <option value="">select model…</option>
+          {PROVIDER_MODELS[cfg.provider].map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type="text"
+          value={cfg.model_name || ""}
+          onChange={(e) => onChange({ model_name: e.target.value })}
+          placeholder="model name"
+          className="bg-panel2 border border-border rounded px-2 py-1 text-sm"
+        />
+      )}
       <input
         type="text"
         value={cfg.base_url || ""}

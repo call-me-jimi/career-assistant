@@ -3,8 +3,8 @@
 from backend.llm.prompts import latest_prompt_path, latest_system_path
 
 
-def test_generate_cover_letter_latest_is_v3():
-    assert latest_prompt_path("generate_cover_letter").name == "generate_cover_letter.v3.txt"
+def test_generate_cover_letter_latest_is_v4():
+    assert latest_prompt_path("generate_cover_letter").name == "generate_cover_letter.v4.txt"
 
 
 def test_simulate_hiring_manager_latest_is_v2():

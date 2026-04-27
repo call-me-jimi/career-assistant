@@ -72,6 +72,13 @@ class ApplicationState(BaseModel):
     cover_letter: str = ""  # the selected best
     hm_iterations: int = 0
 
+    # Per-revision feedback captured during cl_review (for learning loop)
+    revision_feedback: list[dict[str, Any]] = Field(default_factory=list)
+
+    # End-of-session learning synthesis handoff (populated by synthesize_learning,
+    # consumed by review_learned_suggestion). None when there is no suggestion to surface.
+    pending_suggestion: dict[str, Any] | None = None
+
     # Q&A
     qa_items: list[QAItem] = Field(default_factory=list)
 

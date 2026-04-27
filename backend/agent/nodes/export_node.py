@@ -27,13 +27,13 @@ async def export_node(state: ApplicationState) -> dict:
         f"Time to export {artifact_hint}. Which formats would you like?\n\n"
         "Reply with any combination of: `pdf`, `md`, `json`, `sheets`, or `all`. "
         "Say `none` to skip.",
-        key="export:prompt",
+        key=f"export:prompt:{len(state.export_results)}",
     )
     reply = interrupt({"kind": "export_choice"})
     text = (reply or "").strip().lower() if isinstance(reply, str) else ""
     if not text or text == "none":
         emit_message(sid, "Skipped export — you can always come back to this.")
-        return {"phase": "done"}
+        return {"phase": "post_export"}
 
     selection = (
         ["pdf", "md", "json", "sheets"] if text == "all" else [w.strip() for w in text.split() if w.strip()]
@@ -66,17 +66,22 @@ async def export_node(state: ApplicationState) -> dict:
             action_finish(sid, aid, status="error")
             emit_message(sid, f"✗ {kind} export failed: {exc}")
 
+    return {"export_results": results, "phase": "post_export"}
+
+
+async def post_export_node(state: ApplicationState) -> dict:
+    sid = state.session_id
     if state.assistant_type == "cover_letter":
         emit_message(
             sid,
             "Anything else you'd like to work on? Reply `yes` to go back to questions, "
             "or `no` to wrap up.",
-            key=f"export:followup:{len(results)}",
+            key=f"export:followup:{len(state.export_results)}",
         )
         follow = interrupt({"kind": "post_export"})
         follow_text = (follow or "").strip().lower() if isinstance(follow, str) else ""
         if follow_text.startswith("y"):
-            return {"export_results": results, "phase": "qa_menu"}
+            return {"phase": "qa_menu"}
 
     emit_message(sid, "All done — good luck!")
-    return {"export_results": results, "phase": "done"}
+    return {"phase": "done"}

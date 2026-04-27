@@ -45,6 +45,62 @@ CREATE TABLE IF NOT EXISTS traces (
 );
 
 CREATE INDEX IF NOT EXISTS idx_traces_session ON traces(session_id);
+
+CREATE TABLE IF NOT EXISTS application_records (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_id          TEXT NOT NULL,
+    session_id          TEXT NOT NULL,
+    job_title           TEXT,
+    company_name        TEXT,
+    job_source_type     TEXT,
+    initial_cl          TEXT,
+    final_cl            TEXT,
+    revision_count      INTEGER NOT NULL DEFAULT 0,
+    hm_feedback_final   TEXT,
+    revision_feedback   TEXT,
+    created_at          REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_application_records_profile
+    ON application_records(profile_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS application_hm_iterations (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_record_id  INTEGER NOT NULL,
+    iteration              INTEGER NOT NULL,
+    score                  REAL,
+    strengths              TEXT,
+    weaknesses             TEXT,
+    suggestions            TEXT,
+    FOREIGN KEY (application_record_id) REFERENCES application_records(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_application_hm_iterations_record
+    ON application_hm_iterations(application_record_id);
+
+CREATE TABLE IF NOT EXISTS profile_playbook (
+    profile_id               TEXT PRIMARY KEY,
+    never_say                TEXT NOT NULL DEFAULT '[]',
+    prefer_phrasing          TEXT NOT NULL DEFAULT '[]',
+    recurring_hm_weaknesses  TEXT NOT NULL DEFAULT '[]',
+    tone_notes               TEXT NOT NULL DEFAULT '',
+    updated_at               REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS profile_suggestions (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_id              TEXT NOT NULL,
+    kind                    TEXT NOT NULL DEFAULT 'candidate_profile_edit',
+    diff                    TEXT NOT NULL,
+    confidence              INTEGER NOT NULL DEFAULT 1,
+    status                  TEXT NOT NULL DEFAULT 'pending',
+    source_application_ids  TEXT NOT NULL DEFAULT '[]',
+    created_at              REAL NOT NULL,
+    resolved_at             REAL
+);
+
+CREATE INDEX IF NOT EXISTS idx_profile_suggestions_profile_status
+    ON profile_suggestions(profile_id, status);
 """
 
 

@@ -13,6 +13,7 @@ from backend.agent.state import ApplicationState, CoverLetterVersion
 from backend.config import load_settings
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm, parse_hm_feedback
+from backend.storage.playbook import get_playbook, render_playbook_for_prompt
 
 
 def _cl_prompt_stem(source: str) -> str:
@@ -37,6 +38,11 @@ async def cl_loop_node(state: ApplicationState) -> dict:
     versions: list[CoverLetterVersion] = list(state.cover_letter_versions)
     feedback_notes = ""
 
+    profile_playbook_text = ""
+    if settings.learning_enabled and state.profile_id:
+        playbook = await get_playbook(state.profile_id)
+        profile_playbook_text = render_playbook_for_prompt(playbook)
+
     for iteration in range(1, max_iters + 1):
         # Generate
         aid = action_start(
@@ -58,6 +64,7 @@ async def cl_loop_node(state: ApplicationState) -> dict:
             inferred_role_context=state.inferred_role_context,
             cv_content=state.cv_text,
             hiring_manager_feedback=feedback_notes,
+            profile_playbook=profile_playbook_text,
         )
         gen = await call_llm(
             task="cover_letter_generation",

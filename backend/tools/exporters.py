@@ -116,16 +116,13 @@ def export_pdf(state: dict[str, Any]) -> str:
         raise RuntimeError("Nothing to export as PDF yet.")
 
     path = folder / filename
-    body_html = body_text.replace("\n", "<br/>")
+    paragraphs = "".join(f"<p>{p.strip().replace(chr(10), '<br/>')}</p>" for p in body_text.split("\n\n") if p.strip())
     html = f"""
     <html><head><meta charset='utf-8'><style>
-      body {{ font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.5; color: #222; margin: 2.5cm; }}
-      h1 {{ font-size: 16pt; }}
-      .meta {{ color: #666; font-size: 9pt; margin-bottom: 1.5em; }}
+      body {{ font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.4; color: #222; margin: 1.5cm; }}
+      p {{ margin: 0 0 0.6em 0; }}
     </style></head><body>
-      <h1>{title}</h1>
-      <div class='meta'>{state.get('company_name') or ''} — {state.get('applicant_name') or ''}</div>
-      <div>{body_html}</div>
+      {paragraphs}
     </body></html>
     """
     HTML(string=html).write_pdf(str(path))
@@ -134,7 +131,9 @@ def export_pdf(state: dict[str, Any]) -> str:
 
 
 def export_google_sheets(state: dict[str, Any]) -> str:
-    spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")
+    from backend.config import load_settings
+    settings = load_settings()
+    spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID") or settings.google_sheets_spreadsheet_id
     creds_path = os.getenv("GOOGLE_SHEETS_CREDENTIALS_PATH")
     if not spreadsheet_id or not creds_path:
         raise RuntimeError("Google Sheets not configured (set env vars)")
@@ -144,16 +143,69 @@ def export_google_sheets(state: dict[str, Any]) -> str:
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
     gc = gspread.authorize(creds)
-    sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.sheet1
-    row = [
-        time.strftime("%Y-%m-%d %H:%M:%S"),
-        state.get("applicant_name") or "",
-        state.get("company_name") or "",
-        state.get("job_title") or "",
-        state.get("job_url") or "",
-        (state.get("cover_letter") or "")[:5000],
-    ]
-    ws.append_row(row, value_input_option="RAW")
-    log.info("appended google sheets row to %s", spreadsheet_id)
+    ws = gc.open_by_key(spreadsheet_id).sheet1
+
+    values = ws.get_all_values()
+    header = values[0] if values else []
+
+    def find_col(name: str) -> int | None:
+        lname = name.strip().lower()
+        for i, val in enumerate(header):
+            if str(val).strip().lower() == lname:
+                return i
+        return None
+
+    def col_letter(idx: int) -> str:
+        result = ""
+        idx += 1  # convert to 1-based
+        while idx > 0:
+            idx, rem = divmod(idx - 1, 26)
+            result = chr(65 + rem) + result
+        return result
+
+    title_col = find_col("title") if find_col("title") is not None else 0
+    company_col = find_col("company")
+    location_col = find_col("location")
+    status_col = find_col("status")
+    submission_col = find_col("submission")
+    notes_col = find_col("notes")
+
+    job_title = (state.get("job_title") or "").replace('"', "'")
+    job_url = (state.get("job_url") or "").strip()
+    if job_title and job_url:
+        title_cell = f'=HYPERLINK("{job_url}","{job_title}")'
+    else:
+        title_cell = job_title
+
+    width = max(len(header), 1)
+    row = [""] * width
+
+    if 0 <= title_col < width:
+        row[title_col] = title_cell
+    if company_col is not None and 0 <= company_col < width:
+        row[company_col] = state.get("company_name") or ""
+    if location_col is not None and 0 <= location_col < width:
+        row[location_col] = state.get("location") or ""
+    if status_col is not None and 0 <= status_col < width:
+        row[status_col] = "Submitted"
+    if submission_col is not None and 0 <= submission_col < width:
+        row[submission_col] = time.strftime("%d/%m/%Y")
+    if notes_col is not None and 0 <= notes_col < width:
+        row[notes_col] = ""
+
+    # Find first empty row in Title column (skip header)
+    target_row = None
+    for idx, existing in enumerate(values, start=1):
+        if idx == 1:
+            continue
+        title_val = existing[title_col].strip() if len(existing) > title_col else ""
+        if title_val == "":
+            target_row = idx
+            break
+    if target_row is None:
+        target_row = len(values) + 1
+
+    range_ref = f"A{target_row}:{col_letter(width - 1)}{target_row}"
+    ws.update(range_ref, [row], value_input_option="USER_ENTERED")
+    log.info("wrote google sheets row %d in %s", target_row, spreadsheet_id)
     return f"sheets:{spreadsheet_id}"

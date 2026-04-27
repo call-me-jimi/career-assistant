@@ -45,6 +45,10 @@ class AppSettings(BaseModel):
     language: str = "English"
     currency: str = "EUR"
     default_export_folder: str = "~/JobApplications"
+    google_sheets_spreadsheet_id: str = ""
+    learning_enabled: bool = True
+    synthesis_window_n: int = 5
+    inline_surface_threshold: int = 3
 
 
 def _load_settings_file() -> dict[str, Any]:
@@ -77,6 +81,8 @@ def load_settings() -> AppSettings:
     settings.default_export_folder = os.getenv(
         "DEFAULT_EXPORT_FOLDER", settings.default_export_folder
     )
+    if not settings.google_sheets_spreadsheet_id:
+        settings.google_sheets_spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID", "")
     return settings
 
 
@@ -113,6 +119,7 @@ KNOWN_TASKS: list[str] = [
     "interview_briefing",
     "career_advisor_chat",
     "career_advisor_swot",
+    "synthesize_learning",
 ]
 
 

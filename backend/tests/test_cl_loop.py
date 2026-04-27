@@ -12,6 +12,7 @@ from backend.llm.service import LLMCallResult
 class FakeSettings:
     max_hm_iterations = 3
     quality_threshold = 8.5
+    learning_enabled = False
 
 
 @pytest.fixture(autouse=True)

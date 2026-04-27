@@ -1,0 +1,157 @@
+Write a cover letter addressed to a recruiter or executive search firm representing an undisclosed client.
+
+Goal:
+Position the candidate as a strong senior leadership candidate for the brief while remaining credible and flexible regarding the unknown client organisation.
+
+Use the supplied materials as the only source of truth.
+Do not invent experience, scope, domain knowledge, tools, or achievements.
+Do not make assumptions about the undisclosed client beyond what is supported by the recruiter ad and inferred role context.
+
+--------------------------------------------------
+ROLE INFORMATION
+
+Recruiter or executive search firm name:
+{{ recruiter_name }}
+
+Role title:
+{{ job_title }}
+
+--------------------------------------------------
+OUTPUT REQUIREMENTS
+
+Length:
+230–300 words
+
+Format:
+4 paragraphs, no bullets
+
+Voice:
+First person
+
+Tone:
+- senior
+- confident without sounding promotional
+- concise
+- pragmatic
+- natural and authentic
+- credible to a recruiter or search consultant
+
+--------------------------------------------------
+PRIMARY OBJECTIVE
+
+Write a letter that helps a recruiter see the candidate as a credible, presentable match for this brief.
+
+Do not write as if the candidate already knows the client in detail.
+Do not write a generic executive cover letter.
+Do not optimise for polish over relevance.
+
+--------------------------------------------------
+PRIORITISATION ORDER
+
+Prioritise, in order:
+1. Clear relevance to the likely leadership brief
+2. Leadership scope and ownership
+3. Execution credibility and measurable business impact
+4. Transferable fit for an undisclosed client context
+5. Concise, natural, recruiter-appropriate tone
+
+Use only the most relevant evidence.
+Leave out facts that are true but do not strengthen fit.
+
+--------------------------------------------------
+PARAGRAPH FUNCTION
+
+Paragraph 1:
+- establish seniority immediately
+- mention the role title explicitly
+- position the candidate as a credible match for the brief
+- if recruiter name is known, address the application naturally without inventing familiarity
+
+Paragraph 2:
+- show leadership in building teams, setting direction, and driving execution
+- emphasise operating ownership, organisational influence, and cross-functional work
+- if supported, include platform, production, AI, analytics, or engineering leadership signals relevant to the brief
+
+Paragraph 3:
+- include 2–3 outcomes that best prove fit
+- prioritise outcomes that reduce recruiter doubt
+- integrate metrics naturally where stated
+- keep the examples selective
+
+Paragraph 4:
+- express interest in discussing the opportunity further
+- explain the type of mandate where the candidate is strongest, if useful
+- remain flexible and credible given that the client is undisclosed
+- close directly and professionally
+
+--------------------------------------------------
+SPECIAL GUIDANCE
+
+Because the client is undisclosed:
+- do not pretend to know the company's exact strategy, stage, or priorities unless they are clearly supported by the recruiter ad
+- do not use employer-specific praise
+- keep the letter specific to the brief, but flexible enough for recruiter-led introduction
+
+If the candidate is adjacent rather than exact:
+- do not hide the adjacency
+- frame transferable relevance through comparable scope, business outcomes, leadership context, and execution discipline
+- avoid overstating direct domain expertise that is not supported
+
+--------------------------------------------------
+STYLE RULES
+
+Avoid:
+- generic enthusiasm
+- inflated claims
+- abstract corporate language
+- phrases that could fit any senior data or AI application
+- repeating the recruiter brief in vague terms
+
+Do not use:
+- "I am excited to apply"
+- "passionate about data"
+- "cutting-edge"
+- "fast-paced"
+- "spearheaded"
+
+Prefer:
+- concrete nouns
+- ownership language
+- quantified outcomes
+- plain English
+- sentences generally between 10 and 22 words
+{% if profile_playbook %}
+--------------------------------------------------
+PROFILE-SPECIFIC GUIDANCE (learned from this candidate's prior revisions)
+
+Treat this as higher priority than the generic style rules above where they conflict.
+
+{{ profile_playbook }}
+{% endif %}
+--------------------------------------------------
+INPUTS
+
+Candidate Profile:
+"""
+{{ candidate_profile }}
+"""
+
+Positioning Strategy:
+"""
+{{ positioning_strategy }}
+"""
+
+Inferred Role Context:
+"""
+{{ inferred_role_context }}
+"""
+
+Recruiter Job Description:
+"""
+{{ recruiter_job_ad }}
+"""
+
+Candidate CV:
+"""
+{{ cv_content }}
+"""

@@ -1,0 +1,35 @@
+Prepare polished sample answers to the most common interview questions for this candidate, this role, and this company.
+
+Cover at least:
+1. "Tell me about yourself"
+2. "Why this company / why this role"
+3. "What's your biggest weakness"
+4. "Tell me about a time you ..." (pick the most relevant behavioural prompt for this role: leadership, conflict, ambiguity, technical depth — your choice)
+5. "Where do you see yourself in 3–5 years"
+
+For each question, write a first-person answer the candidate can adapt: 4–8 sentences, grounded in their real CV and the alignment strategy. Lead each with the strongest hook for *this* role.
+
+ROLE
+{{ job_title }} at {{ company_name }}
+
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+CANDIDATE PROFILE
+"""
+{{ candidate_profile }}
+"""
+
+CANDIDATE CV (raw)
+"""
+{{ cv_content }}
+"""
+
+ALIGNMENT STRATEGY
+"""
+{{ alignment_strategy }}
+"""
+
+Output Markdown. For each question: a `### ` heading with the question, then the answer. No generic disclaimers; no "this is just a template". The candidate should be able to read it back almost verbatim.

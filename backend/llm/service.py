@@ -57,7 +57,7 @@ def build_chat_model(task: str | None = None):
         kwargs_anthropic: dict[str, Any] = {
             "model": cfg.model_name,
             "api_key": api_key,
-            "max_tokens": 4096,
+            "max_tokens": 8192,
         }
         if not cfg.model_name.lower().startswith("claude-opus-4"):
             kwargs_anthropic["temperature"] = 0.7

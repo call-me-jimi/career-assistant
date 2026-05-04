@@ -1,0 +1,39 @@
+Generate a tailored list of thoughtful questions the candidate should be ready to ask the interviewer.
+
+ROLE
+{{ job_title }} at {{ company_name }}
+
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+COMPANY DESCRIPTION
+"""
+{{ company_description }}
+"""
+
+INTERVIEW CONTEXT
+"""
+{{ interview_context }}
+"""
+
+CANDIDATE PROFILE (so questions reflect their seniority and genuine interests)
+"""
+{{ candidate_profile }}
+"""
+
+Produce a Markdown document organised by interviewer type. Include all three groups when uncertain about who the round is with:
+
+### For the hiring manager
+4–6 questions specific to *this* team's scope, top priorities, success measurement, biggest open problem. No generic "what's a typical day".
+
+### For a peer / future teammate
+3–5 questions that surface culture, decision-making, recent friction points, what good looks like from a peer's view.
+
+### For leadership / skip-level
+3–5 questions about strategy, where the team sits in the company's bets, what changes in 12 months.
+
+For each question, add one short italic line: *why this question lands* — what signal the candidate sends by asking it (seniority, genuine interest, risk awareness, etc.).
+
+Tailor every question to this company / this role. No questions that would work for any company.

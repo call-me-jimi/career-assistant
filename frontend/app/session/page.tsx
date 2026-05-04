@@ -9,6 +9,7 @@ import LLMCardPane from "../../components/LLMCardPane";
 import type {
   ActionLine,
   ChatMessage,
+  DownloadLine,
   InterruptPayload,
   LLMCard,
   ServerEvent,
@@ -27,6 +28,7 @@ function SessionView() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [actions, setActions] = useState<ActionLine[]>([]);
   const [cards, setCards] = useState<LLMCard[]>([]);
+  const [downloads, setDownloads] = useState<DownloadLine[]>([]);
   const [pending, setPending] = useState<InterruptPayload | null>(null);
   const [done, setDone] = useState(false);
   const [assistantType, setAssistantType] = useState<string>("");
@@ -118,6 +120,20 @@ function SessionView() {
       case "interrupt.request":
         setPending(ev.payload);
         break;
+      case "export.ready": {
+        const filename = ev.path.split("/").pop() || `${ev.kind}.${ev.kind === "md" ? "md" : ev.kind}`;
+        setDownloads((prev) => [
+          ...prev,
+          {
+            id: `dl-${ev.timestamp}-${ev.kind}`,
+            sessionId: sessionId,
+            kind: ev.kind,
+            filename,
+            timestamp: ev.timestamp,
+          },
+        ]);
+        break;
+      }
       case "session.complete":
         setPending(null);
         setDone(true);
@@ -185,7 +201,7 @@ function SessionView() {
       {header}
       <div className="flex-1 grid grid-cols-[2fr_1fr] overflow-hidden">
         <section className="flex flex-col overflow-hidden">
-          <ChatPane messages={messages} actions={actions} />
+          <ChatPane messages={messages} actions={actions} downloads={downloads} />
           <InputBar
             pending={pending}
             disabled={done}

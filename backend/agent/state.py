@@ -85,6 +85,10 @@ class ApplicationState(BaseModel):
     # Interview prep
     interview_context: str = ""
     interview_briefing: str = ""
+    interview_briefing_versions: list[dict[str, Any]] = Field(default_factory=list)
+    interview_revision_feedback: list[dict[str, Any]] = Field(default_factory=list)
+    mock_interview_transcript: list[ChatTurn] = Field(default_factory=list)
+    interview_extras: list[dict[str, Any]] = Field(default_factory=list)
 
     # Career advisor
     advisor_transcript: list[ChatTurn] = Field(default_factory=list)
@@ -93,6 +97,7 @@ class ApplicationState(BaseModel):
     # Export
     export_selection: list[str] = Field(default_factory=list)
     export_results: list[ExportResult] = Field(default_factory=list)
+    export_delivery: Literal["download", "folder", "both", ""] = ""
 
     # Phase tracking (for UI / sessions table)
     phase: str = "greeting"

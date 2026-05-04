@@ -27,12 +27,36 @@ function quickRepliesFor(kind?: string): QuickReply[] {
       ];
     case "cl_review":
       return [{ label: "Accept", value: "accept" }];
+    case "interview_review":
+      return [{ label: "Accept", value: "accept" }];
+    case "interview_menu":
+      return [
+        { label: "Mock interview", value: "mock" },
+        { label: "Practice common Qs", value: "practice" },
+        { label: "Tech deep-dive", value: "tech" },
+        { label: "Questions to ask", value: "questions" },
+        { label: "Done", value: "done" },
+      ];
+    case "mock_interview":
+      return [
+        { label: "Next question", value: "next" },
+        { label: "Different topic", value: "different" },
+        { label: "Done", value: "done" },
+      ];
+    case "interview_tech_topic":
+      return [{ label: "Pick from JD", value: "pick" }];
     case "qa_menu":
       return [
         { label: "Motivation", value: "motivation" },
         { label: "Salary", value: "salary" },
         { label: "Experience", value: "experience" },
         { label: "Done", value: "done" },
+      ];
+    case "export_delivery":
+      return [
+        { label: "Download", value: "download" },
+        { label: "Folder", value: "folder" },
+        { label: "Both", value: "both" },
       ];
     case "export_choice":
       return [
@@ -206,8 +230,18 @@ function placeholderFor(kind?: string): string {
       return "direct or recruiter";
     case "cl_review":
       return "accept, or describe revisions…";
+    case "interview_review":
+      return "accept, or describe revisions to the briefing…";
+    case "interview_menu":
+      return "mock / practice / tech / questions / done";
+    case "mock_interview":
+      return "type your answer, or `next` / `different` / `done`";
+    case "interview_tech_topic":
+      return "topic name, or `pick` to let me choose";
     case "qa_menu":
       return "motivation / salary / experience / custom question / done";
+    case "export_delivery":
+      return "download / folder / both";
     case "export_choice":
       return "pdf md json sheets — or `all` / `none`";
     default:

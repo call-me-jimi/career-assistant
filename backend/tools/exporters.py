@@ -22,7 +22,18 @@ def _sanitize_filename(text: str) -> str:
     return sanitized[:200]
 
 
-def _ensure_folder(state: dict[str, Any]) -> Path:
+def _ensure_folder(state: dict[str, Any], target_dir: Path | None = None) -> Path:
+    """Pick the destination folder.
+
+    When `target_dir` is supplied (e.g. a per-session temp dir for download-only
+    exports), use it as-is and skip the human-readable symlink. Otherwise fall
+    back to the configured Applications folder with the company/date naming +
+    symlink convention.
+    """
+    if target_dir is not None:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        return target_dir
+
     base = resolved_export_folder()
     base.mkdir(parents=True, exist_ok=True)
 
@@ -46,8 +57,8 @@ def _ensure_folder(state: dict[str, Any]) -> Path:
     return folder
 
 
-def export_markdown(state: dict[str, Any]) -> str:
-    folder = _ensure_folder(state)
+def export_markdown(state: dict[str, Any], target_dir: Path | None = None) -> str:
+    folder = _ensure_folder(state, target_dir)
     path = folder / "application.md"
     lines = [
         f"# Session — {state.get('company_name') or state.get('applicant_name') or ''}",
@@ -78,6 +89,31 @@ def export_markdown(state: dict[str, Any]) -> str:
     if state.get("interview_briefing"):
         lines += ["## Interview briefing", "", state["interview_briefing"], ""]
 
+    transcript = state.get("mock_interview_transcript") or []
+    if transcript:
+        lines += ["## Mock interview transcript", ""]
+        for turn in transcript:
+            role = turn.get("role") if isinstance(turn, dict) else turn.role
+            content = turn.get("content") if isinstance(turn, dict) else turn.content
+            content = content or ""
+            if content.startswith("<!-- fb -->"):
+                label = "COACH"
+                content = content[len("<!-- fb -->"):].lstrip()
+            else:
+                label = "INTERVIEWER" if role == "assistant" else "CANDIDATE"
+            lines += [f"**{label}:** {content}", ""]
+
+    extras = state.get("interview_extras") or []
+    for item in extras:
+        kind = item.get("kind", "")
+        topic = item.get("topic", "")
+        title = {
+            "practice": "Practice — common questions",
+            "tech": f"Tech deep-dive — {topic}",
+            "questions": "Questions to ask the interviewer",
+        }.get(kind, f"{kind} — {topic}")
+        lines += [f"## {title}", "", item.get("content", ""), ""]
+
     if state.get("advisor_swot"):
         lines += ["## Career SWOT", "", state["advisor_swot"], ""]
 
@@ -86,8 +122,12 @@ def export_markdown(state: dict[str, Any]) -> str:
     return str(path)
 
 
-def export_json(state: dict[str, Any], traces: list[dict[str, Any]]) -> str:
-    folder = _ensure_folder(state)
+def export_json(
+    state: dict[str, Any],
+    traces: list[dict[str, Any]],
+    target_dir: Path | None = None,
+) -> str:
+    folder = _ensure_folder(state, target_dir)
     path = folder / "application.json"
     payload = {"state": state, "llm_traces": traces}
     path.write_text(json.dumps(payload, indent=2, default=str))
@@ -95,12 +135,22 @@ def export_json(state: dict[str, Any], traces: list[dict[str, Any]]) -> str:
     return str(path)
 
 
-def export_pdf(state: dict[str, Any]) -> str:
+def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
     from weasyprint import HTML
 
-    folder = _ensure_folder(state)
+    folder = _ensure_folder(state, target_dir)
 
-    if state.get("cover_letter"):
+    assistant_type = state.get("assistant_type") or ""
+
+    if assistant_type == "interview_prep" and state.get("interview_briefing"):
+        body_text = state["interview_briefing"]
+        title = f"Interview briefing — {state.get('job_title') or state.get('company_name') or ''}"
+        filename = "interview_briefing.pdf"
+    elif assistant_type == "career_advisor" and state.get("advisor_swot"):
+        body_text = state["advisor_swot"]
+        title = "Career SWOT"
+        filename = "career_swot.pdf"
+    elif state.get("cover_letter"):
         body_text = state["cover_letter"]
         title = state.get("job_title") or "Cover letter"
         filename = "cover_letter.pdf"

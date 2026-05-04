@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backend.agent.interrupts import action_finish, action_start, emit_message
+from backend.agent.interrupts import action_finish, action_start
 from backend.agent.state import ApplicationState
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
@@ -33,7 +33,9 @@ async def interview_briefing_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    emit_message(sid, "Here's your interview briefing:")
-    emit_message(sid, result.text)
-
-    return {"interview_briefing": result.text, "phase": "export"}
+    initial_version = {"iteration": 0, "text": result.text}
+    return {
+        "interview_briefing": result.text,
+        "interview_briefing_versions": [initial_version],
+        "phase": "interview_review",
+    }

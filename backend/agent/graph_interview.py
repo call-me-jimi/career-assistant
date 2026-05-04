@@ -1,7 +1,9 @@
 """LangGraph StateGraph for the Interview Prep assistant.
 
 Shares the profile + job intake prelude with the cover-letter graph, then
-produces a single-pass interview briefing document.
+produces an interview briefing with a revision loop, a coach menu offering
+mock interview / practice / tech deep-dive / questions-to-ask, and finally
+export.
 """
 
 from __future__ import annotations
@@ -17,6 +19,14 @@ from backend.agent.nodes.fill_missing_info import fill_missing_info_node
 from backend.agent.nodes.greeting import greeting_node
 from backend.agent.nodes.interview_briefing import interview_briefing_node
 from backend.agent.nodes.interview_context import interview_context_node
+from backend.agent.nodes.interview_extras import (
+    interview_menu_node,
+    interview_practice_node,
+    interview_questions_node,
+    interview_tech_node,
+    mock_interview_node,
+)
+from backend.agent.nodes.interview_review import interview_review_node
 from backend.agent.nodes.research_company import research_company_node
 from backend.agent.state import ApplicationState
 
@@ -33,6 +43,12 @@ def build_interview_graph(checkpointer):
     g.add_node("research_company", research_company_node)
     g.add_node("interview_context", interview_context_node)
     g.add_node("interview_briefing", interview_briefing_node)
+    g.add_node("interview_review", interview_review_node)
+    g.add_node("interview_menu", interview_menu_node)
+    g.add_node("interview_mock", mock_interview_node)
+    g.add_node("interview_practice", interview_practice_node)
+    g.add_node("interview_tech", interview_tech_node)
+    g.add_node("interview_questions", interview_questions_node)
     g.add_node("export", export_node)
 
     g.add_edge(START, "greeting")
@@ -44,7 +60,50 @@ def build_interview_graph(checkpointer):
     g.add_edge("confirm_info", "research_company")
     g.add_edge("research_company", "interview_context")
     g.add_edge("interview_context", "interview_briefing")
-    g.add_edge("interview_briefing", "export")
+    g.add_edge("interview_briefing", "interview_review")
+
+    def review_router(state: ApplicationState) -> str:
+        return "interview_review" if state.phase == "interview_review" else "interview_menu"
+
+    g.add_conditional_edges(
+        "interview_review",
+        review_router,
+        {"interview_review": "interview_review", "interview_menu": "interview_menu"},
+    )
+
+    def menu_router(state: ApplicationState) -> str:
+        target = {
+            "interview_mock": "interview_mock",
+            "interview_practice": "interview_practice",
+            "interview_tech": "interview_tech",
+            "interview_questions": "interview_questions",
+        }.get(state.phase)
+        return target or "export"
+
+    g.add_conditional_edges(
+        "interview_menu",
+        menu_router,
+        {
+            "interview_mock": "interview_mock",
+            "interview_practice": "interview_practice",
+            "interview_tech": "interview_tech",
+            "interview_questions": "interview_questions",
+            "export": "export",
+        },
+    )
+
+    def mock_router(state: ApplicationState) -> str:
+        return "interview_mock" if state.phase == "interview_mock" else "interview_menu"
+
+    g.add_conditional_edges(
+        "interview_mock",
+        mock_router,
+        {"interview_mock": "interview_mock", "interview_menu": "interview_menu"},
+    )
+
+    g.add_edge("interview_practice", "interview_menu")
+    g.add_edge("interview_tech", "interview_menu")
+    g.add_edge("interview_questions", "interview_menu")
     g.add_edge("export", END)
 
     return g.compile(checkpointer=checkpointer)

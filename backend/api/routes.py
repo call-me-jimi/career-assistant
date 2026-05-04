@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.agent.runner import registry
@@ -179,6 +182,46 @@ async def patch_session_state(session_id: str, patch: dict) -> dict:
             "session is currently running — wait until the assistant is waiting for your input, then retry.",
         )
     return {"ok": True, "updated": list(clean.keys())}
+
+
+@router.get("/sessions/{session_id}/exports/{kind}")
+async def download_export(session_id: str, kind: str):
+    """Stream a previously generated export file back to the user.
+
+    Looks up the matching ExportResult on the running session's state. Prefers
+    paths in the temp `career_assistant_exports` tree (those were written
+    specifically for download) over folder-dump paths.
+    """
+    runner = registry.get(session_id)
+    if not runner:
+        raise HTTPException(404, "session not active")
+    values = await runner.get_state_values()
+    if values is None:
+        raise HTTPException(409, "session state not ready yet")
+
+    raw_results = values.get("export_results") or []
+    matches: list[str] = []
+    for r in raw_results:
+        r_kind = r.kind if hasattr(r, "kind") else r.get("kind")
+        r_path = r.path if hasattr(r, "path") else r.get("path")
+        if r_kind == kind and r_path:
+            matches.append(r_path)
+
+    if not matches:
+        raise HTTPException(404, f"no {kind} export available")
+
+    if kind == "sheets":
+        return {"url": matches[-1]}
+
+    # Prefer the temp-dir copy (written for download) if both exist.
+    chosen = next(
+        (p for p in reversed(matches) if "career_assistant_exports" in p),
+        matches[-1],
+    )
+    p = Path(chosen)
+    if not p.exists():
+        raise HTTPException(410, "export file no longer on disk")
+    return FileResponse(str(p), filename=p.name)
 
 
 @router.post("/sessions/{session_id}/select-version")

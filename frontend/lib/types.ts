@@ -13,6 +13,14 @@ export type ActionLine = {
   timestamp: number;
 };
 
+export type DownloadLine = {
+  id: string;
+  sessionId: string;
+  kind: string;
+  filename: string;
+  timestamp: number;
+};
+
 export type LLMCard = {
   cardId: string;
   task?: string;
@@ -63,6 +71,6 @@ export type ServerEvent =
     }
   | { type: "interrupt.request"; payload: InterruptPayload }
   | { type: "state.update"; patch: Record<string, any> }
-  | { type: "export.ready"; kind: string; path: string }
+  | { type: "export.ready"; kind: string; path: string; timestamp: number }
   | { type: "session.complete" }
   | { type: "session.error"; error: string };

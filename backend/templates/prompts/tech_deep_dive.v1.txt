@@ -1,0 +1,29 @@
+The candidate wants a focused refresher on a specific technical / domain topic before this interview.
+
+TOPIC
+"""
+{{ topic }}
+"""
+
+ROLE
+{{ job_title }} at {{ company_name }}
+
+JOB DESCRIPTION (for relevance signal — emphasise what THIS role is likely to probe)
+"""
+{{ job_description }}
+"""
+
+CANDIDATE PROFILE (so you know their starting level — don't re-explain things they already do daily)
+"""
+{{ candidate_profile }}
+"""
+
+Produce a tight refresher in Markdown with these sections:
+
+1. **Why this matters here** — 2–4 sentences on why this topic is likely to come up given the role and the JD signal.
+2. **Core concepts to be sharp on** — a bulleted list of the 5–10 concepts most likely to be probed, each with a one-sentence "what to be able to say if asked".
+3. **Likely interview angles** — 3–5 specific questions the interviewer might ask on this topic, with a one-line how-to-approach.
+4. **Common gotchas / things to avoid** — 2–4 traps where candidates typically lose credibility.
+5. **30-minute prep plan** — concrete sequence: read X, sketch Y, rehearse Z.
+
+Calibrate depth to the candidate's apparent seniority. No surface-level definitions if the CV shows they've worked with this for years — go straight to nuance and trade-offs. Keep total under 600 words.

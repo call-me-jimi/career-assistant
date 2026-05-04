@@ -3,23 +3,25 @@
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ActionLine, ChatMessage } from "../lib/types";
+import type { ActionLine, ChatMessage, DownloadLine } from "../lib/types";
 
 type Props = {
   messages: ChatMessage[];
   actions: ActionLine[];
+  downloads?: DownloadLine[];
 };
 
-export default function ChatPane({ messages, actions }: Props) {
+export default function ChatPane({ messages, actions, downloads = [] }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, actions.length]);
+  }, [messages.length, actions.length, downloads.length]);
 
   const items = [
     ...messages.map((m) => ({ kind: "msg" as const, t: m.timestamp, value: m })),
     ...actions.map((a) => ({ kind: "action" as const, t: a.timestamp, value: a })),
+    ...downloads.map((d) => ({ kind: "download" as const, t: d.timestamp, value: d })),
   ].sort((a, b) => a.t - b.t);
 
   return (
@@ -27,8 +29,10 @@ export default function ChatPane({ messages, actions }: Props) {
       {items.map((it) =>
         it.kind === "msg" ? (
           <Message key={`m-${it.value.id}`} m={it.value} />
-        ) : (
+        ) : it.kind === "action" ? (
           <Action key={`a-${it.value.id}`} a={it.value} />
+        ) : (
+          <Download key={`d-${it.value.id}`} d={it.value} />
         ),
       )}
       <div ref={endRef} />
@@ -70,6 +74,22 @@ function Action({ a }: { a: ActionLine }) {
         <span>✗</span>
       )}
       <span>{a.label}</span>
+    </div>
+  );
+}
+
+function Download({ d }: { d: DownloadLine }) {
+  const href = `/api/sessions/${d.sessionId}/exports/${d.kind}`;
+  return (
+    <div className="flex justify-start">
+      <a
+        href={href}
+        download={d.filename}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent text-sm"
+      >
+        <span>⬇</span>
+        <span>Download {d.kind.toUpperCase()} — {d.filename}</span>
+      </a>
     </div>
   );
 }

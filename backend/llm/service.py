@@ -136,18 +136,24 @@ async def call_llm(
 
 
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
+_FENCE_RE = re.compile(r"```(?:json)?\s*\n(.*?)\n```", re.DOTALL)
 
 
 def extract_json(text: str) -> dict:
     """Best-effort JSON extraction from an LLM response."""
     text = text.strip()
-    if text.startswith("```"):
-        # strip code fence
-        text = re.sub(r"^```[a-zA-Z]*\n", "", text)
-        text = re.sub(r"\n```$", "", text)
+    # Try a JSON code fence anywhere in the text (handles preamble + fence)
+    fence_m = _FENCE_RE.search(text)
+    if fence_m:
+        try:
+            return json.loads(fence_m.group(1))
+        except json.JSONDecodeError:
+            pass
+    # Try direct parse (entire response is JSON)
     try:
         return json.loads(text)
     except json.JSONDecodeError:
+        # Fall back to first {...} block
         m = _JSON_BLOCK_RE.search(text)
         if m:
             return json.loads(m.group(0))

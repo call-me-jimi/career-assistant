@@ -128,6 +128,7 @@ function DetailsView() {
       }
       setOriginalFields({ ...fields });
       setStatus("Saved. The assistant will see the updated values on its next step.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: any) {
       setStatus(`Save failed: ${e?.message || e}`);
     }
@@ -145,6 +146,7 @@ function DetailsView() {
       <header className="h-14 px-6 flex items-center justify-between border-b border-border">
         <div className="font-semibold">Session details</div>
         <div className="flex items-center gap-4 text-xs">
+          {status && <span className="text-subtle">{status}</span>}
           <a href={`/session?id=${sessionId}`} className="text-accent hover:underline">
             ← Back to chat
           </a>

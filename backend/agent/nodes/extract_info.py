@@ -68,5 +68,6 @@ async def extract_info_node(state: ApplicationState) -> dict:
         "job_description": job_description,
         "company_description": company_description,
         "location": location,
+        "job_raw_text": raw_text,
         "phase": "confirm_info",
     }

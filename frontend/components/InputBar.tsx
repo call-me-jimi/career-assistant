@@ -117,6 +117,8 @@ export default function InputBar({ pending, onSend, onUserMessage, disabled }: P
       value = /^https?:\/\//i.test(trimmed)
         ? { url: trimmed }
         : { text: trimmed };
+    } else if (kind === "collect_job_text") {
+      value = { text: trimmed };
     } else if (kind === "confirm_info") {
       if (["yes", "y", "ok"].includes(trimmed.toLowerCase())) {
         value = "yes";

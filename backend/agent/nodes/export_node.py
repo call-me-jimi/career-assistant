@@ -136,6 +136,17 @@ async def post_export_node(state: ApplicationState) -> dict:
         follow_text = (follow or "").strip().lower() if isinstance(follow, str) else ""
         if follow_text.startswith("y"):
             return {"phase": "qa_menu"}
+    elif state.assistant_type == "interview_prep":
+        emit_message(
+            sid,
+            "What's next? Reply `menu` to go back to the coach menu (mock interview, "
+            "practice questions, tech deep-dive…), or anything else to wrap up.",
+            key=f"export:followup:{len(state.export_results)}",
+        )
+        follow = interrupt({"kind": "post_export"})
+        follow_text = (follow or "").strip().lower() if isinstance(follow, str) else ""
+        if follow_text == "menu":
+            return {"phase": "interview_menu"}
 
     emit_message(sid, "All done — good luck!")
     return {"phase": "done"}

@@ -42,7 +42,7 @@ frontend/             # Next.js; use npm (not uv) inside this directory
 
 ## How-to guides
 
-- [Adding new LLM models](docs/adding-models.md) — which files to touch, temperature guards, pricing
+- [LLM models](docs/llm-models.md) — which files to touch, temperature guards, and a cached pricing table. **When asked for current model prices, fetch live data from the official sources listed in that doc** (Anthropic and OpenAI pricing pages) rather than relying on the cached table.
 
 ## Project conventions
 

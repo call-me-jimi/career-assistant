@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 type ProfileDetail = {
   profile_id: string;
@@ -33,6 +33,8 @@ type Suggestion = {
   created_at: number;
 };
 
+type EditingItem = { category: string; index: number };
+type AddingItem = { category: string };
 type Tab = "overview" | "playbook" | "suggestions";
 
 const LIST_CATEGORIES: ("never_say" | "prefer_phrasing" | "recurring_hm_weaknesses")[] = [
@@ -54,9 +56,11 @@ function formatDate(ts: number | null | undefined) {
 
 export default function ProfileDetailPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const profileId = params.id;
 
-  const [tab, setTab] = useState<Tab>("overview");
+  const initialTab = (searchParams.get("tab") as Tab | null) ?? "overview";
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [profile, setProfile] = useState<ProfileDetail | null>(null);
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -190,9 +194,11 @@ export default function ProfileDetailPage() {
       {tab === "overview" && <OverviewTab profile={profile} />}
       {tab === "playbook" && (
         <PlaybookTab
+          profileId={profileId}
           playbook={playbook}
           onRemove={removePlaybookItem}
           busy={busy}
+          onRefresh={loadAll}
         />
       )}
       {tab === "suggestions" && (
@@ -253,25 +259,101 @@ function OverviewTab({ profile }: { profile: ProfileDetail }) {
 }
 
 function PlaybookTab({
+  profileId,
   playbook,
   onRemove,
   busy,
+  onRefresh,
 }: {
+  profileId: string;
   playbook: Playbook | null;
   onRemove: (category: string, index: number) => void;
   busy: string | null;
+  onRefresh: () => void;
 }) {
-  if (!playbook) return <p className="text-subtle text-sm">No playbook yet.</p>;
+  const [draft, setDraft] = useState<Playbook | null>(playbook);
+  const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [addingItem, setAddingItem] = useState<AddingItem | null>(null);
+  const [editingTone, setEditingTone] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  // Sync draft when playbook prop changes (e.g. after reload)
+  useEffect(() => {
+    setDraft(playbook);
+    setEditingItem(null);
+    setAddingItem(null);
+    setEditingTone(false);
+  }, [playbook]);
+
+  async function savePlaybook(updated: Playbook) {
+    setSaving(true);
+    setLocalError(null);
+    try {
+      const r = await fetch(`/api/profiles/${profileId}/playbook`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      onRefresh();
+    } catch (e: any) {
+      setLocalError(e.message || "Save failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!draft) return <p className="text-subtle text-sm">No playbook yet.</p>;
 
   const isEmpty =
-    playbook.never_say.length === 0 &&
-    playbook.prefer_phrasing.length === 0 &&
-    playbook.recurring_hm_weaknesses.length === 0 &&
-    !playbook.tone_notes;
+    draft.never_say.length === 0 &&
+    draft.prefer_phrasing.length === 0 &&
+    draft.recurring_hm_weaknesses.length === 0 &&
+    !draft.tone_notes;
+
+  function getItemLabel(cat: string, item: PlaybookItem | WeaknessItem) {
+    if ("phrase" in item && item.phrase) return item.phrase;
+    if ("weakness" in item && item.weakness) return item.weakness;
+    return "";
+  }
+
+  function getItemReason(item: PlaybookItem | WeaknessItem) {
+    if ("reason" in item && item.reason) return item.reason;
+    if ("last_seen" in item && item.last_seen) return item.last_seen;
+    return "";
+  }
+
+  function updateItem(cat: string, index: number, label: string, reason: string) {
+    const updated = { ...draft! };
+    const isWeakness = cat === "recurring_hm_weaknesses";
+    const items = [...(updated[cat as keyof Playbook] as any[])];
+    const existing = items[index];
+    items[index] = isWeakness
+      ? { ...existing, weakness: label }
+      : { ...existing, phrase: label, reason };
+    (updated as any)[cat] = items;
+    setDraft(updated);
+    return updated;
+  }
+
+  function addItem(cat: string, label: string, reason: string) {
+    const updated = { ...draft! };
+    const isWeakness = cat === "recurring_hm_weaknesses";
+    const items = [...(updated[cat as keyof Playbook] as any[])];
+    items.push(isWeakness ? { weakness: label } : { phrase: label, reason });
+    (updated as any)[cat] = items;
+    setDraft(updated);
+    return updated;
+  }
 
   return (
     <div className="space-y-4">
-      {isEmpty && (
+      {localError && (
+        <p className="text-sm text-err border border-err/40 rounded px-3 py-2">{localError}</p>
+      )}
+
+      {isEmpty && !editingTone && (
         <p className="text-sm text-subtle">
           No learned guidance yet. The playbook populates automatically after each cover-letter
           session once you've revised a draft or the hiring-manager simulator has flagged
@@ -279,40 +361,76 @@ function PlaybookTab({
         </p>
       )}
 
-      {playbook.tone_notes && (
-        <Section title="Tone notes">
-          <p className="text-sm whitespace-pre-wrap rounded bg-panel/60 p-3 border border-subtle/20">
-            {playbook.tone_notes}
-          </p>
-        </Section>
-      )}
+      {/* Tone notes */}
+      <Section title="Tone notes">
+        {editingTone ? (
+          <ToneEditor
+            value={draft.tone_notes}
+            saving={saving}
+            onSave={(val) => {
+              const updated = { ...draft, tone_notes: val };
+              setDraft(updated);
+              setEditingTone(false);
+              savePlaybook(updated);
+            }}
+            onCancel={() => setEditingTone(false)}
+          />
+        ) : (
+          <div className="flex items-start gap-2">
+            <p className="text-sm whitespace-pre-wrap rounded bg-panel/60 p-3 border border-subtle/20 flex-1 min-h-[2.5rem]">
+              {draft.tone_notes || <span className="text-subtle italic">None</span>}
+            </p>
+            <button
+              onClick={() => setEditingTone(true)}
+              className="text-xs text-subtle hover:text-fg shrink-0 mt-3"
+            >
+              edit
+            </button>
+          </div>
+        )}
+      </Section>
 
       {LIST_CATEGORIES.map((cat) => {
-        const items = playbook[cat] as Array<PlaybookItem | WeaknessItem>;
-        if (!items || items.length === 0) return null;
+        const items = draft[cat] as Array<PlaybookItem | WeaknessItem>;
+        const isWeakness = cat === "recurring_hm_weaknesses";
+        const isAdding = addingItem?.category === cat;
+
         return (
           <Section key={cat} title={CATEGORY_LABELS[cat]}>
             <ul className="space-y-2">
               {items.map((item, i) => {
-                const label =
-                  "phrase" in item && item.phrase
-                    ? `"${item.phrase}"`
-                    : "weakness" in item && item.weakness
-                    ? item.weakness
-                    : "(empty)";
-                const reason =
-                  ("reason" in item && item.reason) ||
-                  ("last_seen" in item && item.last_seen) ||
-                  "";
+                const isEditing = editingItem?.category === cat && editingItem.index === i;
+                const label = getItemLabel(cat, item);
+                const reason = getItemReason(item);
                 const count = item.count ?? 0;
                 const busyKey = `playbook-${cat}-${i}`;
+
+                if (isEditing) {
+                  return (
+                    <li key={i}>
+                      <ItemEditor
+                        initialLabel={label}
+                        initialReason={reason}
+                        isWeakness={isWeakness}
+                        saving={saving}
+                        onSave={(l, r) => {
+                          const updated = updateItem(cat, i, l, r);
+                          setEditingItem(null);
+                          savePlaybook(updated);
+                        }}
+                        onCancel={() => setEditingItem(null)}
+                      />
+                    </li>
+                  );
+                }
+
                 return (
                   <li
                     key={i}
                     className="rounded bg-panel/60 p-3 border border-subtle/20 flex items-start justify-between gap-3"
                   >
                     <div className="text-sm min-w-0 flex-1">
-                      <div className="break-words">{label}</div>
+                      <div className="break-words">{label || <span className="text-subtle italic">(empty)</span>}</div>
                       {reason && (
                         <div className="text-subtle text-xs mt-1 break-words">{reason}</div>
                       )}
@@ -320,26 +438,158 @@ function PlaybookTab({
                         <div className="text-subtle text-xs mt-1">seen {count}×</div>
                       )}
                     </div>
-                    <button
-                      onClick={() => onRemove(cat, i)}
-                      disabled={busy === busyKey}
-                      className="text-xs text-subtle hover:text-err disabled:opacity-50 shrink-0"
-                    >
-                      {busy === busyKey ? "Removing…" : "remove"}
-                    </button>
+                    <div className="flex gap-3 shrink-0">
+                      <button
+                        onClick={() => setEditingItem({ category: cat, index: i })}
+                        disabled={!!busy || saving}
+                        className="text-xs text-subtle hover:text-fg disabled:opacity-50"
+                      >
+                        edit
+                      </button>
+                      <button
+                        onClick={() => onRemove(cat, i)}
+                        disabled={busy === busyKey || saving}
+                        className="text-xs text-subtle hover:text-err disabled:opacity-50"
+                      >
+                        {busy === busyKey ? "…" : "remove"}
+                      </button>
+                    </div>
                   </li>
                 );
               })}
+
+              {isAdding && (
+                <li>
+                  <ItemEditor
+                    initialLabel=""
+                    initialReason=""
+                    isWeakness={isWeakness}
+                    saving={saving}
+                    onSave={(l, r) => {
+                      if (!l.trim()) { setAddingItem(null); return; }
+                      const updated = addItem(cat, l, r);
+                      setAddingItem(null);
+                      savePlaybook(updated);
+                    }}
+                    onCancel={() => setAddingItem(null)}
+                  />
+                </li>
+              )}
             </ul>
+
+            {!isAdding && (
+              <button
+                onClick={() => { setAddingItem({ category: cat }); setEditingItem(null); }}
+                disabled={saving}
+                className="mt-2 text-xs text-subtle hover:text-fg disabled:opacity-50"
+              >
+                + add
+              </button>
+            )}
           </Section>
         );
       })}
 
-      {playbook.updated_at && (
+      {draft.updated_at && (
         <div className="text-xs text-subtle">
-          Last synthesized {formatDate(playbook.updated_at)}
+          Last synthesized {formatDate(draft.updated_at)}
         </div>
       )}
+    </div>
+  );
+}
+
+function ItemEditor({
+  initialLabel,
+  initialReason,
+  isWeakness,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  initialLabel: string;
+  initialReason: string;
+  isWeakness: boolean;
+  saving: boolean;
+  onSave: (label: string, reason: string) => void;
+  onCancel: () => void;
+}) {
+  const [label, setLabel] = useState(initialLabel);
+  const [reason, setReason] = useState(initialReason);
+  return (
+    <div className="rounded bg-panel/60 p-3 border border-accent/30 space-y-2">
+      <input
+        autoFocus
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder={isWeakness ? "Concern…" : "Phrase…"}
+        className="w-full text-sm bg-transparent border border-subtle/30 rounded px-2 py-1 focus:outline-none focus:border-accent"
+      />
+      {!isWeakness && (
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason (optional)…"
+          className="w-full text-sm bg-transparent border border-subtle/30 rounded px-2 py-1 focus:outline-none focus:border-accent"
+        />
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onSave(label, reason)}
+          disabled={saving}
+          className="text-xs px-3 py-1 rounded bg-accent text-bg font-medium hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={saving}
+          className="text-xs px-3 py-1 rounded border border-subtle/40 hover:text-err disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ToneEditor({
+  value,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  value: string;
+  saving: boolean;
+  onSave: (val: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(value);
+  return (
+    <div className="space-y-2">
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        className="w-full text-sm bg-transparent border border-accent/30 rounded px-2 py-1 focus:outline-none focus:border-accent resize-y"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => onSave(text)}
+          disabled={saving}
+          className="text-xs px-3 py-1 rounded bg-accent text-bg font-medium hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={saving}
+          className="text-xs px-3 py-1 rounded border border-subtle/40 hover:text-err disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

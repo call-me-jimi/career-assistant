@@ -13,7 +13,7 @@ from langgraph.graph import END, START, StateGraph
 from backend.agent.nodes.collect_job import collect_job_node
 from backend.agent.nodes.confirm_info import confirm_info_node
 from backend.agent.nodes.cv_intake import cv_intake_node
-from backend.agent.nodes.export_node import export_node
+from backend.agent.nodes.export_node import export_node, post_export_node
 from backend.agent.nodes.extract_info import extract_info_node
 from backend.agent.nodes.fill_missing_info import fill_missing_info_node
 from backend.agent.nodes.greeting import greeting_node
@@ -50,6 +50,7 @@ def build_interview_graph(checkpointer):
     g.add_node("interview_tech", interview_tech_node)
     g.add_node("interview_questions", interview_questions_node)
     g.add_node("export", export_node)
+    g.add_node("post_export", post_export_node)
 
     g.add_edge(START, "greeting")
     g.add_edge("greeting", "cv_intake")
@@ -104,6 +105,15 @@ def build_interview_graph(checkpointer):
     g.add_edge("interview_practice", "interview_menu")
     g.add_edge("interview_tech", "interview_menu")
     g.add_edge("interview_questions", "interview_menu")
-    g.add_edge("export", END)
+    g.add_edge("export", "post_export")
+
+    def post_export_router(state: ApplicationState) -> str:
+        return "interview_menu" if state.phase == "interview_menu" else END
+
+    g.add_conditional_edges(
+        "post_export",
+        post_export_router,
+        {"interview_menu": "interview_menu", END: END},
+    )
 
     return g.compile(checkpointer=checkpointer)

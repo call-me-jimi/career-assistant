@@ -10,9 +10,10 @@ from pydantic import BaseModel
 
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
-from backend.storage.playbook import get_playbook, remove_playbook_item
+from backend.storage.playbook import get_playbook, remove_playbook_item, upsert_playbook
 from backend.storage.profiles import delete_profile, get_profile, list_profiles
 from backend.storage.sessions import ASSISTANT_TYPES, create_session, get_session
+from backend.storage.stats import get_global_stats
 from backend.storage.suggestions import (
     approve_suggestion,
     count_pending,
@@ -254,6 +255,44 @@ async def select_cover_letter_version(session_id: str, body: dict) -> dict:
     return {"ok": True, "best_version_id": version_id}
 
 
+@router.get("/stats")
+async def global_stats() -> dict:
+    settings = load_settings()
+    pricing = settings.model_pricing
+    raw = await get_global_stats()
+
+    sessions_by_type: dict[str, int] = raw["sessions_by_type"]
+    trace_rows: list[tuple] = raw["trace_rows"]
+
+    by_type: dict[str, dict] = {}
+    for assistant_type, model, calls, input_tokens, output_tokens in trace_rows:
+        entry = by_type.setdefault(
+            assistant_type, {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+        )
+        entry["llm_calls"] += calls
+        entry["input_tokens"] += input_tokens
+        entry["output_tokens"] += output_tokens
+        entry["cost_usd"] += _cost_for(model, input_tokens, output_tokens, pricing)
+
+    total_sessions = sum(sessions_by_type.values())
+    total_calls = sum(e["llm_calls"] for e in by_type.values())
+    total_in = sum(e["input_tokens"] for e in by_type.values())
+    total_out = sum(e["output_tokens"] for e in by_type.values())
+    total_cost = sum(e["cost_usd"] for e in by_type.values())
+
+    return {
+        "sessions_by_type": sessions_by_type,
+        "totals": {
+            "sessions": total_sessions,
+            "llm_calls": total_calls,
+            "input_tokens": total_in,
+            "output_tokens": total_out,
+            "cost_usd": total_cost,
+        },
+        "by_assistant_type": by_type,
+    }
+
+
 @router.get("/settings")
 async def get_settings() -> dict:
     s = load_settings()
@@ -284,6 +323,14 @@ async def profile_playbook(profile_id: str) -> dict:
     if not await get_profile(profile_id):
         raise HTTPException(404, "profile not found")
     return await get_playbook(profile_id)
+
+
+@router.patch("/profiles/{profile_id}/playbook")
+async def patch_playbook(profile_id: str, payload: dict) -> dict:
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+    await upsert_playbook(profile_id, payload)
+    return {"ok": True}
 
 
 @router.delete("/profiles/{profile_id}/playbook/{category}/{index}")

@@ -71,13 +71,18 @@ export default function ProfilesPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12 max-w-3xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Profiles</h1>
-        <a href="/" className="text-sm text-accent hover:underline">
-          ← Home
-        </a>
-      </div>
+    <main className="min-h-screen">
+      <header className="h-14 px-6 flex items-center justify-between border-b border-border">
+        <div className="font-semibold">Profiles</div>
+        <a href="/" className="text-xs text-accent hover:underline">← Home</a>
+      </header>
+
+      <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <p className="text-sm text-subtle">
+        Your saved candidate profiles — each one pairs a CV with a structured candidate profile the
+        assistant builds over time. Select a profile when starting a session to give the assistant
+        context about you.
+      </p>
 
       {error && <p className="text-sm text-err">{error}</p>}
 
@@ -101,13 +106,15 @@ export default function ProfilesPage() {
                   <div className="font-medium flex items-center gap-2">
                     <span>{p.name}</span>
                     {(p.pending_suggestion_count ?? 0) > 0 && (
-                      <span
-                        className="px-2 py-0.5 rounded-full bg-accent text-bg text-xs font-semibold"
-                        title="Pending profile suggestions"
+                      <a
+                        href={`/profiles/${p.profile_id}?tab=suggestions`}
+                        className="px-2 py-0.5 rounded-full bg-accent text-bg text-xs font-semibold hover:opacity-80"
+                        title="The assistant proposed edits to your candidate profile. Click to review and apply or reject them."
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {p.pending_suggestion_count} suggestion
-                        {p.pending_suggestion_count === 1 ? "" : "s"}
-                      </span>
+                        {p.pending_suggestion_count} profile update
+                        {p.pending_suggestion_count === 1 ? "" : "s"} to review
+                      </a>
                     )}
                   </div>
                   <div className="text-sm text-subtle">
@@ -171,6 +178,7 @@ export default function ProfilesPage() {
           );
         })}
       </ul>
+      </div>
     </main>
   );
 }

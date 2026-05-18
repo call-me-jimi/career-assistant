@@ -1,4 +1,4 @@
-# Adding New LLM Models
+# LLM Models
 
 Three files need updating. No code changes required for standard providers (Anthropic, OpenAI, Ollama).
 
@@ -17,6 +17,21 @@ Add an entry under `model_pricing`:
 ```
 
 Pricing is in USD per million tokens. If unknown, omit the entry — cost tracking will show $0.
+
+### Known prices (last verified 2026-05-04)
+
+Sources: [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) · [OpenAI pricing](https://developers.openai.com/api/docs/pricing)
+
+| Model | Input $/1M | Output $/1M |
+|---|---|---|
+| `gpt-5.5` | 5.00 | 30.00 |
+| `gpt-5.5-pro` | 30.00 | 180.00 |
+| `gpt-5.4` | 2.50 | 15.00 |
+| `gpt-5.4-mini` | 0.75 | 4.50 |
+| `claude-opus-4-7` | 5.00 | 25.00 |
+| `claude-opus-4-6` | 5.00 | 25.00 |
+| `claude-sonnet-4-6` | 3.00 | 15.00 |
+| `claude-haiku-4-5` / `claude-haiku-4-5-20251001` | 1.00 | 5.00 |
 
 ## 2. `frontend/app/settings/page.tsx` — model dropdown
 

@@ -136,6 +136,7 @@ def export_json(
 
 
 def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
+    import markdown as md
     from weasyprint import HTML
 
     folder = _ensure_folder(state, target_dir)
@@ -166,13 +167,24 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
         raise RuntimeError("Nothing to export as PDF yet.")
 
     path = folder / filename
-    paragraphs = "".join(f"<p>{p.strip().replace(chr(10), '<br/>')}</p>" for p in body_text.split("\n\n") if p.strip())
+    body_html = md.markdown(body_text, extensions=["tables", "fenced_code"])
     html = f"""
     <html><head><meta charset='utf-8'><style>
-      body {{ font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.4; color: #222; margin: 1.5cm; }}
+      body {{ font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.6; color: #222; margin: 2cm; }}
+      h1 {{ font-size: 18pt; margin: 0 0 0.4em 0; color: #111; }}
+      h2 {{ font-size: 14pt; margin: 1.2em 0 0.3em 0; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 0.15em; }}
+      h3 {{ font-size: 12pt; margin: 1em 0 0.2em 0; color: #333; }}
       p {{ margin: 0 0 0.6em 0; }}
+      ul, ol {{ margin: 0 0 0.6em 1.5em; padding: 0; }}
+      li {{ margin-bottom: 0.25em; }}
+      strong {{ font-weight: bold; }}
+      em {{ font-style: italic; }}
+      code {{ font-family: monospace; background: #f4f4f4; padding: 0.1em 0.3em; border-radius: 3px; font-size: 10pt; }}
+      table {{ border-collapse: collapse; width: 100%; margin-bottom: 0.8em; }}
+      th, td {{ border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: left; }}
+      th {{ background: #f0f0f0; font-weight: bold; }}
     </style></head><body>
-      {paragraphs}
+      {body_html}
     </body></html>
     """
     HTML(string=html).write_pdf(str(path))

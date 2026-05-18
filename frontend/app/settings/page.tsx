@@ -27,6 +27,7 @@ const PROVIDERS = ["anthropic", "openai", "ollama"];
 const PROVIDER_MODELS: Record<string, string[]> = {
   anthropic: [
     "claude-opus-4-7",
+    "claude-opus-4-6",
     "claude-sonnet-4-6",
     "claude-haiku-4-5-20251001",
     "claude-opus-4-5",
@@ -63,6 +64,18 @@ function emptyCfg(): LLMConfig {
   return { provider: "", model_name: "", base_url: "" };
 }
 
+function cfgEqual(a: LLMConfig, b: LLMConfig) {
+  return (
+    a.provider === b.provider &&
+    a.model_name === b.model_name &&
+    (a.base_url || "") === (b.base_url || "")
+  );
+}
+
+function pricingEqual(a: ModelPricing, b: ModelPricing) {
+  return a.input_per_mtok === b.input_per_mtok && a.output_per_mtok === b.output_per_mtok;
+}
+
 function SettingsView() {
   const params = useSearchParams();
   const from = params.get("from") || "/";
@@ -76,23 +89,48 @@ function SettingsView() {
   const [sheetsId, setSheetsId] = useState("");
   const [status, setStatus] = useState<string>("");
 
+  const [origDefaultLlm, setOrigDefaultLlm] = useState<LLMConfig>(emptyCfg());
+  const [origTaskCfgs, setOrigTaskCfgs] = useState<Record<string, LLMConfig>>({});
+  const [origPricing, setOrigPricing] = useState<Record<string, ModelPricing>>({});
+  const [origSheetsId, setOrigSheetsId] = useState("");
+
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data: SettingsPayload) => {
         setDefaultLlm(data.default_llm);
+        setOrigDefaultLlm(data.default_llm);
         setTasks(data.known_tasks);
         const filled: Record<string, LLMConfig> = {};
         for (const t of data.known_tasks) {
           filled[t] = data.task_llm_configs[t] || emptyCfg();
         }
         setTaskCfgs(filled);
-        setPricing(data.model_pricing || {});
-        setSheetsId(data.google_sheets_spreadsheet_id || "");
+        setOrigTaskCfgs(JSON.parse(JSON.stringify(filled)));
+        const p = data.model_pricing || {};
+        setPricing(p);
+        setOrigPricing(JSON.parse(JSON.stringify(p)));
+        const sid = data.google_sheets_spreadsheet_id || "";
+        setSheetsId(sid);
+        setOrigSheetsId(sid);
         setLoaded(true);
       })
       .catch((e) => setStatus(`Load failed: ${e}`));
   }, []);
+
+  const defaultDirty = !cfgEqual(defaultLlm, origDefaultLlm);
+  const sheetsDirty = sheetsId !== origSheetsId;
+  const pricingDirty = (() => {
+    const origKeys = Object.keys(origPricing).sort();
+    const curKeys = Object.keys(pricing).sort();
+    if (origKeys.join(",") !== curKeys.join(",")) return true;
+    return origKeys.some((k) => !pricingEqual(pricing[k], origPricing[k]));
+  })();
+  const anyDirty =
+    defaultDirty ||
+    sheetsDirty ||
+    pricingDirty ||
+    tasks.some((t) => !cfgEqual(taskCfgs[t], origTaskCfgs[t] || emptyCfg()));
 
   function updatePrice(model: string, patch: Partial<ModelPricing>) {
     setPricing((prev) => ({ ...prev, [model]: { ...prev[model], ...patch } }));
@@ -134,7 +172,12 @@ function SettingsView() {
       }),
     });
     if (res.ok) {
+      setOrigDefaultLlm(JSON.parse(JSON.stringify(defaultLlm)));
+      setOrigTaskCfgs(JSON.parse(JSON.stringify(taskCfgs)));
+      setOrigPricing(JSON.parse(JSON.stringify(pricing)));
+      setOrigSheetsId(sheetsId);
       setStatus("Saved. New calls will use the updated models.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setStatus(`Save failed: HTTP ${res.status}`);
     }
@@ -148,13 +191,22 @@ function SettingsView() {
     <main className="min-h-screen">
       <header className="h-14 px-6 flex items-center justify-between border-b border-border">
         <div className="font-semibold">Settings</div>
-        <a href={from} className="text-xs text-accent hover:underline">
-          {backLabel}
-        </a>
+        <div className="flex items-center gap-4 text-xs">
+          {status && <span className="text-subtle">{status}</span>}
+          <a href={from} className="text-accent hover:underline">
+            {backLabel}
+          </a>
+        </div>
       </header>
       <div className="max-w-3xl mx-auto p-6 space-y-8">
+        <p className="text-sm text-subtle">
+          Configure which LLM models the assistant uses — a global default, per-task overrides, and
+          model pricing for cost tracking. You can also set the Google Sheets spreadsheet for cover
+          letter exports.
+        </p>
+
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Default model</h2>
+          <h2 className="text-lg font-semibold">Default model{defaultDirty && " *"}</h2>
           <p className="text-sm text-subtle">
             Used for any task that doesn't have a per-task override below.
           </p>
@@ -172,7 +224,9 @@ function SettingsView() {
           <div className="space-y-2">
             {tasks.map((t) => (
               <div key={t} className="border border-border rounded-lg p-3 bg-panel">
-                <div className="text-sm font-medium mb-2">{t}</div>
+                <div className="text-sm font-medium mb-2">
+                  {t}{!cfgEqual(taskCfgs[t], origTaskCfgs[t] || emptyCfg()) && " *"}
+                </div>
                 <CfgRow
                   cfg={taskCfgs[t]}
                   onChange={(patch) => updateTask(t, patch)}
@@ -183,7 +237,7 @@ function SettingsView() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Model pricing</h2>
+          <h2 className="text-lg font-semibold">Model pricing{pricingDirty && " *"}</h2>
           <p className="text-sm text-subtle">
             USD per million tokens. Used to compute cost on the session usage page. Models without
             an entry here show "—" instead of a cost.
@@ -194,7 +248,9 @@ function SettingsView() {
                 key={model}
                 className="border border-border rounded-lg p-3 bg-panel grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center"
               >
-                <div className="text-sm font-mono">{model}</div>
+                <div className="text-sm font-mono">
+                  {model}{(!origPricing[model] || !pricingEqual(p, origPricing[model])) && " *"}
+                </div>
                 <input
                   type="number"
                   step="0.01"
@@ -242,7 +298,7 @@ function SettingsView() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Google Sheets export</h2>
+          <h2 className="text-lg font-semibold">Google Sheets export{sheetsDirty && " *"}</h2>
           <p className="text-sm text-subtle">
             Spreadsheet ID to append cover letter exports to. Overrides the{" "}
             <code className="font-mono text-xs">GOOGLE_SHEETS_SPREADSHEET_ID</code> env var.
@@ -259,7 +315,8 @@ function SettingsView() {
         <div className="flex items-center gap-4">
           <button
             onClick={save}
-            className="px-4 py-2 rounded-lg bg-accent text-bg font-medium hover:opacity-90"
+            disabled={!anyDirty}
+            className="px-4 py-2 rounded-lg bg-accent text-bg font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Save
           </button>

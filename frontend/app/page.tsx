@@ -95,6 +95,9 @@ export default function LandingPage() {
           <a href="/profiles" className="text-sm text-accent hover:underline">
             Profiles →
           </a>
+          <a href="/dashboard" className="text-sm text-accent hover:underline">
+            Dashboard →
+          </a>
           <a href="/settings" className="text-sm text-accent hover:underline">
             Settings →
           </a>

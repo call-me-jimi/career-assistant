@@ -33,6 +33,7 @@ dependencies = [
     "gspread>=6.1",
     "google-auth>=2.36",
     "tavily-python>=0.5",
+    "markdown>=3.10.2",
 ]
 
 [dependency-groups]

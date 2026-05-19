@@ -44,6 +44,9 @@ class ApplicationState(BaseModel):
     session_id: str
     assistant_type: ASSISTANT_TYPE = "cover_letter"
 
+    # Output language for deliverables and assistant chat (e.g. "English", "German")
+    language: str = "English"
+
     # Applicant / profile
     applicant_name: str = ""
     profile_id: str | None = None

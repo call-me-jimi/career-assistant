@@ -10,6 +10,7 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState, CoverLetterVersion
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm, parse_hm_feedback
+from backend.llm.translate import with_language_directive
 
 _FEEDBACK_CATEGORIES = {"tone", "accuracy", "length", "specific_claim", "emphasis", "other"}
 
@@ -55,6 +56,7 @@ async def cl_review_node(state: ApplicationState) -> dict:
         sid,
         state.cover_letter or "(no cover letter produced)",
         key=f"cl_review:body:{iteration}",
+        localized=True,
     )
     emit_message(
         sid,
@@ -84,6 +86,7 @@ async def cl_review_node(state: ApplicationState) -> dict:
         f"Please revise it based on this feedback: {revision_text}\n\n"
         "Return only the revised cover letter."
     )
+    user = with_language_directive(user, state.language)
     result = await call_llm(
         task="refine_cover_letter", system=chat_system, user=user, session_id=sid
     )

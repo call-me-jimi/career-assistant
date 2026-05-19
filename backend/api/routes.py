@@ -34,16 +34,18 @@ def _cost_for(model: str | None, input_tokens: int, output_tokens: int, pricing:
 
 class StartSessionPayload(BaseModel):
     assistant_type: str = "cover_letter"
+    language: str = "English"
 
 
 @router.post("/sessions")
 async def start_session(payload: StartSessionPayload | None = None) -> dict:
     assistant_type = (payload.assistant_type if payload else "cover_letter") or "cover_letter"
+    language = (payload.language if payload else "English") or "English"
     if assistant_type not in ASSISTANT_TYPES:
         raise HTTPException(400, f"unknown assistant_type: {assistant_type}")
-    session_id = await create_session(assistant_type)
+    session_id = await create_session(assistant_type, language)
     registry.get_or_start(session_id)
-    return {"session_id": session_id, "assistant_type": assistant_type}
+    return {"session_id": session_id, "assistant_type": assistant_type, "language": language}
 
 
 @router.get("/sessions/{session_id}")
@@ -123,6 +125,7 @@ class SettingsPayload(BaseModel):
 
 
 EDITABLE_FIELDS = {
+    "language",
     "applicant_name",
     "cv_text",
     "candidate_profile",

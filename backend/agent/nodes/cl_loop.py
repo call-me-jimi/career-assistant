@@ -13,6 +13,7 @@ from backend.agent.state import ApplicationState, CoverLetterVersion
 from backend.config import load_settings
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm, parse_hm_feedback
+from backend.llm.translate import with_language_directive
 from backend.storage.playbook import get_playbook, render_playbook_for_prompt
 
 
@@ -66,6 +67,7 @@ async def cl_loop_node(state: ApplicationState) -> dict:
             hiring_manager_feedback=feedback_notes,
             profile_playbook=profile_playbook_text,
         )
+        cl_user = with_language_directive(cl_user, state.language)
         gen = await call_llm(
             task="cover_letter_generation",
             system=cl_system,

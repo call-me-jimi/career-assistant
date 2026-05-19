@@ -8,6 +8,7 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState, QAItem
 from backend.llm.prompts import load_system_prompt
 from backend.llm.service import call_llm
+from backend.llm.translate import with_language_directive
 from backend.tools.web_search import tavily_search
 
 PREDEFINED = {
@@ -80,11 +81,12 @@ async def qa_answer_node(state: ApplicationState) -> dict:
         f"Cover letter:\n{state.cover_letter[:2000]}{extra}\n\n"
         "Write a concise, authentic answer in first person."
     )
+    user = with_language_directive(user, state.language)
     result = await call_llm(task="qa", system=system, user=user, session_id=sid)
     action_finish(sid, aid)
 
     emit_message(sid, f"**{item.question}**")
-    emit_message(sid, result.text)
+    emit_message(sid, result.text, localized=True)
 
     new_items = list(state.qa_items)
     new_items[idx] = QAItem(kind=item.kind, question=item.question, answer=result.text)

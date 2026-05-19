@@ -5,6 +5,16 @@ import { useState } from "react";
 
 type AssistantType = "cover_letter" | "interview_prep" | "career_advisor";
 
+const LANGUAGES = [
+  "English",
+  "German",
+  "French",
+  "Spanish",
+  "Italian",
+  "Dutch",
+  "Portuguese",
+];
+
 const ASSISTANTS: {
   type: AssistantType;
   title: string;
@@ -34,6 +44,7 @@ export default function LandingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState<AssistantType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState("English");
 
   async function startSession(assistantType: AssistantType) {
     setLoading(assistantType);
@@ -42,7 +53,7 @@ export default function LandingPage() {
       const res = await fetch(`/api/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assistant_type: assistantType }),
+        body: JSON.stringify({ assistant_type: assistantType, language }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -66,6 +77,30 @@ export default function LandingPage() {
           <p className="text-lg text-subtle">
             Three specialised assistants for the hard parts of switching jobs.
             Pick one to get started.
+          </p>
+        </div>
+
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center justify-center gap-3">
+            <label htmlFor="language" className="text-sm text-subtle">
+              Language
+            </label>
+            <select
+              id="language"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              disabled={loading !== null}
+              className="rounded-lg border border-subtle/30 bg-panel/40 px-3 py-2 text-sm disabled:opacity-50"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-subtle">
+            Deliverables and the assistant&apos;s replies will be in this language.
           </p>
         </div>
 

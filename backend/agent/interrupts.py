@@ -25,6 +25,7 @@ def emit_message(
     role: str = "assistant",
     *,
     key: str | None = None,
+    localized: bool = False,
 ) -> None:
     """Emit a chat message.
 
@@ -33,6 +34,10 @@ def emit_message(
     set, this means a node containing `interrupt()` can call `emit_message`
     before the interrupt and still only deliver the message once even though
     LangGraph re-executes the node body on resume.
+
+    Set `localized=True` for messages already in the session language (e.g.
+    LLM output generated natively in that language) so the WebSocket layer
+    skips its translation pass.
     """
     if key is not None:
         message_id = str(uuid.uuid5(_MESSAGE_NS, f"{session_id}:{key}"))
@@ -45,6 +50,7 @@ def emit_message(
             "message_id": message_id,
             "role": role,
             "text": text,
+            "localized": localized,
         },
     )
 

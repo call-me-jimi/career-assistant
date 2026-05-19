@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     applicant_name TEXT,
     phase          TEXT,
     assistant_type TEXT NOT NULL DEFAULT 'cover_letter',
+    language       TEXT NOT NULL DEFAULT 'English',
     created_at     REAL NOT NULL,
     last_activity  REAL NOT NULL
 );
@@ -117,6 +118,10 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     if "assistant_type" not in session_cols:
         await db.execute(
             "ALTER TABLE sessions ADD COLUMN assistant_type TEXT NOT NULL DEFAULT 'cover_letter'"
+        )
+    if "language" not in session_cols:
+        await db.execute(
+            "ALTER TABLE sessions ADD COLUMN language TEXT NOT NULL DEFAULT 'English'"
         )
 
     cur = await db.execute("PRAGMA table_info(profiles)")

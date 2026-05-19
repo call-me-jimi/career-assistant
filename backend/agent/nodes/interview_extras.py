@@ -13,6 +13,7 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState, ChatTurn
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
+from backend.llm.translate import with_language_directive
 
 _MENU_OPTIONS = {"mock", "practice", "tech", "questions"}
 
@@ -116,6 +117,7 @@ async def mock_interview_node(state: ApplicationState) -> dict:
             transcript=_format_transcript(turns),
             user_request=last_user,
         )
+        user_prompt = with_language_directive(user_prompt, state.language)
         result = await call_llm(
             task="mock_interview_question",
             system=load_system_prompt("chat"),
@@ -124,7 +126,7 @@ async def mock_interview_node(state: ApplicationState) -> dict:
         )
         action_finish(sid, aid)
 
-        emit_message(sid, f"**Q{seq + 1}.** {result.text}", key=f"mock:q:{seq}")
+        emit_message(sid, f"**Q{seq + 1}.** {result.text}", key=f"mock:q:{seq}", localized=True)
         emit_message(
             sid,
             "_Reply with your answer — or `next` to skip, `different` to switch topic, "
@@ -158,6 +160,7 @@ async def mock_interview_node(state: ApplicationState) -> dict:
         job_description=state.job_description[:2500],
         candidate_profile=state.candidate_profile[:2500],
     )
+    feedback_prompt = with_language_directive(feedback_prompt, state.language)
     result = await call_llm(
         task="mock_interview_feedback",
         system=load_system_prompt("chat"),
@@ -166,7 +169,7 @@ async def mock_interview_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text, key=f"mock:fb:{seq}")
+    emit_message(sid, result.text, key=f"mock:fb:{seq}", localized=True)
     emit_message(
         sid,
         "_Reply with another answer (to dig deeper), `next` for a new question, or `done` to stop._",
@@ -202,12 +205,13 @@ async def interview_practice_node(state: ApplicationState) -> dict:
         cv_content=state.cv_text,
         alignment_strategy=state.alignment_strategy or state.inferred_role_context or "",
     )
+    user = with_language_directive(user, state.language)
     result = await call_llm(
         task="interview_practice", system=system, user=user, session_id=sid
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text)
+    emit_message(sid, result.text, localized=True)
     return {
         "interview_extras": state.interview_extras
         + [{"kind": "practice", "topic": "common_questions", "content": result.text}],
@@ -254,12 +258,13 @@ async def interview_tech_node(state: ApplicationState) -> dict:
         job_description=state.job_description,
         candidate_profile=state.candidate_profile,
     )
+    user = with_language_directive(user, state.language)
     result = await call_llm(
         task="interview_tech", system=load_system_prompt("chat"), user=user, session_id=sid
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text)
+    emit_message(sid, result.text, localized=True)
     return {
         "interview_extras": state.interview_extras
         + [{"kind": "tech", "topic": topic, "content": result.text}],
@@ -279,6 +284,7 @@ async def interview_questions_node(state: ApplicationState) -> dict:
         interview_context=state.interview_context or "",
         candidate_profile=state.candidate_profile,
     )
+    user = with_language_directive(user, state.language)
     result = await call_llm(
         task="interview_questions",
         system=load_system_prompt("chat"),
@@ -287,7 +293,7 @@ async def interview_questions_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text)
+    emit_message(sid, result.text, localized=True)
     return {
         "interview_extras": state.interview_extras
         + [{"kind": "questions", "topic": "to_ask_interviewer", "content": result.text}],

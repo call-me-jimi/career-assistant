@@ -6,6 +6,7 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
+from backend.llm.translate import with_language_directive
 
 
 def _render_transcript(state: ApplicationState) -> str:
@@ -27,6 +28,7 @@ async def swot_summary_node(state: ApplicationState) -> dict:
         cv_content=state.cv_text,
         transcript=_render_transcript(state),
     )
+    user = with_language_directive(user, state.language)
     result = await call_llm(
         task="career_advisor_swot",
         system=system,
@@ -36,7 +38,7 @@ async def swot_summary_node(state: ApplicationState) -> dict:
     action_finish(sid, aid)
 
     emit_message(sid, "Here's a SWOT synthesis based on our conversation:")
-    emit_message(sid, result.text)
+    emit_message(sid, result.text, localized=True)
     emit_message(
         sid,
         "Want to keep exploring? Ask me anything, type `/swot` for a fresh summary later, "

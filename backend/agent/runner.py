@@ -78,6 +78,7 @@ class SessionRunner:
         try:
             session_row = await get_session(self.session_id)
             assistant_type = (session_row or {}).get("assistant_type") or "cover_letter"
+            language = (session_row or {}).get("language") or "English"
             builder = GRAPH_BUILDERS.get(assistant_type, build_graph)
 
             async with get_checkpointer() as checkpointer:
@@ -87,6 +88,7 @@ class SessionRunner:
                 initial = ApplicationState(
                     session_id=self.session_id,
                     assistant_type=assistant_type,  # type: ignore[arg-type]
+                    language=language,
                 ).model_dump()
 
                 next_input: Any = initial

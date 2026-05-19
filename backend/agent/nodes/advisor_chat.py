@@ -13,6 +13,7 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState, ChatTurn
 from backend.llm.prompts import load_system_prompt
 from backend.llm.service import call_llm
+from backend.llm.translate import with_language_directive
 
 
 def _history_for_llm(transcript: list[ChatTurn]) -> list[dict]:
@@ -54,6 +55,7 @@ async def advisor_chat_node(state: ApplicationState) -> dict:
     system_with_profile = (
         f"{system}\n\n--- CANDIDATE PROFILE ---\n{state.candidate_profile}\n"
     )
+    system_with_profile = with_language_directive(system_with_profile, state.language)
     history = _history_for_llm(transcript[:-1])
     result = await call_llm(
         task="career_advisor_chat",
@@ -65,6 +67,6 @@ async def advisor_chat_node(state: ApplicationState) -> dict:
     action_finish(sid, aid)
 
     transcript.append(ChatTurn(role="assistant", content=result.text))
-    emit_message(sid, result.text)
+    emit_message(sid, result.text, localized=True)
 
     return {"advisor_transcript": transcript, "phase": "advisor_chat"}

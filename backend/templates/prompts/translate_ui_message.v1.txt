@@ -1,0 +1,13 @@
+Translate the user-interface message below into {{ language }}.
+
+Rules:
+- Output ONLY the translated message — no quotes, no notes, no preamble.
+- Preserve all Markdown formatting exactly: **bold**, `code spans`, links, lists, headings.
+- Do NOT translate text inside backtick code spans, file paths, URLs, or numbers.
+- Keep every emoji and any leading or trailing whitespace.
+- Use natural, idiomatic {{ language }} in the register of a professional assistant.
+
+Message:
+"""
+{{ text }}
+"""

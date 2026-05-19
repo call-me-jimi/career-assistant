@@ -120,6 +120,7 @@ KNOWN_TASKS: list[str] = [
     "career_advisor_chat",
     "career_advisor_swot",
     "synthesize_learning",
+    "ui_translation",
 ]
 
 

@@ -61,3 +61,5 @@ frontend/             # Next.js; use npm (not uv) inside this directory
 - **`ApplicationState` has fields for all three assistants.** Unused fields stay empty for a given flow — don't remove them or make them conditional. All three graphs share the same state class (`backend/agent/state.py`).
 
 - **`PATCH /api/sessions/{id}/state` requires the runner to be paused at an interrupt.** It returns 409 if the graph is currently running. Only patch state from the details page, not mid-stream.
+
+- **Always flag unmerged worktree changes.** When work is done in a git worktree, end the session with an explicit note if changes haven't been merged to main yet. The dev server runs from the main working copy, so unmerged changes have no effect on the running app.

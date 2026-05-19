@@ -605,6 +605,8 @@ function SuggestionsTab({
   onReject: (id: number) => void;
   busy: string | null;
 }) {
+  const [viewMode, setViewMode] = useState<"proposed" | "diff">("proposed");
+
   if (suggestions.length === 0) {
     return (
       <p className="text-subtle text-sm">
@@ -616,6 +618,31 @@ function SuggestionsTab({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-1 self-start rounded-lg border border-subtle/30 p-0.5 w-fit text-xs">
+        <button
+          onClick={() => setViewMode("proposed")}
+          className={
+            "px-3 py-1 rounded-md font-medium transition-colors " +
+            (viewMode === "proposed"
+              ? "bg-accent text-bg"
+              : "text-subtle hover:text-fg")
+          }
+        >
+          Proposed
+        </button>
+        <button
+          onClick={() => setViewMode("diff")}
+          className={
+            "px-3 py-1 rounded-md font-medium transition-colors " +
+            (viewMode === "diff"
+              ? "bg-accent text-bg"
+              : "text-subtle hover:text-fg")
+          }
+        >
+          Diff
+        </button>
+      </div>
+
       {suggestions.map((s) => (
         <div
           key={s.id}
@@ -651,27 +678,96 @@ function SuggestionsTab({
             <p className="text-sm text-subtle italic">{s.diff.rationale}</p>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {viewMode === "proposed" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-subtle mb-1">
+                  Current
+                </div>
+                <pre className="text-xs whitespace-pre-wrap rounded bg-panel/60 p-3 border border-subtle/20 max-h-64 overflow-y-auto">
+                  {s.diff.before || "—"}
+                </pre>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-widest text-accent mb-1">
+                  Proposed
+                </div>
+                <pre className="text-xs whitespace-pre-wrap rounded bg-panel/60 p-3 border border-accent/30 max-h-64 overflow-y-auto">
+                  {s.diff.after || "—"}
+                </pre>
+              </div>
+            </div>
+          ) : (
             <div>
               <div className="text-xs uppercase tracking-widest text-subtle mb-1">
-                Current
+                Changes
               </div>
-              <pre className="text-xs whitespace-pre-wrap rounded bg-panel/60 p-3 border border-subtle/20 max-h-64 overflow-y-auto">
-                {s.diff.before || "—"}
-              </pre>
+              <DiffView before={s.diff.before} after={s.diff.after} />
             </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-accent mb-1">
-                Proposed
-              </div>
-              <pre className="text-xs whitespace-pre-wrap rounded bg-panel/60 p-3 border border-accent/30 max-h-64 overflow-y-auto">
-                {s.diff.after || "—"}
-              </pre>
-            </div>
-          </div>
+          )}
         </div>
       ))}
     </div>
+  );
+}
+
+type DiffToken = { text: string; type: "equal" | "remove" | "add" };
+
+function computeWordDiff(before: string, after: string): DiffToken[] {
+  const a = before.split(/(\s+)/);
+  const b = after.split(/(\s+)/);
+  const m = a.length, n = b.length;
+
+  // LCS table
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+
+  const result: DiffToken[] = [];
+  function backtrack(i: number, j: number) {
+    if (i === 0 && j === 0) return;
+    if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
+      backtrack(i - 1, j - 1);
+      result.push({ text: a[i - 1], type: "equal" });
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      backtrack(i, j - 1);
+      result.push({ text: b[j - 1], type: "add" });
+    } else {
+      backtrack(i - 1, j);
+      result.push({ text: a[i - 1], type: "remove" });
+    }
+  }
+  backtrack(m, n);
+  return result;
+}
+
+function DiffView({ before, after }: { before: string; after: string }) {
+  const tokens = computeWordDiff(before || "", after || "");
+  return (
+    <pre className="text-xs whitespace-pre-wrap rounded bg-panel/60 p-3 border border-subtle/20 max-h-64 overflow-y-auto leading-relaxed">
+      {tokens.map((tok, i) => {
+        if (tok.type === "equal") return <span key={i}>{tok.text}</span>;
+        if (tok.type === "remove")
+          return (
+            <span
+              key={i}
+              style={{ backgroundColor: "rgba(239,68,68,0.18)", color: "rgb(248,113,113)" }}
+              className="line-through"
+            >
+              {tok.text}
+            </span>
+          );
+        return (
+          <span
+            key={i}
+            style={{ backgroundColor: "rgba(34,197,94,0.18)", color: "rgb(74,222,128)" }}
+          >
+            {tok.text}
+          </span>
+        );
+      })}
+    </pre>
   );
 }
 

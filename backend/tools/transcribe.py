@@ -129,3 +129,53 @@ def build_provider(config: TranscriptionConfig) -> TranscriptionProvider:
             beam_size=config.beam_size,
         )
     raise ValueError(f"unknown transcription provider: {config.provider}")
+
+
+_LANGUAGE_NAME_TO_ISO = {
+    "english": "en",
+    "german": "de",
+    "deutsch": "de",
+    "french": "fr",
+    "français": "fr",
+    "spanish": "es",
+    "español": "es",
+    "italian": "it",
+    "italiano": "it",
+    "dutch": "nl",
+    "nederlands": "nl",
+    "portuguese": "pt",
+    "português": "pt",
+}
+
+
+def language_to_iso(language: str | None) -> str | None:
+    """Map a human-readable language name to a Whisper ISO 639-1 code.
+
+    Returns None for unknown languages so Whisper auto-detects.
+    """
+    if not language:
+        return None
+    return _LANGUAGE_NAME_TO_ISO.get(language.strip().lower())
+
+
+_provider_cache: dict[tuple, TranscriptionProvider] = {}
+
+
+def get_cached_provider(config: TranscriptionConfig) -> TranscriptionProvider:
+    """Return a process-wide cached provider for the given config.
+
+    Avoids rebuilding the provider wrapper on each call. The underlying
+    Whisper model is already lazy-loaded inside the provider.
+    """
+    key = (
+        config.provider,
+        config.model,
+        config.device,
+        config.compute_type,
+        config.beam_size,
+    )
+    provider = _provider_cache.get(key)
+    if provider is None:
+        provider = build_provider(config)
+        _provider_cache[key] = provider
+    return provider

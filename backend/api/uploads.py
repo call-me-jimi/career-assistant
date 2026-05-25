@@ -1,4 +1,4 @@
-"""File uploads: CV PDFs and interview audio recordings."""
+"""File uploads: CV PDFs, interview audio recordings, and voice-prompt clips."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from backend.config import DATA_DIR, load_settings
+from backend.storage.sessions import get_session
 from backend.tools.cv_parser import extract_cv_text
+from backend.tools.transcribe import get_cached_provider, language_to_iso
 
 router = APIRouter(prefix="/api/uploads")
 
@@ -64,4 +66,52 @@ async def upload_interview_audio(
         "audio_path": str(target),
         "filename": filename,
         "size_bytes": written,
+    }
+
+
+voice_router = APIRouter(prefix="/api/transcribe")
+
+
+@voice_router.post("/voice-prompt")
+async def transcribe_voice_prompt(
+    session_id: str = Form(...),
+    file: UploadFile = File(...),
+) -> dict:
+    """Transcribe a short voice clip into text for prompt entry.
+
+    Audio is ephemeral — written to a temp file, transcribed, then deleted.
+    Language hint is derived from the session's chosen language.
+    """
+    settings = load_settings().transcription
+    max_bytes = settings.voice_max_mb * 1024 * 1024
+
+    suffix = Path(file.filename or "voice.webm").suffix.lower() or ".webm"
+    target = AUDIO_DIR / f"voice_{uuid.uuid4().hex}{suffix}"
+    written = 0
+    try:
+        with target.open("wb") as out:
+            while chunk := await file.read(1024 * 1024):
+                written += len(chunk)
+                if written > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"clip exceeds {settings.voice_max_mb} MB limit",
+                    )
+                out.write(chunk)
+
+        if written == 0:
+            raise HTTPException(status_code=400, detail="empty audio payload")
+
+        session = await get_session(session_id)
+        language_hint = language_to_iso((session or {}).get("language"))
+
+        provider = get_cached_provider(settings)
+        result = await provider.transcribe(target, language=language_hint)
+    finally:
+        target.unlink(missing_ok=True)
+
+    return {
+        "text": result.full_text,
+        "language": result.language,
+        "duration_sec": result.duration_sec,
     }

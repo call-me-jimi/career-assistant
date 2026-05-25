@@ -105,7 +105,8 @@
     "device": "auto",
     "compute_type": "auto",
     "beam_size": 5,
-    "max_file_mb": 200
+    "max_file_mb": 200,
+    "voice_max_mb": 10
   },
   "max_hm_iterations": 3,
   "quality_threshold": 8.5,

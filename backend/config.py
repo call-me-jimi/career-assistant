@@ -37,7 +37,7 @@ class ModelPricing(BaseModel):
 
 
 class TranscriptionConfig(BaseModel):
-    """Local speech-to-text settings for the interview evaluator."""
+    """Local speech-to-text settings shared across audio-handling features."""
 
     provider: str = "faster_whisper"
     model: str = "turbo"
@@ -45,6 +45,7 @@ class TranscriptionConfig(BaseModel):
     compute_type: str = "auto"
     beam_size: int = 5
     max_file_mb: int = 200
+    voice_max_mb: int = 10
 
 
 class AppSettings(BaseModel):

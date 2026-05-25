@@ -38,6 +38,7 @@ app.add_middleware(
 
 app.include_router(routes.router)
 app.include_router(uploads.router)
+app.include_router(uploads.voice_router)
 app.include_router(ws.router)
 
 

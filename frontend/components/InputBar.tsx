@@ -3,7 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import type { InterruptPayload } from "../lib/types";
 import { API_BASE } from "../lib/ws";
+import MicButton from "./MicButton";
 import RecordInterviewHelp from "./RecordInterviewHelp";
+
+const VOICE_PROMPT_KINDS = new Set([
+  "mock_interview",
+  "qa_menu",
+  "cl_review",
+  "interview_review",
+  "evaluator_review",
+  "evaluator_context",
+  "interview_tech_topic",
+  "ask_name",
+]);
+
+function supportsVoiceInput(kind?: string): boolean {
+  return !!kind && VOICE_PROMPT_KINDS.has(kind);
+}
 
 type Props = {
   pending: InterruptPayload | null;
@@ -94,10 +110,16 @@ export default function InputBar({
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const audioFileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const kind = pending?.kind;
+
+  function handleTranscript(transcript: string) {
+    setText((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    textareaRef.current?.focus();
+  }
 
   useEffect(() => {
     if (
@@ -246,6 +268,7 @@ export default function InputBar({
   }
 
   const quickReplies = pending && !disabled ? quickRepliesFor(kind) : [];
+  const showVoice = supportsVoiceInput(kind) && !disabled;
 
   return (
     <div className="border-t border-border p-4 space-y-2">
@@ -269,6 +292,14 @@ export default function InputBar({
           rows={2}
           className="flex-1 rounded-xl bg-panel border border-border p-3 text-text placeholder:text-subtle focus:outline-none focus:border-accent resize-none"
         />
+        {showVoice && (
+          <MicButton
+            sessionId={sessionId}
+            disabled={disabled || !pending}
+            onTranscript={handleTranscript}
+            onError={setVoiceError}
+          />
+        )}
         <button
           onClick={() => submitText()}
           disabled={disabled || !pending || !text.trim()}
@@ -277,6 +308,9 @@ export default function InputBar({
           Send
         </button>
       </div>
+      {voiceError && (
+        <p className="text-xs text-err">Voice input: {voiceError}</p>
+      )}
       {quickReplies.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-subtle">Quick reply:</span>

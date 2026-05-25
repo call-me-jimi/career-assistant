@@ -20,7 +20,7 @@ from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.schemas import InterviewEvaluation
 from backend.llm.service import call_llm, extract_json
 from backend.llm.translate import with_language_directive
-from backend.tools.transcribe import build_provider
+from backend.tools.transcribe import get_cached_provider
 
 
 async def evaluator_context_node(state: ApplicationState) -> dict:
@@ -81,7 +81,7 @@ async def evaluator_transcribe_node(state: ApplicationState) -> dict:
         f"Transcribing {state.interview_recording_filename or audio_path.name} (this can take a few minutes)",
     )
 
-    provider = build_provider(load_settings().transcription)
+    provider = get_cached_provider(load_settings().transcription)
 
     progress_seq = {"n": 0}
 

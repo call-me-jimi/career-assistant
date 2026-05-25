@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import ChatPane from "../../components/ChatPane";
+import EvaluationCard from "../../components/EvaluationCard";
 import InputBar from "../../components/InputBar";
 import LLMCardPane from "../../components/LLMCardPane";
 import type {
@@ -11,6 +12,7 @@ import type {
   ChatMessage,
   DownloadLine,
   InterruptPayload,
+  InterviewEvaluation,
   LLMCard,
   ServerEvent,
 } from "../../lib/types";
@@ -20,6 +22,7 @@ const ASSISTANT_LABELS: Record<string, string> = {
   cover_letter: "Cover Letter",
   interview_prep: "Interview Prep",
   career_advisor: "Career Advisor",
+  interview_evaluator: "Interview Evaluator",
 };
 
 function SessionView() {
@@ -32,6 +35,9 @@ function SessionView() {
   const [pending, setPending] = useState<InterruptPayload | null>(null);
   const [done, setDone] = useState(false);
   const [assistantType, setAssistantType] = useState<string>("");
+  const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(
+    null,
+  );
   const sendRef = useRef<(v: unknown) => void>(() => {});
 
   useEffect(() => {
@@ -120,6 +126,11 @@ function SessionView() {
       case "interrupt.request":
         setPending(ev.payload);
         break;
+      case "state.update":
+        if (ev.patch && "interview_evaluation" in ev.patch) {
+          setEvaluation(ev.patch.interview_evaluation || null);
+        }
+        break;
       case "export.ready": {
         const filename = ev.path.split("/").pop() || `${ev.kind}.${ev.kind === "md" ? "md" : ev.kind}`;
         setDownloads((prev) => [
@@ -205,6 +216,7 @@ function SessionView() {
           <InputBar
             pending={pending}
             disabled={done}
+            sessionId={sessionId}
             onSend={(value) => {
               sendRef.current(value);
               setPending(null);
@@ -222,7 +234,11 @@ function SessionView() {
             }
           />
         </section>
-        <LLMCardPane cards={cards} sessionId={sessionId} />
+        {assistantType === "interview_evaluator" ? (
+          <EvaluationCard evaluation={evaluation} />
+        ) : (
+          <LLMCardPane cards={cards} sessionId={sessionId} />
+        )}
       </div>
     </main>
   );

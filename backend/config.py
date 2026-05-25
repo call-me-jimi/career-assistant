@@ -36,10 +36,22 @@ class ModelPricing(BaseModel):
     output_per_mtok: float = 0.0
 
 
+class TranscriptionConfig(BaseModel):
+    """Local speech-to-text settings for the interview evaluator."""
+
+    provider: str = "faster_whisper"
+    model: str = "turbo"
+    device: str = "auto"
+    compute_type: str = "auto"
+    beam_size: int = 5
+    max_file_mb: int = 200
+
+
 class AppSettings(BaseModel):
     default_llm: LLMConfig = Field(default_factory=LLMConfig)
     task_llm_configs: dict[str, LLMConfig] = Field(default_factory=dict)
     model_pricing: dict[str, ModelPricing] = Field(default_factory=dict)
+    transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     max_hm_iterations: int = 3
     quality_threshold: float = 8.5
     language: str = "English"
@@ -121,6 +133,8 @@ KNOWN_TASKS: list[str] = [
     "career_advisor_swot",
     "synthesize_learning",
     "ui_translation",
+    "transcribe_interview",
+    "analyze_interview_performance",
 ]
 
 

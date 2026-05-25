@@ -16,6 +16,7 @@ from langgraph.types import Command
 from backend.agent.checkpoint import get_checkpointer
 from backend.agent.graph import build_graph
 from backend.agent.graph_advisor import build_advisor_graph
+from backend.agent.graph_evaluator import build_evaluator_graph
 from backend.agent.graph_interview import build_interview_graph
 from backend.agent.state import ApplicationState
 from backend.observability.event_bus import bus
@@ -25,6 +26,7 @@ GRAPH_BUILDERS = {
     "cover_letter": build_graph,
     "interview_prep": build_interview_graph,
     "career_advisor": build_advisor_graph,
+    "interview_evaluator": build_evaluator_graph,
 }
 
 log = logging.getLogger("assistant.runner")

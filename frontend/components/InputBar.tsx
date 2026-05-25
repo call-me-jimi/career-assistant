@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { InterruptPayload } from "../lib/types";
 import { API_BASE } from "../lib/ws";
+import RecordInterviewHelp from "./RecordInterviewHelp";
 
 type Props = {
   pending: InterruptPayload | null;
   onSend: (value: unknown) => void;
   onUserMessage: (text: string) => void;
   disabled?: boolean;
+  sessionId?: string;
 };
 
 type QuickReply = {
@@ -29,6 +31,11 @@ function quickRepliesFor(kind?: string): QuickReply[] {
       return [{ label: "Accept", value: "accept" }];
     case "interview_review":
       return [{ label: "Accept", value: "accept" }];
+    case "evaluator_review":
+      return [
+        { label: "Accept", value: "accept" },
+        { label: "Retry", value: "retry" },
+      ];
     case "interview_menu":
       return [
         { label: "Mock interview", value: "mock" },
@@ -77,15 +84,28 @@ function quickRepliesFor(kind?: string): QuickReply[] {
   }
 }
 
-export default function InputBar({ pending, onSend, onUserMessage, disabled }: Props) {
+export default function InputBar({
+  pending,
+  onSend,
+  onUserMessage,
+  disabled,
+  sessionId,
+}: Props) {
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioFileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const kind = pending?.kind;
 
   useEffect(() => {
-    if (pending && !disabled && kind !== "upload_cv") {
+    if (
+      pending &&
+      !disabled &&
+      kind !== "upload_cv" &&
+      kind !== "upload_interview_audio"
+    ) {
       textareaRef.current?.focus();
     }
   }, [pending, disabled, kind]);
@@ -102,6 +122,36 @@ export default function InputBar({ pending, onSend, onUserMessage, disabled }: P
       const data = await res.json();
       onUserMessage(`Uploaded ${file.name} (${data.chars} chars).`);
       onSend({ cv_text: data.cv_text });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleAudioUpload(file: File) {
+    if (!sessionId) {
+      setUploadError("Session id missing — refresh the page.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("session_id", sessionId);
+      fd.append("file", file);
+      const res = await fetch(`${API_BASE}/api/uploads/interview-audio`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const mb = (data.size_bytes / (1024 * 1024)).toFixed(1);
+      onUserMessage(`Uploaded ${file.name} (${mb} MB).`);
+      onSend({ audio_path: data.audio_path, filename: data.filename });
+    } catch (e: any) {
+      setUploadError(e?.message || String(e));
     } finally {
       setUploading(false);
     }
@@ -161,6 +211,36 @@ export default function InputBar({ pending, onSend, onUserMessage, disabled }: P
         >
           Skip
         </button>
+      </div>
+    );
+  }
+
+  if (kind === "upload_interview_audio") {
+    return (
+      <div className="border-t border-border p-4 space-y-2">
+        <div className="flex items-center gap-3">
+          <input
+            ref={audioFileRef}
+            type="file"
+            accept="audio/*,video/mp4,video/webm"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleAudioUpload(f);
+            }}
+          />
+          <button
+            onClick={() => audioFileRef.current?.click()}
+            disabled={uploading || disabled}
+            className="px-5 py-3 rounded-xl bg-accent text-bg font-medium disabled:opacity-50"
+          >
+            {uploading ? "Uploading…" : "Upload interview recording"}
+          </button>
+          <RecordInterviewHelp />
+        </div>
+        {uploadError && (
+          <p className="text-xs text-err">Upload failed: {uploadError}</p>
+        )}
       </div>
     );
   }
@@ -234,6 +314,10 @@ function placeholderFor(kind?: string): string {
       return "accept, or describe revisions…";
     case "interview_review":
       return "accept, or describe revisions to the briefing…";
+    case "evaluator_context":
+      return "round / format / focus areas — or `none`";
+    case "evaluator_review":
+      return "accept, retry, or describe revisions to the report…";
     case "interview_menu":
       return "mock / practice / tech / questions / done";
     case "mock_interview":

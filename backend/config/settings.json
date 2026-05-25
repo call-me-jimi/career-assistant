@@ -99,6 +99,14 @@
       "output_per_mtok": 5.0
     }
   },
+  "transcription": {
+    "provider": "faster_whisper",
+    "model": "turbo",
+    "device": "auto",
+    "compute_type": "auto",
+    "beam_size": 5,
+    "max_file_mb": 200
+  },
   "max_hm_iterations": 3,
   "quality_threshold": 8.5,
   "language": "English",

@@ -57,6 +57,56 @@ def _ensure_folder(state: dict[str, Any], target_dir: Path | None = None) -> Pat
     return folder
 
 
+def _render_evaluation_markdown(evaluation: dict[str, Any]) -> str:
+    score = evaluation.get("overall_score", 0)
+    decision = evaluation.get("decision", "?")
+    summary = evaluation.get("summary", "") or ""
+    strengths = evaluation.get("strengths") or []
+    weaknesses = evaluation.get("weaknesses") or []
+    improvements = evaluation.get("improvements") or []
+    comm = evaluation.get("communication") or {}
+    per_q = evaluation.get("per_question") or []
+
+    def _bullets(items: list[str]) -> str:
+        return "\n".join(f"- {x}" for x in items) if items else "_(none)_"
+
+    parts = [
+        f"**Decision:** {decision} · **Score:** {score}/10",
+        "",
+        summary,
+        "",
+        "### Strengths",
+        _bullets(strengths),
+        "",
+        "### Weaknesses",
+        _bullets(weaknesses),
+        "",
+        "### Points to improve",
+        _bullets(improvements),
+        "",
+        "### Communication",
+        f"- **Pace:** {comm.get('pace', '?')}",
+        f"- **Filler words:** {', '.join(comm.get('filler_words') or []) or '(none observed)'}",
+        f"- **Clarity:** {comm.get('clarity', '')}",
+        f"- **Structure:** {comm.get('structure', '')}",
+    ]
+    if per_q:
+        parts.append("")
+        parts.append("### Per-question breakdown")
+        for i, q in enumerate(per_q, 1):
+            parts.append("")
+            parts.append(f"**Q{i}.** {q.get('question', '')}")
+            if q.get("answer_summary"):
+                parts.append(f"_Answer:_ {q['answer_summary']}")
+            if q.get("strengths"):
+                parts.append("_Strengths:_ " + "; ".join(q["strengths"]))
+            if q.get("weaknesses"):
+                parts.append("_Weaknesses:_ " + "; ".join(q["weaknesses"]))
+            if q.get("suggested_improvement"):
+                parts.append(f"_Improve:_ {q['suggested_improvement']}")
+    return "\n".join(parts)
+
+
 def export_markdown(state: dict[str, Any], target_dir: Path | None = None) -> str:
     folder = _ensure_folder(state, target_dir)
     path = folder / "application.md"
@@ -117,6 +167,26 @@ def export_markdown(state: dict[str, Any], target_dir: Path | None = None) -> st
     if state.get("advisor_swot"):
         lines += ["## Career SWOT", "", state["advisor_swot"], ""]
 
+    evaluation = state.get("interview_evaluation")
+    if evaluation:
+        lines += [
+            "## Interview evaluation",
+            "",
+            _render_evaluation_markdown(evaluation),
+            "",
+        ]
+        transcript = state.get("interview_transcript") or []
+        if transcript:
+            lines += ["## Interview transcript", ""]
+            for seg in transcript:
+                start = float(seg.get("start") or 0.0) if isinstance(seg, dict) else 0.0
+                text = (seg.get("text") if isinstance(seg, dict) else "") or ""
+                if not text.strip():
+                    continue
+                mm, ss = divmod(int(start), 60)
+                lines.append(f"`[{mm:02d}:{ss:02d}]` {text}")
+            lines.append("")
+
     path.write_text("\n".join(lines))
     log.info("wrote markdown %s", path)
     return str(path)
@@ -143,7 +213,14 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
 
     assistant_type = state.get("assistant_type") or ""
 
-    if assistant_type == "interview_prep" and state.get("interview_briefing"):
+    if assistant_type == "interview_evaluator" and state.get("interview_evaluation"):
+        body_text = (
+            f"# Interview evaluation — {state.get('job_title') or state.get('company_name') or ''}\n\n"
+            + _render_evaluation_markdown(state["interview_evaluation"])
+        )
+        title = f"Interview evaluation — {state.get('job_title') or state.get('company_name') or ''}"
+        filename = "interview_evaluation.pdf"
+    elif assistant_type == "interview_prep" and state.get("interview_briefing"):
         body_text = state["interview_briefing"]
         title = f"Interview briefing — {state.get('job_title') or state.get('company_name') or ''}"
         filename = "interview_briefing.pdf"

@@ -1,0 +1,48 @@
+Evaluate this real interview the candidate has just given. Return the JSON object specified in the system prompt — nothing else.
+
+--------------------------------------------------
+ROLE INFORMATION
+
+Company:
+{{ company_name }}
+
+Job Title:
+{{ job_title }}
+
+--------------------------------------------------
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+--------------------------------------------------
+CANDIDATE PROFILE (for grounding — what the candidate brings to the role)
+"""
+{{ candidate_profile }}
+"""
+
+--------------------------------------------------
+INTERVIEW CONTEXT (round, format, focus areas — if the candidate shared any)
+"""
+{{ interview_context }}
+"""
+
+--------------------------------------------------
+INTERVIEW TRANSCRIPT
+The transcript was produced by automatic speech recognition with no speaker labels. Interpret who said what from phrasing and structure.
+
+"""
+{{ transcript }}
+"""
+
+--------------------------------------------------
+
+{% if revision_feedback %}
+The candidate has reviewed your previous evaluation and asked for these revisions:
+"""
+{{ revision_feedback }}
+"""
+Address their feedback while keeping the evaluation honest and evidence-based.
+{% endif %}
+
+Return the InterviewEvaluation JSON object now. No prose around it.

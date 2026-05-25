@@ -9,7 +9,12 @@ from typing import Any
 from backend.storage.db import connect
 
 
-ASSISTANT_TYPES = ("cover_letter", "interview_prep", "career_advisor")
+ASSISTANT_TYPES = (
+    "cover_letter",
+    "interview_prep",
+    "career_advisor",
+    "interview_evaluator",
+)
 
 
 async def create_session(

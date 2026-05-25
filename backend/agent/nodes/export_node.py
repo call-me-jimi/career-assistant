@@ -34,10 +34,11 @@ async def export_node(state: ApplicationState) -> dict:
         "cover_letter": "your cover letter and Q&A",
         "interview_prep": "your interview briefing",
         "career_advisor": "the conversation and (if you generated one) your SWOT",
+        "interview_evaluator": "your interview evaluation report",
     }.get(state.assistant_type, "your session")
 
     delivery = state.export_delivery
-    if state.assistant_type == "interview_prep" and not delivery:
+    if state.assistant_type in {"interview_prep", "interview_evaluator"} and not delivery:
         emit_message(
             sid,
             "Where should I put it? Reply `download` (link in chat — recommended), "
@@ -55,7 +56,7 @@ async def export_node(state: ApplicationState) -> dict:
             emit_message(sid, "Defaulting to **download** (link in chat).")
 
     targets: list[Path | None]
-    if state.assistant_type == "interview_prep":
+    if state.assistant_type in {"interview_prep", "interview_evaluator"}:
         if delivery == "folder":
             targets = [None]  # configured Applications folder
         elif delivery == "both":

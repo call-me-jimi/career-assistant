@@ -21,6 +21,28 @@ export type DownloadLine = {
   timestamp: number;
 };
 
+export type InterviewEvaluation = {
+  overall_score: number;
+  decision: "YES" | "MAYBE" | "NO" | string;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  improvements: string[];
+  communication: {
+    pace: "too_fast" | "appropriate" | "too_slow" | string;
+    filler_words: string[];
+    clarity: string;
+    structure: string;
+  };
+  per_question: {
+    question: string;
+    answer_summary: string;
+    strengths: string[];
+    weaknesses: string[];
+    suggested_improvement: string;
+  }[];
+};
+
 export type LLMCard = {
   cardId: string;
   task?: string;

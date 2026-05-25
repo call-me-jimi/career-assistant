@@ -25,9 +25,15 @@ const ASSISTANT_LABELS: Record<string, string> = {
   cover_letter: "Cover Letter",
   interview_prep: "Interview Prep",
   career_advisor: "Career Advisor",
+  interview_evaluator: "Interview Evaluator",
 };
 
-const ASSISTANT_ORDER = ["cover_letter", "interview_prep", "career_advisor"];
+const ASSISTANT_ORDER = [
+  "cover_letter",
+  "interview_prep",
+  "career_advisor",
+  "interview_evaluator",
+];
 
 function fmtCost(n: number): string {
   if (n === 0) return "—";

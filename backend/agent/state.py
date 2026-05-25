@@ -35,7 +35,7 @@ def _last_write_wins(a: Any, b: Any) -> Any:
     return b if b is not None else a
 
 
-ASSISTANT_TYPE = Literal["cover_letter", "interview_prep", "career_advisor"]
+ASSISTANT_TYPE = Literal["cover_letter", "interview_prep", "career_advisor", "interview_evaluator"]
 
 
 class ApplicationState(BaseModel):
@@ -92,6 +92,16 @@ class ApplicationState(BaseModel):
     interview_revision_feedback: list[dict[str, Any]] = Field(default_factory=list)
     mock_interview_transcript: list[ChatTurn] = Field(default_factory=list)
     interview_extras: list[dict[str, Any]] = Field(default_factory=list)
+
+    # Interview evaluator
+    interview_recording_path: str = ""
+    interview_recording_filename: str = ""
+    interview_recording_duration_sec: float = 0.0
+    interview_transcript: list[dict[str, Any]] = Field(default_factory=list)
+    interview_transcript_language: str = ""
+    interview_evaluation: dict[str, Any] | None = None
+    interview_evaluation_versions: list[dict[str, Any]] = Field(default_factory=list)
+    interview_evaluation_feedback: list[dict[str, Any]] = Field(default_factory=list)
 
     # Career advisor
     advisor_transcript: list[ChatTurn] = Field(default_factory=list)

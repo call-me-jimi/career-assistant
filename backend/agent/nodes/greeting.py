@@ -32,6 +32,11 @@ _INTRO_BY_ASSISTANT = {
         "experience so you can clarify your strengths, spot weaknesses, and sharpen how "
         "you talk about your career. You can ask for a SWOT summary at any time."
     ),
+    "interview_evaluator": (
+        "Hi! I'm your Interview Evaluator. Upload an audio recording of a past interview "
+        "and I'll transcribe it locally and give you a structured performance report — "
+        "strengths, weaknesses, points to improve, and a per-question breakdown."
+    ),
 }
 
 

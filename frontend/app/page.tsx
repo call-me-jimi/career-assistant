@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type AssistantType = "cover_letter" | "interview_prep" | "career_advisor";
+type AssistantType =
+  | "cover_letter"
+  | "interview_prep"
+  | "career_advisor"
+  | "interview_evaluator";
 
 const LANGUAGES = [
   "English",
@@ -37,6 +41,12 @@ const ASSISTANTS: {
     title: "Career Advisor",
     blurb:
       "Open conversation about your experience to clarify strengths and weaknesses. Ask for a SWOT summary at any time.",
+  },
+  {
+    type: "interview_evaluator",
+    title: "Interview Evaluator",
+    blurb:
+      "Upload an audio recording of a real interview you've already given. Transcribed locally, then turned into a structured performance report — strengths, weaknesses, and a per-question breakdown.",
   },
 ];
 
@@ -75,7 +85,7 @@ export default function LandingPage() {
             Personal Career Assistant
           </h1>
           <p className="text-lg text-subtle">
-            Three specialised assistants for the hard parts of switching jobs.
+            Specialised assistants for the hard parts of switching jobs.
             Pick one to get started.
           </p>
         </div>
@@ -104,7 +114,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
           {ASSISTANTS.map((a) => (
             <button
               key={a.type}

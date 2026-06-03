@@ -20,6 +20,7 @@ from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.schemas import InterviewEvaluation
 from backend.llm.service import call_llm, extract_json
 from backend.llm.translate import with_language_directive
+from backend.storage.coaching_insights import save_coaching_insight
 from backend.tools.transcribe import get_cached_provider
 
 
@@ -195,7 +196,6 @@ async def evaluator_review_node(state: ApplicationState) -> dict:
     if not text or lowered in {"accept", "ok", "looks good", "yes"}:
         if state.profile_id and state.interview_evaluation:
             try:
-                from backend.storage.coaching_insights import save_coaching_insight
                 await save_coaching_insight(
                     profile_id=state.profile_id,
                     session_id=state.session_id,

@@ -178,65 +178,10 @@ async def evaluator_analyze_node(state: ApplicationState) -> dict:
     }
 
 
-def _render_report(evaluation: dict) -> str:
-    score = evaluation.get("overall_score", 0)
-    decision = evaluation.get("decision", "?")
-    summary = evaluation.get("summary", "")
-    strengths = evaluation.get("strengths", []) or []
-    weaknesses = evaluation.get("weaknesses", []) or []
-    improvements = evaluation.get("improvements", []) or []
-    comm = evaluation.get("communication", {}) or {}
-    per_q = evaluation.get("per_question", []) or []
-
-    def _bullets(items: list[str]) -> str:
-        return "\n".join(f"- {x}" for x in items) if items else "_(none)_"
-
-    parts = [
-        f"### Interview evaluation — **{decision}** · {score}/10",
-        "",
-        summary or "",
-        "",
-        "**Strengths**",
-        _bullets(strengths),
-        "",
-        "**Weaknesses**",
-        _bullets(weaknesses),
-        "",
-        "**Points to improve**",
-        _bullets(improvements),
-        "",
-        "**Communication**",
-        f"- Pace: {comm.get('pace', '?')}",
-        f"- Filler words: {', '.join(comm.get('filler_words') or []) or '(none observed)'}",
-        f"- Clarity: {comm.get('clarity', '')}",
-        f"- Structure: {comm.get('structure', '')}",
-    ]
-    if per_q:
-        parts.append("")
-        parts.append("**Per-question breakdown**")
-        for i, q in enumerate(per_q, 1):
-            parts.append(f"\n_Q{i}._ {q.get('question', '')}")
-            parts.append(f"_Answer:_ {q.get('answer_summary', '')}")
-            if q.get("strengths"):
-                parts.append("_Strengths:_ " + "; ".join(q["strengths"]))
-            if q.get("weaknesses"):
-                parts.append("_Weaknesses:_ " + "; ".join(q["weaknesses"]))
-            if q.get("suggested_improvement"):
-                parts.append(f"_Improve:_ {q['suggested_improvement']}")
-    return "\n".join(parts)
-
-
 async def evaluator_review_node(state: ApplicationState) -> dict:
     sid = state.session_id
     iteration = len(state.interview_evaluation_versions)
-    evaluation = state.interview_evaluation or {}
 
-    emit_message(
-        sid,
-        _render_report(evaluation),
-        key=f"evaluator_review:body:{iteration}",
-        localized=True,
-    )
     emit_message(
         sid,
         "Reply `accept` to move on to export, `retry` to regenerate from the same "
@@ -248,6 +193,18 @@ async def evaluator_review_node(state: ApplicationState) -> dict:
     text = (reply or "").strip() if isinstance(reply, str) else ""
     lowered = text.lower()
     if not text or lowered in {"accept", "ok", "looks good", "yes"}:
+        if state.profile_id and state.interview_evaluation:
+            try:
+                from backend.storage.coaching_insights import save_coaching_insight
+                await save_coaching_insight(
+                    profile_id=state.profile_id,
+                    session_id=state.session_id,
+                    evaluation_dict=state.interview_evaluation,
+                    job_title=state.job_title,
+                    company_name=state.company_name,
+                )
+            except Exception:
+                pass  # never block the accept flow
         return {"phase": "export"}
 
     aid = action_start(

@@ -102,6 +102,26 @@ CREATE TABLE IF NOT EXISTS profile_suggestions (
 
 CREATE INDEX IF NOT EXISTS idx_profile_suggestions_profile_status
     ON profile_suggestions(profile_id, status);
+
+CREATE TABLE IF NOT EXISTS coaching_insights (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_id    TEXT NOT NULL,
+    session_id    TEXT NOT NULL,
+    job_title     TEXT NOT NULL DEFAULT '',
+    company_name  TEXT NOT NULL DEFAULT '',
+    overall_score REAL,
+    decision      TEXT,
+    summary       TEXT NOT NULL DEFAULT '',
+    weaknesses    TEXT NOT NULL DEFAULT '[]',
+    improvements  TEXT NOT NULL DEFAULT '[]',
+    filler_words  TEXT NOT NULL DEFAULT '[]',
+    pace          TEXT,
+    clarity       TEXT,
+    created_at    REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_coaching_insights_profile
+    ON coaching_insights(profile_id, created_at DESC);
 """
 
 

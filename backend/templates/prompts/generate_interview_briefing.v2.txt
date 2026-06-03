@@ -1,0 +1,73 @@
+Prepare an interview briefing for this specific upcoming interview.
+
+Write directly to the candidate in second person. Follow the section structure defined in the system prompt. Ground every suggestion in the inputs below and do not invent facts.
+
+--------------------------------------------------
+ROLE INFORMATION
+
+Company:
+{{ company_name }}
+
+Job Title:
+{{ job_title }}
+
+Location:
+{{ location }}
+
+--------------------------------------------------
+INTERVIEW CONTEXT (from the company, if provided)
+"""
+{{ interview_context }}
+"""
+
+If this section is empty, assume a first-round screening and say so explicitly in the interview snapshot.
+
+--------------------------------------------------
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+--------------------------------------------------
+COMPANY DESCRIPTION
+"""
+{{ company_description }}
+"""
+
+--------------------------------------------------
+CANDIDATE PROFILE
+"""
+{{ candidate_profile }}
+"""
+
+--------------------------------------------------
+CANDIDATE CV (raw)
+"""
+{{ cv_content }}
+"""
+
+--------------------------------------------------
+ALIGNMENT STRATEGY (how the candidate plans to position for this role)
+"""
+{{ alignment_strategy }}
+"""
+
+--------------------------------------------------
+{% if coaching_history %}
+COACHING REMINDERS FROM PAST INTERVIEWS
+
+The candidate has {{ coaching_history | length }} prior interview evaluation(s) on record. Use this to personalise the briefing — surface recurring weaknesses as actionable reminders. Do not repeat strengths; the candidate already knows what they do well.
+
+{% for entry in coaching_history %}
+Interview {{ loop.index }}{% if entry.job_title %} — {{ entry.job_title }}{% if entry.company_name %} at {{ entry.company_name }}{% endif %}{% endif %} (score: {{ entry.overall_score }}/10, outcome: {{ entry.decision }}):
+  Weaknesses: {{ entry.weaknesses | join("; ") if entry.weaknesses else "none recorded" }}
+  Work on: {{ entry.improvements | join("; ") if entry.improvements else "none recorded" }}{% if entry.filler_words %}
+  Speech habits to fix: filler words — {{ entry.filler_words | join(", ") }}; pace — {{ entry.pace or "not noted" }}{% endif %}
+{% endfor %}
+
+After the main briefing sections, add a "## Coaching Reminders" section. Write 3–5 bullet points that directly reference the patterns above. Be concrete and direct: "In your last interview you tended to [X] — this time [specific fix]." Do not be vague or encouraging without substance.
+{% endif %}
+
+--------------------------------------------------
+
+Produce the briefing now, in Markdown, following the section order from the system prompt. Output the briefing only.

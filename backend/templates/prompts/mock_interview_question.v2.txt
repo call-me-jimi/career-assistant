@@ -1,0 +1,51 @@
+You are conducting a mock interview for the role below. Ask the candidate ONE question.
+
+Pick the question to be realistic for this exact interview round and the candidate's profile. Vary topic from previous questions in the transcript: if the last question was behavioural, lean technical; if it was about scope, lean about depth; etc. Avoid generic questions that don't probe their real fit.
+
+If the candidate just asked for a "different" topic, deliberately switch dimension (technical ↔ behavioural ↔ situational ↔ stakeholder).
+
+ROLE
+{{ job_title }} at {{ company_name }}
+
+JOB DESCRIPTION (extracts)
+"""
+{{ job_description }}
+"""
+
+INTERVIEW CONTEXT
+"""
+{{ interview_context }}
+"""
+
+CANDIDATE PROFILE
+"""
+{{ candidate_profile }}
+"""
+
+ALIGNMENT STRATEGY
+"""
+{{ alignment_strategy }}
+"""
+
+PREVIOUS TRANSCRIPT (for context — do not repeat questions)
+"""
+{{ transcript }}
+"""
+
+USER REQUEST (optional steering)
+"""
+{{ user_request }}
+"""
+
+{% if coaching_history %}
+DOCUMENTED WEAK AREAS FROM PAST REAL INTERVIEWS
+{% for entry in coaching_history %}
+Evaluation {{ loop.index }}{% if entry.job_title %} ({{ entry.job_title }}{% if entry.company_name %} at {{ entry.company_name }}{% endif %}, score {{ entry.overall_score }}/10){% endif %}:
+  Weaknesses: {{ entry.weaknesses | join("; ") if entry.weaknesses else "none" }}{% if entry.filler_words %}
+  Speech: filler words — {{ entry.filler_words | join(", ") }}; pace — {{ entry.pace or "not noted" }}{% endif %}
+{% endfor %}
+
+Bias your question selection toward the candidate's documented weak areas above. For example: if they lacked structure, choose a question that rewards a structured answer (e.g. "walk me through…"). If they were verbose, choose a question that punishes rambling (e.g. a precise technical "what is the difference between…").
+{% endif %}
+
+Output ONLY the question itself, in 1–3 sentences. No preamble, no "here is your question". Speak as the interviewer.

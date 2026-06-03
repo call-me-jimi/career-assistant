@@ -92,6 +92,8 @@ class ApplicationState(BaseModel):
     interview_revision_feedback: list[dict[str, Any]] = Field(default_factory=list)
     mock_interview_transcript: list[ChatTurn] = Field(default_factory=list)
     interview_extras: list[dict[str, Any]] = Field(default_factory=list)
+    # Cross-session coaching context (loaded at interview prep session start if profile_id is known)
+    coaching_history: list[dict[str, Any]] = Field(default_factory=list)
 
     # Interview evaluator
     interview_recording_path: str = ""

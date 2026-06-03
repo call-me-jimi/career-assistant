@@ -25,6 +25,7 @@ async def interview_briefing_node(state: ApplicationState) -> dict:
         candidate_profile=state.candidate_profile,
         cv_content=state.cv_text,
         alignment_strategy=state.alignment_strategy or state.inferred_role_context or "",
+        coaching_history=state.coaching_history,
     )
     user = with_language_directive(user, state.language)
     result = await call_llm(

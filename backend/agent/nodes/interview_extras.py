@@ -116,6 +116,7 @@ async def mock_interview_node(state: ApplicationState) -> dict:
             alignment_strategy=state.alignment_strategy or state.inferred_role_context or "",
             transcript=_format_transcript(turns),
             user_request=last_user,
+            coaching_history=state.coaching_history,
         )
         user_prompt = with_language_directive(user_prompt, state.language)
         result = await call_llm(
@@ -204,6 +205,7 @@ async def interview_practice_node(state: ApplicationState) -> dict:
         candidate_profile=state.candidate_profile,
         cv_content=state.cv_text,
         alignment_strategy=state.alignment_strategy or state.inferred_role_context or "",
+        coaching_history=state.coaching_history,
     )
     user = with_language_directive(user, state.language)
     result = await call_llm(

@@ -84,6 +84,14 @@ class FasterWhisperProvider:
             condition_on_previous_text=True,
         )
 
+        # ctranslate2 crashes when iterating a segment generator after VAD removes
+        # all audio — short-circuit here to avoid the process-level crash.
+        if not (info.duration_after_vad or 0.0):
+            return TranscriptionResult(
+                language=info.language or "",
+                duration_sec=info.duration or 0.0,
+            )
+
         collected: list[TranscriptSegment] = []
         full_parts: list[str] = []
         total = info.duration_after_vad or info.duration or 0.0

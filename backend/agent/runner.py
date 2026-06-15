@@ -40,6 +40,7 @@ class SessionRunner:
         self._done = False
         self._graph: Any = None
         self._paused: bool = False
+        self._final_state: dict[str, Any] | None = None
 
     async def submit_input(self, value: Any) -> None:
         await self._input_queue.put(value)
@@ -48,6 +49,8 @@ class SessionRunner:
         return {"configurable": {"thread_id": self.session_id}, "recursion_limit": 50}
 
     async def get_state_values(self) -> dict[str, Any] | None:
+        if self._final_state is not None:
+            return self._final_state
         if not self._graph:
             return None
         snap = await self._graph.aget_state(self._config())
@@ -108,7 +111,10 @@ class SessionRunner:
                         await touch_session(self.session_id, phase=phase)
 
                     if interrupt_value is None:
-                        # Graph reached END
+                        # Graph reached END — snapshot state before connection closes
+                        snap2 = await graph.aget_state(config)
+                        vals = getattr(snap2, "values", None) or {}
+                        self._final_state = vals if isinstance(vals, dict) else dict(vals)
                         bus.publish(
                             self.session_id,
                             {"type": "session.complete"},
@@ -139,7 +145,6 @@ class SessionRunner:
             )
         finally:
             self._done = True
-            self._graph = None
             self._paused = False
 
 

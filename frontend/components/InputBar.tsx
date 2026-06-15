@@ -90,6 +90,11 @@ function quickRepliesFor(kind?: string): QuickReply[] {
         { label: "Google Sheets", value: "sheets" },
         { label: "None", value: "none" },
       ];
+    case "language_switch":
+      return [
+        { label: "Yes, switch", value: "yes" },
+        { label: "No, keep current", value: "no" },
+      ];
     case "post_export":
       return [
         { label: "Yes", value: "yes" },

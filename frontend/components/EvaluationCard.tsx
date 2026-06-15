@@ -36,7 +36,7 @@ export default function EvaluationCard({ evaluation }: Props) {
   const score = Number(evaluation.overall_score ?? 0).toFixed(1);
 
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div
           className={`px-3 py-1 rounded-full border text-xs font-semibold ${decisionClass}`}

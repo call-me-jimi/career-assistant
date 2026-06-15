@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE } from "./ws";
 
-export type RecorderState = "idle" | "recording" | "transcribing" | "error";
+export type RecorderState = "idle" | "requesting" | "recording" | "transcribing" | "error";
 
 const MAX_DURATION_SEC = 60;
 
@@ -77,8 +77,17 @@ export function useVoiceRecorder({ sessionId, onTranscript }: Options) {
     }
     setError(null);
     cancelledRef.current = false;
+    setState("requesting");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({ audio: true }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("No response — check your browser's address bar for a microphone permission prompt.")),
+            20000,
+          )
+        ),
+      ]);
       streamRef.current = stream;
 
       const mimeType = pickMimeType();

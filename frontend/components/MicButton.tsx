@@ -77,6 +77,20 @@ export default function MicButton({ sessionId, disabled, onTranscript, onError }
     }
   };
 
+  if (state === "requesting") {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-label="Requesting microphone"
+        className="px-4 py-3 rounded-xl border border-accent text-accent flex items-center gap-2 opacity-80"
+      >
+        <MicIcon />
+        <span className="text-sm">Allow mic…</span>
+      </button>
+    );
+  }
+
   if (state === "recording") {
     return (
       <button

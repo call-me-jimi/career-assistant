@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import ChatPane from "../../components/ChatPane";
-import EvaluationCard from "../../components/EvaluationCard";
 import InputBar from "../../components/InputBar";
 import LLMCardPane from "../../components/LLMCardPane";
 import type {
@@ -35,9 +34,10 @@ function SessionView() {
   const [pending, setPending] = useState<InterruptPayload | null>(null);
   const [done, setDone] = useState(false);
   const [assistantType, setAssistantType] = useState<string>("");
-  const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(
-    null,
-  );
+  const [evaluationEntry, setEvaluationEntry] = useState<{
+    timestamp: number;
+    data: InterviewEvaluation;
+  } | null>(null);
   const sendRef = useRef<(v: unknown) => void>(() => {});
 
   useEffect(() => {
@@ -127,8 +127,11 @@ function SessionView() {
         setPending(ev.payload);
         break;
       case "state.update":
-        if (ev.patch && "interview_evaluation" in ev.patch) {
-          setEvaluation(ev.patch.interview_evaluation || null);
+        if (ev.patch && "interview_evaluation" in ev.patch && ev.patch.interview_evaluation) {
+          setEvaluationEntry((prev) => ({
+            timestamp: prev?.timestamp ?? Date.now() / 1000,
+            data: ev.patch.interview_evaluation,
+          }));
         }
         break;
       case "export.ready": {
@@ -212,7 +215,7 @@ function SessionView() {
       {header}
       <div className="flex-1 grid grid-cols-[2fr_1fr] overflow-hidden">
         <section className="flex flex-col overflow-hidden">
-          <ChatPane messages={messages} actions={actions} downloads={downloads} />
+          <ChatPane messages={messages} actions={actions} downloads={downloads} evaluationEntry={evaluationEntry} />
           <InputBar
             pending={pending}
             disabled={done}
@@ -234,11 +237,7 @@ function SessionView() {
             }
           />
         </section>
-        {assistantType === "interview_evaluator" ? (
-          <EvaluationCard evaluation={evaluation} />
-        ) : (
-          <LLMCardPane cards={cards} sessionId={sessionId} />
-        )}
+        <LLMCardPane cards={cards} sessionId={sessionId} />
       </div>
     </main>
   );

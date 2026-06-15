@@ -3,25 +3,28 @@
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ActionLine, ChatMessage, DownloadLine } from "../lib/types";
+import EvaluationCard from "./EvaluationCard";
+import type { ActionLine, ChatMessage, DownloadLine, InterviewEvaluation } from "../lib/types";
 
 type Props = {
   messages: ChatMessage[];
   actions: ActionLine[];
   downloads?: DownloadLine[];
+  evaluationEntry?: { timestamp: number; data: InterviewEvaluation } | null;
 };
 
-export default function ChatPane({ messages, actions, downloads = [] }: Props) {
+export default function ChatPane({ messages, actions, downloads = [], evaluationEntry = null }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, actions.length, downloads.length]);
+  }, [messages.length, actions.length, downloads.length, evaluationEntry]);
 
   const items = [
     ...messages.map((m) => ({ kind: "msg" as const, t: m.timestamp, value: m })),
     ...actions.map((a) => ({ kind: "action" as const, t: a.timestamp, value: a })),
     ...downloads.map((d) => ({ kind: "download" as const, t: d.timestamp, value: d })),
+    ...(evaluationEntry ? [{ kind: "evaluation" as const, t: evaluationEntry.timestamp, value: evaluationEntry.data }] : []),
   ].sort((a, b) => a.t - b.t);
 
   return (
@@ -31,6 +34,8 @@ export default function ChatPane({ messages, actions, downloads = [] }: Props) {
           <Message key={`m-${it.value.id}`} m={it.value} />
         ) : it.kind === "action" ? (
           <Action key={`a-${it.value.id}`} a={it.value} />
+        ) : it.kind === "evaluation" ? (
+          <EvaluationInChat key="evaluation" evaluation={it.value} />
         ) : (
           <Download key={`d-${it.value.id}`} d={it.value} />
         ),
@@ -90,6 +95,16 @@ function Download({ d }: { d: DownloadLine }) {
         <span>⬇</span>
         <span>Download {d.kind.toUpperCase()} — {d.filename}</span>
       </a>
+    </div>
+  );
+}
+
+function EvaluationInChat({ evaluation }: { evaluation: InterviewEvaluation }) {
+  return (
+    <div className="flex justify-start">
+      <div className="w-full max-w-[85%] rounded-2xl border border-border bg-panel px-4 py-3">
+        <EvaluationCard evaluation={evaluation} />
+      </div>
     </div>
   );
 }

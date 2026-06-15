@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -27,6 +28,11 @@ _HEADERS = {
 
 _WORKABLE_RE = re.compile(
     r"https?://apply\.workable\.com/(?P<account>[^/]+)/j/(?P<shortcode>[^/?#]+)",
+    re.IGNORECASE,
+)
+
+_GREENHOUSE_BOARD_RE = re.compile(
+    r"boards\.greenhouse\.io/embed/job_board/js\?for=([^&\"'>\s]+)",
     re.IGNORECASE,
 )
 
@@ -70,6 +76,28 @@ def _scrape_workable(url: str, timeout: int) -> dict[str, str]:
     return {"url": url, "title": page_title, "raw_text": raw_text}
 
 
+def _scrape_greenhouse(board_token: str, job_id: str, url: str, timeout: int) -> dict[str, str]:
+    api_url = f"https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs/{job_id}"
+    resp = requests.get(api_url, headers={**_HEADERS, "Accept": "application/json"}, timeout=timeout)
+    resp.raise_for_status()
+    data = resp.json()
+
+    title = data.get("title", "")
+    company = board_token.replace("-", " ").title()
+    location = (data.get("location") or {}).get("name", "")
+
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+    if location:
+        parts.append(f"Location: {location}")
+    content_html = data.get("content", "")
+    if content_html:
+        parts.append(f"\nDescription:\n{_html_to_text(content_html)}")
+
+    raw_text = "\n".join(parts)
+    log.info("scraped greenhouse %s via API (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
+
+
 def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
     """Return {'url', 'title', 'raw_text'} scraped from a job URL."""
     if _WORKABLE_RE.match(url):
@@ -77,6 +105,16 @@ def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
 
     resp = requests.get(url, headers=_HEADERS, timeout=timeout)
     resp.raise_for_status()
+
+    # Detect Greenhouse embeds (JS-rendered; plain HTML scraping yields nothing)
+    board_match = _GREENHOUSE_BOARD_RE.search(resp.text)
+    if board_match:
+        board_token = board_match.group(1)
+        qs = parse_qs(urlparse(url).query)
+        job_ids = qs.get("gh_jid") or re.findall(r"gh_jid=(\d+)", resp.text)
+        if job_ids:
+            return _scrape_greenhouse(board_token, job_ids[0], url, timeout)
+
     soup = BeautifulSoup(resp.text, "lxml")
 
     for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "header", "footer", "aside"]):

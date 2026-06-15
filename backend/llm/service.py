@@ -27,6 +27,7 @@ class LLMCallResult:
     text: str
     model: str
     provider: str
+    truncated: bool = False
 
 
 def _resolve_config(task: str | None) -> LLMConfig:
@@ -37,6 +38,7 @@ def _resolve_config(task: str | None) -> LLMConfig:
             provider=cfg.provider or settings.default_llm.provider,
             model_name=cfg.model_name or settings.default_llm.model_name,
             base_url=cfg.base_url or settings.default_llm.base_url,
+            max_tokens=cfg.max_tokens,
         )
     return settings.default_llm
 
@@ -57,7 +59,7 @@ def build_chat_model(task: str | None = None):
         kwargs_anthropic: dict[str, Any] = {
             "model": cfg.model_name,
             "api_key": api_key,
-            "max_tokens": 8192,
+            "max_tokens": cfg.max_tokens or 16000,
         }
         if not cfg.model_name.lower().startswith("claude-opus-4"):
             kwargs_anthropic["temperature"] = 0.7
@@ -132,7 +134,11 @@ async def call_llm(
     log.info("llm call task=%s provider=%s model=%s", task, cfg.provider, cfg.model_name)
     ai: AIMessage = await chat.ainvoke(messages, config=config)
     text = ai.content if isinstance(ai.content, str) else str(ai.content)
-    return LLMCallResult(text=text, model=cfg.model_name, provider=cfg.provider)
+    stop_reason = ai.response_metadata.get("stop_reason") or ai.response_metadata.get("finish_reason")
+    truncated = stop_reason in {"max_tokens", "length"}
+    if truncated:
+        log.warning("llm output truncated task=%s stop_reason=%s", task, stop_reason)
+    return LLMCallResult(text=text, model=cfg.model_name, provider=cfg.provider, truncated=truncated)
 
 
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)

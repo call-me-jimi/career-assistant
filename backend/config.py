@@ -27,6 +27,7 @@ class LLMConfig(BaseModel):
     model_name: str = Field(default="claude-sonnet-4-5")
     base_url: str | None = None
     api_key: str | None = None
+    max_tokens: int | None = None
 
 
 class ModelPricing(BaseModel):

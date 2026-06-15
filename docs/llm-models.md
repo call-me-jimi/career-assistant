@@ -28,6 +28,7 @@ Sources: [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pr
 | `gpt-5.5-pro` | 30.00 | 180.00 |
 | `gpt-5.4` | 2.50 | 15.00 |
 | `gpt-5.4-mini` | 0.75 | 4.50 |
+| `claude-opus-4-8` | 5.00 | 25.00 |
 | `claude-opus-4-7` | 5.00 | 25.00 |
 | `claude-opus-4-6` | 5.00 | 25.00 |
 | `claude-sonnet-4-6` | 3.00 | 15.00 |

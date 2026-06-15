@@ -50,11 +50,15 @@ async def interview_review_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    new_version = {"iteration": iteration, "text": result.text}
+    briefing = result.text
+    if result.truncated:
+        briefing += "\n\n---\n⚠️ *Output truncated — token limit reached. Ask me to continue if needed.*"
+
+    new_version = {"iteration": iteration, "text": briefing}
     feedback_entry = {"iteration": iteration, "freetext": text}
 
     return {
-        "interview_briefing": result.text,
+        "interview_briefing": briefing,
         "interview_briefing_versions": state.interview_briefing_versions + [new_version],
         "interview_revision_feedback": state.interview_revision_feedback + [feedback_entry],
         "phase": "interview_review",

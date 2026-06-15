@@ -127,7 +127,10 @@ async def mock_interview_node(state: ApplicationState) -> dict:
         )
         action_finish(sid, aid)
 
-        emit_message(sid, f"**Q{seq + 1}.** {result.text}", key=f"mock:q:{seq}", localized=True)
+        q_text = result.text
+        if result.truncated:
+            q_text += "\n\n---\n⚠️ *Output truncated — token limit reached. Ask me to continue if needed.*"
+        emit_message(sid, f"**Q{seq + 1}.** {q_text}", key=f"mock:q:{seq}", localized=True)
         emit_message(
             sid,
             "_Reply with your answer — or `next` to skip, `different` to switch topic, "
@@ -170,7 +173,10 @@ async def mock_interview_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text, key=f"mock:fb:{seq}", localized=True)
+    fb_text = result.text
+    if result.truncated:
+        fb_text += "\n\n---\n⚠️ *Output truncated — token limit reached. Ask me to continue if needed.*"
+    emit_message(sid, fb_text, key=f"mock:fb:{seq}", localized=True)
     emit_message(
         sid,
         "_Reply with another answer (to dig deeper), `next` for a new question, or `done` to stop._",
@@ -213,10 +219,13 @@ async def interview_practice_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text, localized=True)
+    practice_text = result.text
+    if result.truncated:
+        practice_text += "\n\n---\n⚠️ *Output truncated — token limit reached. Ask me to continue if needed.*"
+    emit_message(sid, practice_text, localized=True)
     return {
         "interview_extras": state.interview_extras
-        + [{"kind": "practice", "topic": "common_questions", "content": result.text}],
+        + [{"kind": "practice", "topic": "common_questions", "content": practice_text}],
         "phase": "interview_menu",
     }
 
@@ -266,10 +275,13 @@ async def interview_tech_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text, localized=True)
+    tech_text = result.text
+    if result.truncated:
+        tech_text += "\n\n---\n⚠️ *Output truncated — token limit reached. Ask me to continue if needed.*"
+    emit_message(sid, tech_text, localized=True)
     return {
         "interview_extras": state.interview_extras
-        + [{"kind": "tech", "topic": topic, "content": result.text}],
+        + [{"kind": "tech", "topic": topic, "content": tech_text}],
         "phase": "interview_menu",
     }
 
@@ -295,9 +307,12 @@ async def interview_questions_node(state: ApplicationState) -> dict:
     )
     action_finish(sid, aid)
 
-    emit_message(sid, result.text, localized=True)
+    questions_text = result.text
+    if result.truncated:
+        questions_text += "\n\n---\n⚠️ *Output truncated — token limit reached. Ask me to continue if needed.*"
+    emit_message(sid, questions_text, localized=True)
     return {
         "interview_extras": state.interview_extras
-        + [{"kind": "questions", "topic": "to_ask_interviewer", "content": result.text}],
+        + [{"kind": "questions", "topic": "to_ask_interviewer", "content": questions_text}],
         "phase": "interview_menu",
     }

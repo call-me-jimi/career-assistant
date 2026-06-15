@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type AssistantType =
   | "cover_letter"
@@ -55,6 +55,21 @@ export default function LandingPage() {
   const [loading, setLoading] = useState<AssistantType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState("English");
+  const [hasPendingUpdates, setHasPendingUpdates] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/profiles")
+      .then((r) => r.json())
+      .then((d) =>
+        setHasPendingUpdates(
+          (d.profiles ?? []).some(
+            (p: { pending_suggestion_count?: number }) =>
+              (p.pending_suggestion_count ?? 0) > 0,
+          ),
+        ),
+      )
+      .catch(() => {});
+  }, []);
 
   async function startSession(assistantType: AssistantType) {
     setLoading(assistantType);
@@ -137,8 +152,18 @@ export default function LandingPage() {
           <p className="text-sm text-err whitespace-pre-wrap">{error}</p>
         )}
         <div className="flex gap-6 justify-center">
-          <a href="/profiles" className="text-sm text-accent hover:underline">
+          <a
+            href="/profiles"
+            className="text-sm text-accent hover:underline inline-flex items-center gap-1.5"
+          >
             Profiles →
+            {hasPendingUpdates && (
+              <span
+                className="h-2 w-2 rounded-full bg-accent"
+                title="You have profile updates to review."
+                aria-label="Profile updates to review"
+              />
+            )}
           </a>
           <a href="/dashboard" className="text-sm text-accent hover:underline">
             Dashboard →

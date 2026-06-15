@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from backend.agent.interrupts import emit_message
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
 from backend.storage.playbook import get_playbook, remove_playbook_item, upsert_playbook
@@ -185,6 +186,19 @@ async def patch_session_state(session_id: str, patch: dict) -> dict:
             409,
             "session is currently running — wait until the assistant is waiting for your input, then retry.",
         )
+    _FIELD_LABELS = {
+        "applicant_name": "name", "cv_text": "CV", "candidate_profile": "candidate profile",
+        "job_url": "job URL", "job_raw_text": "job ad", "job_title": "job title",
+        "company_name": "company", "job_description": "job description",
+        "company_description": "company description", "location": "location",
+        "job_source_type": "job source", "alignment_strategy": "alignment strategy",
+        "inferred_role_context": "role context", "positioning_strategy": "positioning strategy",
+        "cover_letter": "cover letter", "language": "language",
+        "interview_context": "interview context", "interview_briefing": "interview briefing",
+        "advisor_swot": "SWOT analysis",
+    }
+    labels = [_FIELD_LABELS.get(k, k.replace("_", " ")) for k in clean]
+    emit_message(session_id, f"I updated the {', '.join(labels)}.", role="user")
     return {"ok": True, "updated": list(clean.keys())}
 
 

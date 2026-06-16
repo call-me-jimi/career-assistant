@@ -102,11 +102,13 @@ def _render_evaluation_markdown(evaluation: dict[str, Any]) -> str:
             if q.get("strengths"):
                 parts.append("")
                 parts.append("**Strengths:**")
+                parts.append("")
                 for s in q["strengths"]:
                     parts.append(f"- {s}")
             if q.get("weaknesses"):
                 parts.append("")
                 parts.append("**Weaknesses:**")
+                parts.append("")
                 for w in q["weaknesses"]:
                     parts.append(f"- {w}")
             if q.get("suggested_improvement"):

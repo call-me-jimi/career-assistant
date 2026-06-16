@@ -95,15 +95,23 @@ def _render_evaluation_markdown(evaluation: dict[str, Any]) -> str:
         parts.append("### Per-question breakdown")
         for i, q in enumerate(per_q, 1):
             parts.append("")
-            parts.append(f"**Q{i}.** {q.get('question', '')}")
+            parts.append(f"#### Q{i}. {q.get('question', '')}")
             if q.get("answer_summary"):
-                parts.append(f"_Answer:_ {q['answer_summary']}")
+                parts.append("")
+                parts.append(f"**Answer:** {q['answer_summary']}")
             if q.get("strengths"):
-                parts.append("_Strengths:_ " + "; ".join(q["strengths"]))
+                parts.append("")
+                parts.append("**Strengths:**")
+                for s in q["strengths"]:
+                    parts.append(f"- {s}")
             if q.get("weaknesses"):
-                parts.append("_Weaknesses:_ " + "; ".join(q["weaknesses"]))
+                parts.append("")
+                parts.append("**Weaknesses:**")
+                for w in q["weaknesses"]:
+                    parts.append(f"- {w}")
             if q.get("suggested_improvement"):
-                parts.append(f"_Improve:_ {q['suggested_improvement']}")
+                parts.append("")
+                parts.append(f"**Improvement:** {q['suggested_improvement']}")
     return "\n".join(parts)
 
 
@@ -251,6 +259,7 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
       h1 {{ font-size: 18pt; margin: 0 0 0.4em 0; color: #111; }}
       h2 {{ font-size: 14pt; margin: 1.2em 0 0.3em 0; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 0.15em; }}
       h3 {{ font-size: 12pt; margin: 1em 0 0.2em 0; color: #333; }}
+      h4 {{ font-size: 11pt; margin: 1.2em 0 0.2em 0; color: #111; font-weight: bold; border-left: 3px solid #888; padding-left: 0.5em; }}
       p {{ margin: 0 0 0.6em 0; }}
       ul, ol {{ margin: 0 0 0.6em 1.5em; padding: 0; }}
       li {{ margin-bottom: 0.25em; }}

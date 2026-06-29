@@ -1,0 +1,48 @@
+Prepare polished sample answers to the most common interview questions for this candidate, this role, and this company.
+
+Cover at least:
+1. "Tell me about yourself"
+2. "Why this company / why this role"
+3. "What's your biggest weakness"
+4. "Tell me about a time you ..." (pick the most relevant behavioural prompt for this role: leadership, conflict, ambiguity, technical depth — your choice)
+5. "Where do you see yourself in 3–5 years"
+
+For each question, write a first-person answer in natural spoken English — conversational, not formal. Use contractions, shorter sentences, and natural transitions the way someone actually speaks. Aim for 4–8 sentences, grounded in their real CV and alignment strategy. Lead each with the strongest hook for *this* role. Avoid formal written language; the candidate should be able to say this aloud without sounding rehearsed.
+
+ROLE
+{{ job_title }} at {{ company_name }}
+
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+CANDIDATE PROFILE
+"""
+{{ candidate_profile }}
+"""
+
+CANDIDATE CV (raw)
+"""
+{{ cv_content }}
+"""
+
+ALIGNMENT STRATEGY
+"""
+{{ alignment_strategy }}
+"""
+
+{% if coaching_history %}
+CANDIDATE'S DOCUMENTED WEAKNESSES FROM PAST EVALUATIONS
+{% for entry in coaching_history %}
+Evaluation {{ loop.index }}{% if entry.job_title %} ({{ entry.job_title }}{% if entry.company_name %} at {{ entry.company_name }}{% endif %}){% endif %}:
+  {{ entry.weaknesses | join("; ") if entry.weaknesses else "none recorded" }}
+{% endfor %}
+
+Tailor the sample answers to directly address these documented patterns:
+- For "tell me about yourself" and "why this role", ensure the narrative does not fall into the same traps.
+- For "biggest weakness", surface one of the real documented weaknesses above — frame it honestly and show a concrete improvement arc. Do not invent a safe-sounding fake weakness.
+- For the behavioural question, pick a scenario that showcases improvement in the documented weak areas.
+{% endif %}
+
+Output Markdown. For each question: a `### ` heading with the question, then the answer. No generic disclaimers; no "this is just a template". The answers should sound like something a confident person would say naturally in an interview — not polished prose to be read aloud.

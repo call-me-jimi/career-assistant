@@ -1,7 +1,9 @@
 """Optional company research step using web search.
 
-Runs after confirm_info. If the extracted company_description is too thin
-(under ~200 chars), searches for background info and enriches it via LLM.
+Runs after confirm_info. Searches for background info and enriches the
+company description regardless of what the job posting already contains,
+since job postings rarely include interview-relevant details like culture
+signals, recent news, or funding stage.
 Skips silently if TAVILY_API_KEY is not set.
 """
 
@@ -11,8 +13,6 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
 from backend.llm.service import call_llm
 from backend.tools.web_search import tavily_search
-
-MIN_DESCRIPTION_LENGTH = 200
 
 SUMMARISE_SYSTEM = (
     "You are a research assistant. Given search results about a company, "
@@ -25,15 +25,12 @@ SUMMARISE_SYSTEM = (
 async def research_company_node(state: ApplicationState) -> dict:
     sid = state.session_id
 
-    if len(state.company_description.strip()) >= MIN_DESCRIPTION_LENGTH:
-        return {"phase": "classify_flow"}
-
     company = state.company_name
     if not company:
         return {"phase": "classify_flow"}
 
     aid = action_start(sid, "research_company", f"Researching {company}")
-    query = f"{company} company overview culture products"
+    query = f"{company} company overview culture products recent news leadership"
     results = tavily_search(query, max_results=5)
 
     if not results:

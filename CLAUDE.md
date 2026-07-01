@@ -63,3 +63,5 @@ frontend/             # Next.js; use npm (not uv) inside this directory
 - **`PATCH /api/sessions/{id}/state` requires the runner to be paused at an interrupt.** It returns 409 if the graph is currently running. Only patch state from the details page, not mid-stream.
 
 - **Always flag unmerged worktree changes.** When work is done in a git worktree, end the session with an explicit note if changes haven't been merged to main yet. The dev server runs from the main working copy, so unmerged changes have no effect on the running app.
+
+- **Tag releases with semantic versioning.** Not every commit needs a tag — tag when a meaningful feature or fix is complete and merged to `main`. Use `vMAJOR.MINOR.PATCH`: bump `MINOR` for new features, `PATCH` for bug fixes, `MAJOR` for breaking changes. Current version: `v0.1.0`. After tagging, push with `git push origin <tag>`. At the end of any session that ships a feature or fix, remind the user to tag if appropriate.

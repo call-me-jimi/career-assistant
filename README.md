@@ -42,8 +42,25 @@ public internet as-is**; it has no auth layer and isn't hardened for multi-user 
 
 ## Screenshots
 
-> _Add a few screenshots/GIFs here — the four-assistant landing page, the chat + LLM-cards layout,
-> and an interview evaluation report. They're the fastest way for visitors to grasp what this does._
+**Landing page** — pick an assistant and start a conversation.
+
+![Landing page](docs/screenshots/landing-page.png)
+
+**Cover Letter assistant** — the chat UI with a live LLM interactions panel on the right.
+
+![Cover Letter assistant](docs/screenshots/cover-letter-assistant.png)
+
+**LLM call detail** — every call is inspectable: system prompt, user prompt, tokens, cost, and duration.
+
+![LLM call detail](docs/screenshots/llm-card.png)
+
+**Session usage** — per-task and per-model token and cost breakdown for a full session.
+
+![Session usage](docs/screenshots/session-usage.png)
+
+**Interview Evaluator** — scored performance report with strengths, weaknesses, and a per-question breakdown.
+
+![Interview Evaluator](docs/screenshots/interview-evaluation-assistant.png)
 
 ## Quickstart
 

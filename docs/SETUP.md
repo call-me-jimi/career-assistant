@@ -72,7 +72,19 @@ provider, use `ollama` and point `OLLAMA_BASE_URL` at your Ollama server.
 
 ## Google Sheets export (optional)
 
-The app appends a row per application to a spreadsheet you own:
+The app appends a row per application to a spreadsheet you own. A ready-made template is included at
+`docs/Job Applications - Template.xlsx` — import it into Google Sheets (File → Import) to get the
+correct column layout out of the box.
+
+The sheet tracks one application per row with columns for job title, company, location, and status,
+followed by date columns for each stage in the pipeline: Submission, Follow-up Message, Recruiter
+Interview, Screening Interview, Hiring Manager Interview, Technical Interview, Leadership Interview,
+Case Study, Case Study Presentation, On Hold, and Rejection. A visual timeline of coloured blocks
+makes it easy to scan pipeline progress at a glance.
+
+![Application tracker](screenshots/application-sheet.png)
+
+**Setup:**
 
 1. Create a Google Cloud project and enable the Google Sheets API.
 2. Create a service account, generate a JSON key, and store it locally.

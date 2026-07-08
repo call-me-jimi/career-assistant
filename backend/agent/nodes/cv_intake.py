@@ -36,6 +36,16 @@ async def cv_intake_node(state: ApplicationState) -> dict:
         emit_message(sid, "No CV received — I'll continue without one, but the cover letter may be less targeted.")
         return {"phase": "collect_job"}
 
+    emit_message(
+        sid,
+        "Got your CV — I'll build a candidate profile from it. Would you like to "
+        "save that profile for future sessions?\n\n"
+        "Give it a short label (e.g. `Backend focus`, `Data science`) or reply `no` to skip saving.",
+        key="cv_intake:label_prompt",
+    )
+    label_reply = interrupt({"kind": "profile_label"})
+    label = (label_reply or "").strip() if isinstance(label_reply, str) else ""
+
     action_id = action_start(sid, "candidate_profile", "Extracting candidate profile from your CV")
     system = load_system_prompt("extract_candidate_profile_from_cv")
     user = render_user_prompt("extract_candidate_profile_from_cv", cv_content=cv_text)
@@ -46,15 +56,6 @@ async def cv_intake_node(state: ApplicationState) -> dict:
         session_id=sid,
     )
     action_finish(sid, action_id)
-
-    emit_message(
-        sid,
-        "Your candidate profile is ready. Would you like to save it for future sessions?\n\n"
-        "Give it a short label (e.g. `Backend focus`, `Data science`) or reply `no` to skip saving.",
-        key="cv_intake:label_prompt",
-    )
-    label_reply = interrupt({"kind": "profile_label"})
-    label = (label_reply or "").strip() if isinstance(label_reply, str) else ""
 
     if label.lower() in {"no", "skip", "don't save", "dont save"}:
         emit_message(sid, "Okay — using this profile for this session only, not saving it.")

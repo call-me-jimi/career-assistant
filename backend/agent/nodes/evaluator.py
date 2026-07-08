@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+from functools import partial
 from pathlib import Path
 
 from langgraph.types import interrupt
@@ -85,13 +87,17 @@ async def evaluator_transcribe_node(state: ApplicationState) -> dict:
     provider = get_cached_provider(load_settings().transcription)
 
     progress_seq = {"n": 0}
+    loop = asyncio.get_running_loop()
 
     def on_progress(pct: float, snippet: str) -> None:
         progress_seq["n"] += 1
-        emit_message(
-            sid,
-            f"Transcribing… {int(pct * 100)}%",
-            key=f"evaluator_transcribe:progress:{progress_seq['n']}",
+        loop.call_soon_threadsafe(
+            partial(
+                emit_message,
+                sid,
+                f"Transcribing… {int(pct * 100)}%",
+                key=f"evaluator_transcribe:progress:{progress_seq['n']}",
+            )
         )
 
     try:

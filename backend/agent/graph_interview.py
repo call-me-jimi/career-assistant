@@ -26,6 +26,7 @@ from backend.agent.nodes.interview_extras import (
     interview_practice_node,
     interview_questions_node,
     interview_tech_node,
+    mock_interview_answer_node,
     mock_interview_node,
 )
 from backend.agent.nodes.interview_review import interview_review_node
@@ -50,6 +51,7 @@ def build_interview_graph(checkpointer):
     g.add_node("interview_review", interview_review_node)
     g.add_node("interview_menu", interview_menu_node)
     g.add_node("interview_mock", mock_interview_node)
+    g.add_node("interview_mock_answer", mock_interview_answer_node)
     g.add_node("interview_practice", interview_practice_node)
     g.add_node("interview_tech", interview_tech_node)
     g.add_node("interview_questions", interview_questions_node)
@@ -99,12 +101,14 @@ def build_interview_graph(checkpointer):
         },
     )
 
-    def mock_router(state: ApplicationState) -> str:
+    g.add_edge("interview_mock", "interview_mock_answer")
+
+    def mock_answer_router(state: ApplicationState) -> str:
         return "interview_mock" if state.phase == "interview_mock" else "interview_menu"
 
     g.add_conditional_edges(
-        "interview_mock",
-        mock_router,
+        "interview_mock_answer",
+        mock_answer_router,
         {"interview_mock": "interview_mock", "interview_menu": "interview_menu"},
     )
 

@@ -137,18 +137,9 @@ async def mock_interview_node(state: ApplicationState) -> dict:
             "`done` to stop._",
             key=f"mock:hint:{seq}",
         )
-        question_turn = ChatTurn(role="assistant", content=result.text)
-        reply = interrupt({"kind": "mock_interview"})
-        text = (reply or "").strip() if isinstance(reply, str) else ""
-        if text.lower() in _MOCK_STEER_END:
-            return {
-                "mock_interview_transcript": turns + [question_turn],
-                "phase": "interview_menu",
-            }
         return {
-            "mock_interview_transcript": turns
-            + [question_turn, ChatTurn(role="user", content=text)],
-            "phase": "interview_mock",
+            "mock_interview_transcript": turns + [ChatTurn(role="assistant", content=result.text)],
+            "phase": "interview_mock_answer",
         }
 
     answer_text = turns[-1].content
@@ -182,19 +173,22 @@ async def mock_interview_node(state: ApplicationState) -> dict:
         "_Reply with another answer (to dig deeper), `next` for a new question, or `done` to stop._",
         key=f"mock:fb-hint:{seq}",
     )
-    feedback_turn = ChatTurn(
-        role="assistant", content=f"{_FEEDBACK_MARKER}\n{result.text}"
-    )
+    return {
+        "mock_interview_transcript": turns
+        + [ChatTurn(role="assistant", content=f"{_FEEDBACK_MARKER}\n{result.text}")],
+        "phase": "interview_mock_answer",
+    }
+
+
+async def mock_interview_answer_node(state: ApplicationState) -> dict:
+    """Collect the candidate's reply to the last question/feedback turn."""
     reply = interrupt({"kind": "mock_interview"})
     text = (reply or "").strip() if isinstance(reply, str) else ""
     if text.lower() in _MOCK_STEER_END:
-        return {
-            "mock_interview_transcript": turns + [feedback_turn],
-            "phase": "interview_menu",
-        }
+        return {"phase": "interview_menu"}
     return {
-        "mock_interview_transcript": turns
-        + [feedback_turn, ChatTurn(role="user", content=text)],
+        "mock_interview_transcript": state.mock_interview_transcript
+        + [ChatTurn(role="user", content=text)],
         "phase": "interview_mock",
     }
 

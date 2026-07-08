@@ -131,11 +131,17 @@ KNOWN_TASKS: list[str] = [
     "refine_cover_letter",
     "qa",
     "interview_briefing",
+    "refine_interview_briefing",
+    "mock_interview_question",
+    "mock_interview_feedback",
+    "interview_practice",
+    "interview_tech",
+    "interview_tech_pick",
+    "interview_questions",
     "career_advisor_chat",
     "career_advisor_swot",
     "synthesize_learning",
     "ui_translation",
-    "transcribe_interview",
     "analyze_interview_performance",
 ]
 

@@ -70,22 +70,8 @@ async def extract_info_node(state: ApplicationState) -> dict:
         "company_description": company_description,
         "location": location,
         "job_raw_text": raw_text,
+        "job_ad_language": job_language,
         "phase": "confirm_info",
     }
-
-    if job_language and job_language.lower() != state.language.lower():
-        emit_message(
-            sid,
-            f"The job ad is in **{job_language}**, but your current output language is **{state.language}**. "
-            f"Would you like to switch the output language to **{job_language}**?",
-            key="extract_info:language_switch",
-        )
-        reply = interrupt({"kind": "language_switch", "detected_language": job_language, "current_language": state.language})
-        answered_yes = (
-            (isinstance(reply, str) and reply.strip().lower() in {"yes", "y", "switch", "ja", "oui", "si", "sí"})
-            or (isinstance(reply, dict) and reply.get("switch"))
-        )
-        if answered_yes:
-            update["language"] = job_language
 
     return update

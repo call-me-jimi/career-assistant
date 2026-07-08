@@ -21,6 +21,7 @@ from backend.agent.nodes.evaluator import (
 from backend.agent.nodes.export_node import export_node, post_export_node
 from backend.agent.nodes.extract_info import extract_info_node
 from backend.agent.nodes.fill_missing_info import fill_missing_info_node
+from backend.agent.nodes.language_switch import language_switch_node
 from backend.agent.nodes.greeting import greeting_node
 from backend.agent.state import ApplicationState
 
@@ -32,6 +33,7 @@ def build_evaluator_graph(checkpointer):
     g.add_node("cv_intake", cv_intake_node)
     g.add_node("collect_job", collect_job_node)
     g.add_node("extract_info", extract_info_node)
+    g.add_node("language_switch", language_switch_node)
     g.add_node("fill_missing_info", fill_missing_info_node)
     g.add_node("confirm_info", confirm_info_node)
     g.add_node("evaluator_context", evaluator_context_node)
@@ -46,7 +48,8 @@ def build_evaluator_graph(checkpointer):
     g.add_edge("greeting", "cv_intake")
     g.add_edge("cv_intake", "collect_job")
     g.add_edge("collect_job", "extract_info")
-    g.add_edge("extract_info", "fill_missing_info")
+    g.add_edge("extract_info", "language_switch")
+    g.add_edge("language_switch", "fill_missing_info")
     g.add_edge("fill_missing_info", "confirm_info")
     g.add_edge("confirm_info", "evaluator_context")
     g.add_edge("evaluator_context", "evaluator_upload")

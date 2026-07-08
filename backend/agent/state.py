@@ -58,6 +58,7 @@ class ApplicationState(BaseModel):
     job_description: str = ""
     company_description: str = ""
     location: str = ""
+    job_ad_language: str = ""  # language detected in the job ad (may differ from session language)
     job_source_type: Literal["direct", "recruiter", ""] = ""
 
     # Strategy

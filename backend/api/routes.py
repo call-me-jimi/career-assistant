@@ -314,8 +314,8 @@ async def global_stats() -> dict:
 async def get_settings() -> dict:
     s = load_settings()
     return {
-        "default_llm": s.default_llm.model_dump(),
-        "task_llm_configs": {k: v.model_dump() for k, v in s.task_llm_configs.items()},
+        "default_llm": s.default_llm.model_dump(exclude={"api_key"}),
+        "task_llm_configs": {k: v.model_dump(exclude={"api_key"}) for k, v in s.task_llm_configs.items()},
         "model_pricing": {k: v.model_dump() for k, v in s.model_pricing.items()},
         "known_tasks": KNOWN_TASKS,
         "google_sheets_spreadsheet_id": s.google_sheets_spreadsheet_id,

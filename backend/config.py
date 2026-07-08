@@ -141,8 +141,14 @@ KNOWN_TASKS: list[str] = [
 
 
 def save_settings(settings: AppSettings) -> None:
-    """Persist the editable portion of AppSettings to settings.json."""
+    """Persist the editable portion of AppSettings to settings.json.
+
+    API keys are never written to disk — they live in .env only.
+    """
     payload = settings.model_dump(mode="json", exclude_none=False)
+    payload["default_llm"]["api_key"] = None
+    for cfg in payload.get("task_llm_configs", {}).values():
+        cfg["api_key"] = None
     SETTINGS_FILE.write_text(json.dumps(payload, indent=2))
 
 

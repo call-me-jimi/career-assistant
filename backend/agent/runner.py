@@ -66,7 +66,6 @@ class SessionRunner:
 
     def _interrupt_from(self, snapshot: Any) -> Any | None:
         """Extract the current interrupt payload from a graph state snapshot."""
-        interrupts = getattr(snapshot, "interrupts", None) or getattr(snapshot, "next", None)
         try:
             tasks = getattr(snapshot, "tasks", None) or ()
             for t in tasks:
@@ -98,10 +97,7 @@ class SessionRunner:
 
                 next_input: Any = initial
                 while True:
-                    if isinstance(next_input, Command):
-                        result = await graph.ainvoke(next_input, config=config)
-                    else:
-                        result = await graph.ainvoke(next_input, config=config)
+                    result = await graph.ainvoke(next_input, config=config)
 
                     snapshot = await graph.aget_state(config)
                     interrupt_value = self._interrupt_from(snapshot)
@@ -112,8 +108,7 @@ class SessionRunner:
 
                     if interrupt_value is None:
                         # Graph reached END — snapshot state before connection closes
-                        snap2 = await graph.aget_state(config)
-                        vals = getattr(snap2, "values", None) or {}
+                        vals = getattr(snapshot, "values", None) or {}
                         self._final_state = vals if isinstance(vals, dict) else dict(vals)
                         bus.publish(
                             self.session_id,

@@ -1,15 +1,8 @@
-import asyncio
-import pytest
 import aiosqlite
+import pytest
+
 import backend.storage.db as db_module
 from backend.storage.db import SCHEMA, _migrate
-
-
-@pytest.fixture
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture

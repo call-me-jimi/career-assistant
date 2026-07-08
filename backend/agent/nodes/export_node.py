@@ -53,7 +53,11 @@ async def export_node(state: ApplicationState) -> dict:
             delivery = delivery_text
         else:
             delivery = "download"
-            emit_message(sid, "Defaulting to **download** (link in chat).")
+            emit_message(
+                sid,
+                "Defaulting to **download** (link in chat).",
+                key=f"export:delivery-default:{len(state.export_results)}",
+            )
 
     targets: list[Path | None]
     if state.assistant_type in {"interview_prep", "interview_evaluator"}:

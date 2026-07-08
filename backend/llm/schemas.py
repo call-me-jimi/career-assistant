@@ -17,11 +17,6 @@ class HiringManagerFeedback(BaseModel):
     reasoning: str = ""
 
 
-class ComparisonResult(BaseModel):
-    recommended_version_id: str
-    reasoning: str = ""
-
-
 class CommunicationMetrics(BaseModel):
     pace: Literal["too_fast", "appropriate", "too_slow"]
     filler_words: list[str] = Field(default_factory=list)

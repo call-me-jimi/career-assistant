@@ -21,10 +21,6 @@ from backend.observability.event_bus import bus
 from backend.storage.traces import record_trace
 
 
-def _truncate(text: str, limit: int = 0) -> str:
-    return text
-
-
 def _split_messages(messages: list[list[BaseMessage]]) -> tuple[str, str]:
     """Split a flattened message batch into (system_prompt, user_prompt).
 
@@ -68,8 +64,8 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
         await self._on_start(
             run_id=run_id,
             metadata=metadata or {},
-            system_prompt=_truncate(system_prompt),
-            user_prompt=_truncate(user_prompt),
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
         )
 
     async def on_llm_start(
@@ -86,7 +82,7 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
             run_id=run_id,
             metadata=metadata or {},
             system_prompt="",
-            user_prompt=_truncate("\n\n".join(prompts)),
+            user_prompt="\n\n".join(prompts),
         )
 
     async def _on_start(
@@ -137,7 +133,7 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
         ended_at = time.time()
         duration_ms = int((ended_at - started["started_at"]) * 1000)
         input_tokens, output_tokens = _usage_from_result(response)
-        output_text = _truncate(_response_text(response))
+        output_text = _response_text(response)
         session_id = started["session_id"]
         if session_id:
             bus.publish(

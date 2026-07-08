@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -29,10 +29,6 @@ class ChatTurn(BaseModel):
 class ExportResult(BaseModel):
     kind: str  # "pdf" | "md" | "json" | "sheets"
     path: str
-
-
-def _last_write_wins(a: Any, b: Any) -> Any:
-    return b if b is not None else a
 
 
 ASSISTANT_TYPE = Literal["cover_letter", "interview_prep", "career_advisor", "interview_evaluator"]

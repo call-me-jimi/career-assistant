@@ -9,6 +9,8 @@ Skips silently if TAVILY_API_KEY is not set.
 
 from __future__ import annotations
 
+import asyncio
+
 from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
 from backend.llm.service import call_llm
@@ -31,7 +33,7 @@ async def research_company_node(state: ApplicationState) -> dict:
 
     aid = action_start(sid, "research_company", f"Researching {company}")
     query = f"{company} company overview culture products recent news leadership"
-    results = tavily_search(query, max_results=5)
+    results = await asyncio.to_thread(tavily_search, query, max_results=5)
 
     if not results:
         action_finish(sid, aid, status="ok")

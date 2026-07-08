@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import time
 from pathlib import Path
@@ -98,14 +99,14 @@ async def export_node(state: ApplicationState) -> dict:
             aid = action_start(sid, f"export_{kind}", f"Exporting {kind}{label_suffix}")
             try:
                 if kind == "pdf":
-                    path = exporters.export_pdf(state_dict, target_dir=target)
+                    path = await asyncio.to_thread(exporters.export_pdf, state_dict, target_dir=target)
                 elif kind == "md":
-                    path = exporters.export_markdown(state_dict, target_dir=target)
+                    path = await asyncio.to_thread(exporters.export_markdown, state_dict, target_dir=target)
                 elif kind == "json":
                     traces = await list_traces(sid)
-                    path = exporters.export_json(state_dict, traces, target_dir=target)
+                    path = await asyncio.to_thread(exporters.export_json, state_dict, traces, target_dir=target)
                 elif kind == "sheets":
-                    path = exporters.export_google_sheets(state_dict)
+                    path = await asyncio.to_thread(exporters.export_google_sheets, state_dict)
                 else:
                     action_finish(sid, aid, status="error")
                     emit_message(sid, f"Unknown export kind: {kind}")

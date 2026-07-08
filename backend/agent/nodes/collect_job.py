@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 
 from langgraph.types import interrupt
@@ -54,7 +55,7 @@ async def collect_job_node(state: ApplicationState) -> dict:
     if url:
         action_id = action_start(sid, "scrape", f"Scraping {url}")
         try:
-            scraped = scrape_job_page(url)
+            scraped = await asyncio.to_thread(scrape_job_page, url)
             action_finish(sid, action_id)
             emit_message(sid, "Fetched the page — extracting job details.")
 

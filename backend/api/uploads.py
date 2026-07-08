@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import uuid
 from pathlib import Path
@@ -28,7 +29,7 @@ async def upload_cv(file: UploadFile = File(...)) -> dict:
         tmp.write(await file.read())
         tmp_path = tmp.name
     try:
-        text = extract_cv_text(tmp_path)
+        text = await asyncio.to_thread(extract_cv_text, tmp_path)
     finally:
         Path(tmp_path).unlink(missing_ok=True)
     return {"cv_text": text, "chars": len(text)}

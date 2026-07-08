@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from langgraph.types import interrupt
 
 from backend.agent.interrupts import action_finish, action_start, emit_message
@@ -66,7 +68,7 @@ async def qa_answer_node(state: ApplicationState) -> dict:
     if item.kind == "salary":
         aid = action_start(sid, "salary_search", "Looking up salary benchmarks")
         query = f"salary {state.job_title} {state.location or ''} {state.company_name}"
-        results = tavily_search(query, max_results=4)
+        results = await asyncio.to_thread(tavily_search, query, max_results=4)
         action_finish(sid, aid)
         if results:
             extra = "\n\nMarket data:\n" + "\n".join(

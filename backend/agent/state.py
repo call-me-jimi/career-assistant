@@ -61,6 +61,10 @@ class ApplicationState(BaseModel):
     job_ad_language: str = ""  # language detected in the job ad (may differ from session language)
     job_source_type: Literal["direct", "recruiter", ""] = ""
 
+    # Job-journey continuation (see backend/storage/journeys.py)
+    journey_id: str | None = None
+    journey_query: str = ""  # company filter typed at the select_journey picker
+
     # Strategy
     alignment_strategy: str = ""
     inferred_role_context: str = ""

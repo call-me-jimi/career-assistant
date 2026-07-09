@@ -341,6 +341,8 @@ function placeholderFor(kind?: string): string {
     case "collect_job":
     case "collect_job_text":
       return "Paste a job URL or the full job description…";
+    case "select_journey":
+      return "Number to continue · URL or job text to start fresh · company name to search";
     case "ask_field:job_title":
       return "e.g. Senior Backend Engineer";
     case "ask_field:company_name":

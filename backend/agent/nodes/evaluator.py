@@ -148,6 +148,7 @@ async def _generate_evaluation(
         job_description=state.job_description,
         candidate_profile=state.candidate_profile,
         interview_context=state.interview_context or "",
+        interview_briefing=state.interview_briefing or "",
         transcript=_format_transcript(state.interview_transcript),
         revision_feedback=revision_feedback,
     )

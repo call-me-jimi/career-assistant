@@ -1,0 +1,60 @@
+Evaluate this real interview the candidate has just given. Return the JSON object specified in the system prompt — nothing else.
+
+--------------------------------------------------
+ROLE INFORMATION
+
+Company:
+{{ company_name }}
+
+Job Title:
+{{ job_title }}
+
+--------------------------------------------------
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+--------------------------------------------------
+CANDIDATE PROFILE (CV — use ONLY to identify missed opportunities, never as evidence of what was said)
+The candidate's CV is provided so you can flag things they could have mentioned but didn't.
+Do NOT attribute anything from this profile to the candidate unless it also appears in the transcript.
+"""
+{{ candidate_profile }}
+"""
+
+--------------------------------------------------
+INTERVIEW CONTEXT (round, format, focus areas — if the candidate shared any)
+"""
+{{ interview_context }}
+"""
+
+--------------------------------------------------
+{% if interview_briefing %}
+INTERVIEW BRIEFING THE CANDIDATE PREPARED WITH
+
+The candidate prepared for this interview using the briefing below. Assess how well they executed on it — did they land the positioning, stories, and answers they had planned? Note both where the preparation paid off and where they failed to use it.
+"""
+{{ interview_briefing }}
+"""
+
+--------------------------------------------------
+{% endif %}
+INTERVIEW TRANSCRIPT (the only source of evidence for what the candidate actually said)
+The transcript was produced by automatic speech recognition with no speaker labels. Interpret who said what from phrasing and structure.
+
+"""
+{{ transcript }}
+"""
+
+--------------------------------------------------
+
+{% if revision_feedback %}
+The candidate has reviewed your previous evaluation and asked for these revisions:
+"""
+{{ revision_feedback }}
+"""
+Address their feedback while keeping the evaluation honest and evidence-based.
+{% endif %}
+
+Return the InterviewEvaluation JSON object now. No prose around it.

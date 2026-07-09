@@ -6,6 +6,7 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
+from backend.storage.journeys import update_journey
 
 
 async def strategy_node(state: ApplicationState) -> dict:
@@ -34,6 +35,16 @@ async def strategy_node(state: ApplicationState) -> dict:
             task="position_candidate", system=system, user=user, session_id=sid
         )
         action_finish(sid, aid)
+        if state.journey_id:
+            try:
+                await update_journey(
+                    state.journey_id,
+                    inferred_role_context=role_result.text,
+                    positioning_strategy=pos_result.text,
+                    job_source_type=state.job_source_type,
+                )
+            except Exception:
+                pass
         emit_message(sid, "Strategy prepared — now drafting your cover letter.")
         return {
             "inferred_role_context": role_result.text,
@@ -53,5 +64,14 @@ async def strategy_node(state: ApplicationState) -> dict:
         task="alignment_strategy", system=system, user=user, session_id=sid
     )
     action_finish(sid, aid)
+    if state.journey_id:
+        try:
+            await update_journey(
+                state.journey_id,
+                alignment_strategy=result.text,
+                job_source_type=state.job_source_type,
+            )
+        except Exception:
+            pass
     emit_message(sid, "Strategy prepared — now drafting your cover letter.")
     return {"alignment_strategy": result.text, "phase": "cl_loop"}

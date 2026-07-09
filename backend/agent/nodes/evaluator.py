@@ -23,6 +23,7 @@ from backend.llm.schemas import InterviewEvaluation
 from backend.llm.service import call_llm, extract_json
 from backend.llm.translate import with_language_directive
 from backend.storage.coaching_insights import save_coaching_insight
+from backend.storage.journeys import update_journey
 from backend.tools.transcribe import get_cached_provider
 
 
@@ -211,6 +212,17 @@ async def evaluator_review_node(state: ApplicationState) -> dict:
                 )
             except Exception:
                 pass  # never block the accept flow
+        if state.journey_id and state.interview_evaluation:
+            try:
+                ev = state.interview_evaluation
+                await update_journey(
+                    state.journey_id,
+                    evaluation_summary=json.dumps(
+                        {"overall_score": ev.get("overall_score"), "summary": ev.get("summary", "")}
+                    ),
+                )
+            except Exception:
+                pass
         return {"phase": "export"}
 
     aid = action_start(

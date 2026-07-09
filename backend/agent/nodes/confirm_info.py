@@ -8,6 +8,9 @@ from langgraph.types import interrupt
 
 from backend.agent.interrupts import emit_message
 from backend.agent.state import ApplicationState
+from backend.storage.journeys import create_journey, find_journey, update_journey
+
+_JOURNEY_FIELDS = ("job_url", "job_title", "company_name", "location", "job_description", "job_ad_language")
 
 FIELDS = [
     ("job_title", "Job title"),
@@ -40,12 +43,38 @@ async def confirm_info_node(state: ApplicationState) -> dict:
     }})
 
     corrections = _parse_reply(reply)
+
+    final = {
+        field: corrections.get(field, getattr(state, field, ""))
+        for field in _JOURNEY_FIELDS
+    }
+    final = {k: v for k, v in final.items() if v}
+    jid = state.journey_id
+    try:
+        if jid:
+            await update_journey(jid, **final)
+        else:
+            existing = await find_journey(
+                profile_id=state.profile_id,
+                job_url=final.get("job_url", ""),
+                company_name=final.get("company_name", ""),
+                job_title=final.get("job_title", ""),
+            )
+            if existing:
+                jid = existing["journey_id"]
+                await update_journey(jid, **final)
+            else:
+                jid = await create_journey(profile_id=state.profile_id, **final)
+    except Exception:
+        pass
+
     if corrections:
         emit_message(sid, "Updated — moving on.")
         corrections["phase"] = "classify_flow"
+        corrections["journey_id"] = jid
         return corrections
 
-    return {"phase": "classify_flow"}
+    return {"phase": "classify_flow", "journey_id": jid}
 
 
 def _parse_reply(reply: object) -> dict:

@@ -29,6 +29,7 @@ from backend.storage.applications import (
     insert_hm_iteration,
     list_recent_applications,
 )
+from backend.storage.journeys import update_journey
 from backend.storage.playbook import get_playbook, upsert_playbook
 from backend.storage.suggestions import (
     approve_suggestion,
@@ -75,6 +76,12 @@ def _hm_iteration_rows(state: ApplicationState) -> list[dict[str, Any]]:
 
 
 async def synthesize_learning_node(state: ApplicationState) -> dict:
+    if state.journey_id and state.cover_letter:
+        try:
+            await update_journey(state.journey_id, cover_letter=state.cover_letter)
+        except Exception:
+            pass
+
     settings = load_settings()
     if not _should_run(state, settings):
         return {}

@@ -14,6 +14,7 @@ import asyncio
 from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
 from backend.llm.service import call_llm
+from backend.storage.journeys import update_journey
 from backend.tools.web_search import tavily_search
 
 SUMMARISE_SYSTEM = (
@@ -53,6 +54,11 @@ async def research_company_node(state: ApplicationState) -> dict:
     action_finish(sid, aid)
 
     enriched = f"{state.company_description}\n\n---\n\n{result.text}".strip()
+    if state.journey_id:
+        try:
+            await update_journey(state.journey_id, company_description=enriched)
+        except Exception:
+            pass
     emit_message(
         sid,
         f"Added some background on **{company}** to the company profile.",

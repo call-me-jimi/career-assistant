@@ -21,6 +21,7 @@ from backend.agent.nodes.language_switch import language_switch_node
 from backend.agent.nodes.greeting import greeting_node
 from backend.agent.nodes.qa_nodes import qa_answer_node, qa_menu_node
 from backend.agent.nodes.research_company import research_company_node
+from backend.agent.nodes.select_journey import select_journey_node
 from backend.agent.nodes.strategy import strategy_node
 from backend.agent.nodes.synthesize_learning import (
     review_learned_suggestion_node,
@@ -34,6 +35,7 @@ def build_graph(checkpointer):
 
     g.add_node("greeting", greeting_node)
     g.add_node("cv_intake", cv_intake_node)
+    g.add_node("select_journey", select_journey_node)
     g.add_node("collect_job", collect_job_node)
     g.add_node("extract_info", extract_info_node)
     g.add_node("language_switch", language_switch_node)
@@ -53,7 +55,17 @@ def build_graph(checkpointer):
 
     g.add_edge(START, "greeting")
     g.add_edge("greeting", "cv_intake")
-    g.add_edge("cv_intake", "collect_job")
+    g.add_edge("cv_intake", "select_journey")
+
+    def select_journey_router(state: ApplicationState) -> str:
+        targets = {"select_journey", "collect_job", "research_company", "classify_flow", "strategy", "cl_loop"}
+        return state.phase if state.phase in targets else "collect_job"
+
+    g.add_conditional_edges(
+        "select_journey",
+        select_journey_router,
+        {t: t for t in ("select_journey", "collect_job", "research_company", "classify_flow", "strategy", "cl_loop")},
+    )
     g.add_edge("collect_job", "extract_info")
     g.add_edge("extract_info", "language_switch")
     g.add_edge("language_switch", "fill_missing_info")

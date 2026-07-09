@@ -122,6 +122,30 @@ CREATE TABLE IF NOT EXISTS coaching_insights (
 
 CREATE INDEX IF NOT EXISTS idx_coaching_insights_profile
     ON coaching_insights(profile_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS job_journeys (
+    journey_id            TEXT PRIMARY KEY,
+    profile_id            TEXT,
+    job_url               TEXT NOT NULL DEFAULT '',
+    job_title             TEXT NOT NULL DEFAULT '',
+    company_name          TEXT NOT NULL DEFAULT '',
+    location              TEXT NOT NULL DEFAULT '',
+    job_description       TEXT NOT NULL DEFAULT '',
+    company_description   TEXT NOT NULL DEFAULT '',
+    job_ad_language       TEXT NOT NULL DEFAULT '',
+    job_source_type       TEXT NOT NULL DEFAULT '',
+    alignment_strategy    TEXT NOT NULL DEFAULT '',
+    inferred_role_context TEXT NOT NULL DEFAULT '',
+    positioning_strategy  TEXT NOT NULL DEFAULT '',
+    cover_letter          TEXT NOT NULL DEFAULT '',
+    interview_briefing    TEXT NOT NULL DEFAULT '',
+    evaluation_summary    TEXT NOT NULL DEFAULT '',
+    created_at            REAL NOT NULL,
+    updated_at            REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_journeys_profile
+    ON job_journeys(profile_id, updated_at DESC);
 """
 
 
@@ -148,6 +172,27 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     profile_cols = {row[1] for row in await cur.fetchall()}
     if "applicant_name" not in profile_cols:
         await db.execute("ALTER TABLE profiles ADD COLUMN applicant_name TEXT")
+
+    # Backfill job_journeys from the latest application_records row per
+    # (profile, company, title). Idempotent — NOT EXISTS makes reruns no-ops.
+    await db.execute(
+        """
+        INSERT INTO job_journeys (journey_id, profile_id, job_title, company_name,
+            job_source_type, cover_letter, created_at, updated_at)
+        SELECT lower(hex(randomblob(16))), ar.profile_id, ar.job_title, ar.company_name,
+            ar.job_source_type, COALESCE(ar.final_cl, ''), ar.created_at, ar.created_at
+        FROM application_records ar
+        WHERE COALESCE(ar.company_name, '') != ''
+          AND ar.id = (SELECT MAX(ar2.id) FROM application_records ar2
+                       WHERE ar2.profile_id = ar.profile_id
+                         AND lower(COALESCE(ar2.company_name,'')) = lower(ar.company_name)
+                         AND lower(COALESCE(ar2.job_title,''))   = lower(COALESCE(ar.job_title,'')))
+          AND NOT EXISTS (SELECT 1 FROM job_journeys j
+                          WHERE COALESCE(j.profile_id,'') = COALESCE(ar.profile_id,'')
+                            AND lower(j.company_name) = lower(ar.company_name)
+                            AND lower(j.job_title)    = lower(COALESCE(ar.job_title,'')))
+        """
+    )
 
 
 async def init_db() -> None:

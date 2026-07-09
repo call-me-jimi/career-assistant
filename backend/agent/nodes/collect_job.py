@@ -39,18 +39,21 @@ def _slug_to_title(url: str) -> str:
 async def collect_job_node(state: ApplicationState) -> dict:
     sid = state.session_id
 
-    # If the user reused an existing profile, the greeting already asked for the job.
-    # For new users (or those who just saved a new profile), we need to prompt them.
-    if not state.profile_reused:
-        emit_message(
-            sid,
-            "Now let's find the job. Paste the URL of the posting, or the job description text directly.",
-            key="collect_job:prompt",
-        )
-    payload = interrupt({"kind": "collect_job"})
-    data = payload or {}
-    url = (data.get("url") or "").strip() if isinstance(data, dict) else ""
-    pasted = (data.get("text") or "").strip() if isinstance(data, dict) else ""
+    url = state.job_url.strip()
+    pasted = state.job_raw_text.strip()
+    if not url and not pasted:
+        # If the user reused an existing profile, the greeting already asked for the job.
+        # For new users (or those who just saved a new profile), we need to prompt them.
+        if not state.profile_reused:
+            emit_message(
+                sid,
+                "Now let's find the job. Paste the URL of the posting, or the job description text directly.",
+                key="collect_job:prompt",
+            )
+        payload = interrupt({"kind": "collect_job"})
+        data = payload or {}
+        url = (data.get("url") or "").strip() if isinstance(data, dict) else ""
+        pasted = (data.get("text") or "").strip() if isinstance(data, dict) else ""
 
     if url:
         action_id = action_start(sid, "scrape", f"Scraping {url}")

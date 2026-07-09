@@ -61,7 +61,7 @@ def build_chat_model(task: str | None = None):
             "api_key": api_key,
             "max_tokens": cfg.max_tokens or 16000,
         }
-        if not cfg.model_name.lower().startswith("claude-opus-4"):
+        if not cfg.model_name.lower().startswith(("claude-opus-4", "claude-sonnet-5")):
             kwargs_anthropic["temperature"] = 0.7
         return ChatAnthropic(**kwargs_anthropic), cfg
     if provider == "openai":

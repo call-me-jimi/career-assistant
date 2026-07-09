@@ -24,7 +24,7 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 class LLMConfig(BaseModel):
     provider: str = Field(default="anthropic")
-    model_name: str = Field(default="claude-sonnet-4-5")
+    model_name: str = Field(default="claude-sonnet-5")
     base_url: str | None = None
     api_key: str | None = None
     max_tokens: int | None = None

@@ -1,7 +1,7 @@
 {
   "default_llm": {
     "provider": "anthropic",
-    "model_name": "claude-sonnet-4-5",
+    "model_name": "claude-sonnet-5",
     "base_url": null,
     "api_key": null
   },
@@ -131,6 +131,10 @@
     "claude-opus-4-6": {
       "input_per_mtok": 5.0,
       "output_per_mtok": 25.0
+    },
+    "claude-sonnet-5": {
+      "input_per_mtok": 3.0,
+      "output_per_mtok": 15.0
     },
     "claude-sonnet-4-6": {
       "input_per_mtok": 3.0,

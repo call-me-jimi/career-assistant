@@ -5,6 +5,7 @@ import pytest
 import backend.storage.db as db_module
 from backend.storage.journeys import (
     create_journey,
+    delete_journey,
     find_journey,
     get_journey,
     list_journeys,
@@ -130,6 +131,15 @@ async def test_list_limit(test_db):
         await create_journey(profile_id="p1", company_name=f"Co{i}", job_title="Role")
 
     assert len(await list_journeys(profile_id="p1", limit=3)) == 3
+
+
+@pytest.mark.asyncio
+async def test_delete_removes_row(test_db):
+    jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
+
+    assert await delete_journey(jid) is True
+    assert await get_journey(jid) is None
+    assert await delete_journey(jid) is False
 
 
 @pytest.mark.asyncio

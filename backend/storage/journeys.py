@@ -147,3 +147,10 @@ async def list_journeys(
         cur = await db.execute(sql, params)
         rows = await cur.fetchall()
     return [_row_to_journey(r) for r in rows]
+
+
+async def delete_journey(journey_id: str) -> bool:
+    async with connect() as db:
+        cur = await db.execute("DELETE FROM job_journeys WHERE journey_id = ?", (journey_id,))
+        await db.commit()
+        return cur.rowcount > 0

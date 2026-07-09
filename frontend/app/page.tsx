@@ -165,6 +165,9 @@ export default function LandingPage() {
               />
             )}
           </a>
+          <a href="/jobs" className="text-sm text-accent hover:underline">
+            Jobs →
+          </a>
           <a href="/dashboard" className="text-sm text-accent hover:underline">
             Dashboard →
           </a>

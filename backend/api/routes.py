@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from backend.agent.interrupts import emit_message
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
+from backend.storage.journeys import delete_journey, get_journey, list_journeys
 from backend.storage.playbook import get_playbook, remove_playbook_item, upsert_playbook
 from backend.storage.profiles import delete_profile, get_profile, list_profiles
 from backend.storage.sessions import ASSISTANT_TYPES, create_session, get_session
@@ -79,6 +80,28 @@ async def remove_profile(profile_id: str) -> dict:
     if not deleted:
         raise HTTPException(404, "profile not found")
     return {"ok": True}
+
+
+@router.get("/journeys")
+async def journeys() -> dict:
+    rows = await list_journeys(profile_id=None, limit=100)
+    return {"journeys": rows}
+
+
+@router.get("/journeys/{journey_id}")
+async def journey_detail(journey_id: str) -> dict:
+    j = await get_journey(journey_id)
+    if not j:
+        raise HTTPException(404, "journey not found")
+    return j
+
+
+@router.delete("/journeys/{journey_id}")
+async def remove_journey(journey_id: str) -> dict:
+    deleted = await delete_journey(journey_id)
+    if not deleted:
+        raise HTTPException(404, "journey not found")
+    return {"deleted": True}
 
 
 @router.get("/sessions/{session_id}/traces")

@@ -39,10 +39,17 @@ function badges(j: Journey): string[] {
   return out;
 }
 
+const PAGE_SIZE = 10;
+
 export default function JobsPage() {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "name-asc" | "name-desc">(
+    "date-desc"
+  );
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   useEffect(() => {
     fetch("/api/journeys")
@@ -65,6 +72,21 @@ export default function JobsPage() {
     }
   }
 
+  const q = query.trim().toLowerCase();
+  const filtered = journeys.filter(
+    (j) =>
+      !q ||
+      j.company_name.toLowerCase().includes(q) ||
+      j.job_title.toLowerCase().includes(q)
+  );
+  const sorted = [...filtered].sort((a, b) => {
+    const cmp = sortBy.startsWith("name")
+      ? a.company_name.toLowerCase().localeCompare(b.company_name.toLowerCase())
+      : a.updated_at - b.updated_at;
+    return sortBy.endsWith("desc") ? -cmp : cmp;
+  });
+  const shown = sorted.slice(0, visible);
+
   return (
     <main className="min-h-screen">
       <header className="h-14 px-6 flex items-center justify-between border-b border-border">
@@ -81,12 +103,39 @@ export default function JobsPage() {
 
         {error && <p className="text-sm text-err">{error}</p>}
 
+        <div className="flex items-center gap-2">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setVisible(PAGE_SIZE);
+            }}
+            placeholder="Search by company or job title…"
+            className="flex-1 bg-panel2 border border-border rounded px-2 py-1 text-sm"
+          />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="bg-panel2 border border-border rounded px-2 py-1 text-sm"
+          >
+            <option value="date-desc">Newest first</option>
+            <option value="date-asc">Oldest first</option>
+            <option value="name-asc">Company A–Z</option>
+            <option value="name-desc">Company Z–A</option>
+          </select>
+        </div>
+
         {journeys.length === 0 && !error && (
           <p className="text-subtle text-sm">No job journeys yet.</p>
         )}
 
+        {journeys.length > 0 && filtered.length === 0 && (
+          <p className="text-subtle text-sm">No jobs match your search.</p>
+        )}
+
         <ul className="space-y-3">
-          {journeys.map((j) => {
+          {shown.map((j) => {
             const artifactBadges = badges(j);
             return (
               <li
@@ -136,6 +185,17 @@ export default function JobsPage() {
             );
           })}
         </ul>
+
+        {sorted.length > visible && (
+          <div className="text-center">
+            <button
+              onClick={() => setVisible((v) => v + PAGE_SIZE)}
+              className="text-sm text-accent hover:underline"
+            >
+              More ({sorted.length - visible} remaining)
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

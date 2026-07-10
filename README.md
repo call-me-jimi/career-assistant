@@ -12,7 +12,8 @@ pipeline. Pick one on the landing page and start a conversation:
   breakdown, communication critique, strengths/weaknesses, what to improve).
 - 📝 **Interview Prep** — from the job description plus whatever the company shared, get a briefing:
   likely questions with answer directions, STAR stories to rehearse, risks to pre-empt, and smart
-  questions to ask back.
+  questions to ask back. Then keep practising: a mock interview with feedback, classic-question
+  drills, technical refreshers, and questions to ask the interviewer.
 - ✉️ **Cover Letter** — ingest your CV, scrape and analyse a posting, build a positioning strategy,
   then draft and iteratively refine a tailored letter through a simulated hiring-manager feedback
   loop. Plus answers to common application questions.
@@ -94,13 +95,22 @@ voice input also need the `ffmpeg` system binary (`sudo apt install ffmpeg`).
   extracts title, company, description, and location.
 - **Cover-letter loop** — generate → simulated hiring-manager critique → refine, keeping every
   version so you can pick the winner.
+- **Job journeys — pick up where you left off** — every job you work on is saved with its artifacts
+  (strategy, cover letter, interview briefing, evaluation). A new session offers to continue a saved
+  job instead of starting over, and the Jobs page lists them all with search, sort, and per-artifact
+  dates.
+- **Learns from your applications** — each finished cover letter updates a per-profile playbook that
+  feeds the next one and may propose a profile edit you can approve or reject; accepted interview
+  evaluations become coaching insights for your next prep session.
 - **Optional company research** — Tavily web search enriches thin company descriptions and salary
   answers; skipped gracefully when no key is set.
 - **Multi-format export** — PDF (WeasyPrint), Markdown, JSON, and Google Sheets append.
 - **Multi-provider LLM service** — Anthropic / OpenAI / Ollama / generic HTTP, with per-task model
   overrides editable in the UI.
-- **Persistent, resumable state** — SQLite stores sessions, profiles, and full LLM traces;
-  LangGraph checkpoints make every node resumable across restarts.
+- **Persistent, resumable state** — SQLite stores sessions, profiles, job journeys, and full LLM
+  traces; LangGraph checkpoints make every node resumable across restarts.
+- **Usage dashboard** — aggregate sessions, LLM calls, tokens, and cost per assistant across all
+  sessions.
 
 ## Tech stack
 
@@ -113,7 +123,7 @@ the REST/WebSocket API — is documented in **[docs/ARCHITECTURE.md](docs/ARCHIT
 
 ## Supported LLM providers
 
-- **Anthropic** (Claude — default; `claude-sonnet-4-5` out of the box)
+- **Anthropic** (Claude — default; `claude-sonnet-5` out of the box)
 - **OpenAI** (GPT models)
 - **Ollama** (local models, via `OLLAMA_BASE_URL`)
 - **Generic HTTP** endpoints

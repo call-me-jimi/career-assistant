@@ -4,15 +4,15 @@ Project-specific conventions. General coding guidelines live in `~/.claude/CLAUD
 
 ## Project overview
 
-A personal career assistant with three specialised agents (Cover Letter, Interview Prep, Career Advisor). Python backend: FastAPI + LangGraph with human-in-the-loop interrupts, multi-provider LLM dispatch, SQLite persistence, and OpenTelemetry tracing. Frontend: Next.js 14 App Router + Tailwind.
+A personal career assistant with four specialised agents (Cover Letter, Interview Prep, Interview Evaluator, Career Advisor). Python backend: FastAPI + LangGraph with human-in-the-loop interrupts, multi-provider LLM dispatch, SQLite persistence, and OpenTelemetry tracing. Frontend: Next.js 14 App Router + Tailwind.
 
 ## Folder map
 
 ```
 backend/
   agent/
-    graph.py / graph_interview.py / graph_advisor.py  # one LangGraph per assistant
-    state.py          # ApplicationState (Pydantic) — shared across all three graphs
+    graph.py / graph_interview.py / graph_advisor.py / graph_evaluator.py  # one LangGraph per assistant
+    state.py          # ApplicationState (Pydantic) — shared across all four graphs
     nodes/            # one file per node
     runner.py         # SessionRunner: background asyncio task per session
     interrupts.py     # human-in-the-loop helpers
@@ -25,7 +25,7 @@ backend/
     service.py        # multi-provider dispatch (Anthropic, OpenAI, Ollama, generic HTTP)
     prompts.py        # versioned prompt resolution
     schemas.py        # task-specific response schemas
-  storage/            # aiosqlite: sessions, profiles, traces
+  storage/            # aiosqlite: sessions, profiles, traces, job journeys, playbook, coaching
   tools/              # scraper, cv_parser, exporters, web_search
   templates/
     prompts/          # user prompt templates — {stem}.vN.txt
@@ -58,7 +58,7 @@ frontend/             # Next.js; use npm (not uv) inside this directory
 
 - **Secrets go in `.env`, never in `settings.json`.** `backend/config/settings.json` is tracked by git and holds only runtime config (models, pricing, locale). API keys must stay in `.env`.
 
-- **`ApplicationState` has fields for all three assistants.** Unused fields stay empty for a given flow — don't remove them or make them conditional. All three graphs share the same state class (`backend/agent/state.py`).
+- **`ApplicationState` has fields for all four assistants.** Unused fields stay empty for a given flow — don't remove them or make them conditional. All four graphs share the same state class (`backend/agent/state.py`).
 
 - **`PATCH /api/sessions/{id}/state` requires the runner to be paused at an interrupt.** It returns 409 if the graph is currently running. Only patch state from the details page, not mid-stream.
 

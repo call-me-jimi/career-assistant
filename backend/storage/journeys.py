@@ -45,9 +45,19 @@ _COLUMNS = (
     "cover_letter",
     "interview_briefing",
     "evaluation_summary",
+    "cover_letter_at",
+    "interview_briefing_at",
+    "evaluation_summary_at",
     "created_at",
     "updated_at",
 )
+
+# Writing one of these artifact fields also records when it was generated.
+_ARTIFACT_STAMPS = {
+    "cover_letter": "cover_letter_at",
+    "interview_briefing": "interview_briefing_at",
+    "evaluation_summary": "evaluation_summary_at",
+}
 
 
 def _row_to_journey(r: Any) -> dict[str, Any]:
@@ -61,8 +71,9 @@ async def create_journey(*, profile_id: str | None, **fields: Any) -> str:
 
     journey_id = uuid.uuid4().hex
     now = time.time()
-    cols = ["journey_id", "profile_id", *fields.keys(), "created_at", "updated_at"]
-    values = [journey_id, profile_id, *fields.values(), now, now]
+    stamps = {_ARTIFACT_STAMPS[f]: now for f, v in fields.items() if f in _ARTIFACT_STAMPS and v}
+    cols = ["journey_id", "profile_id", *fields.keys(), *stamps.keys(), "created_at", "updated_at"]
+    values = [journey_id, profile_id, *fields.values(), *stamps.values(), now, now]
     placeholders = ", ".join("?" for _ in values)
 
     async with connect() as db:
@@ -79,8 +90,11 @@ async def update_journey(journey_id: str, **fields: Any) -> None:
     if unknown:
         raise ValueError(f"Unknown journey field(s): {sorted(unknown)}")
 
-    set_clause = ", ".join(f"{col} = ?" for col in fields)
-    values = [*fields.values(), time.time(), journey_id]
+    now = time.time()
+    stamps = {_ARTIFACT_STAMPS[f]: now for f, v in fields.items() if f in _ARTIFACT_STAMPS and v}
+    assignments = {**fields, **stamps}
+    set_clause = ", ".join(f"{col} = ?" for col in assignments)
+    values = [*assignments.values(), now, journey_id]
 
     async with connect() as db:
         await db.execute(

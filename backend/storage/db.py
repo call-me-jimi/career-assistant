@@ -140,6 +140,9 @@ CREATE TABLE IF NOT EXISTS job_journeys (
     cover_letter          TEXT NOT NULL DEFAULT '',
     interview_briefing    TEXT NOT NULL DEFAULT '',
     evaluation_summary    TEXT NOT NULL DEFAULT '',
+    cover_letter_at       REAL,
+    interview_briefing_at REAL,
+    evaluation_summary_at REAL,
     created_at            REAL NOT NULL,
     updated_at            REAL NOT NULL
 );
@@ -173,6 +176,12 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     if "applicant_name" not in profile_cols:
         await db.execute("ALTER TABLE profiles ADD COLUMN applicant_name TEXT")
 
+    cur = await db.execute("PRAGMA table_info(job_journeys)")
+    journey_cols = {row[1] for row in await cur.fetchall()}
+    for col in ("cover_letter_at", "interview_briefing_at", "evaluation_summary_at"):
+        if col not in journey_cols:
+            await db.execute(f"ALTER TABLE job_journeys ADD COLUMN {col} REAL")
+
     # Backfill job_journeys from the latest application_records row per
     # (profile, company, title). Idempotent — NOT EXISTS makes reruns no-ops.
     await db.execute(
@@ -191,6 +200,15 @@ async def _migrate(db: aiosqlite.Connection) -> None:
                           WHERE COALESCE(j.profile_id,'') = COALESCE(ar.profile_id,'')
                             AND lower(j.company_name) = lower(ar.company_name)
                             AND lower(j.job_title)    = lower(COALESCE(ar.job_title,'')))
+        """
+    )
+
+    # Journeys written before artifact timestamps existed (or just backfilled
+    # above) recorded their cover letter at journey creation time. Idempotent.
+    await db.execute(
+        """
+        UPDATE job_journeys SET cover_letter_at = created_at
+        WHERE cover_letter != '' AND cover_letter_at IS NULL
         """
     )
 

@@ -46,6 +46,35 @@ async def test_update_sets_fields_and_bumps_updated_at(test_db):
 
 
 @pytest.mark.asyncio
+async def test_update_stamps_artifact_timestamps(test_db):
+    jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
+    journey = await get_journey(jid)
+    assert journey["cover_letter_at"] is None
+    assert journey["interview_briefing_at"] is None
+    assert journey["evaluation_summary_at"] is None
+
+    await update_journey(jid, cover_letter="Dear ACME, ...")
+    after = await get_journey(jid)
+    assert after["cover_letter_at"] is not None
+    assert after["interview_briefing_at"] is None
+
+    time.sleep(0.01)
+    await update_journey(jid, interview_briefing="Briefing", location="Berlin")
+    final = await get_journey(jid)
+    assert final["interview_briefing_at"] > final["cover_letter_at"]
+    assert final["cover_letter_at"] == after["cover_letter_at"]
+
+
+@pytest.mark.asyncio
+async def test_create_with_artifact_stamps_timestamp(test_db):
+    jid = await create_journey(
+        profile_id="p1", company_name="ACME", job_title="Engineer", cover_letter="Hi"
+    )
+    journey = await get_journey(jid)
+    assert journey["cover_letter_at"] == journey["created_at"]
+
+
+@pytest.mark.asyncio
 async def test_update_unknown_field_raises(test_db):
     jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
     with pytest.raises(ValueError):
@@ -172,3 +201,4 @@ async def test_backfill_from_application_records(test_db):
     assert len(journeys) == 1
     assert journeys[0]["cover_letter"] == "final v2"
     assert journeys[0]["company_name"] == "ACME"
+    assert journeys[0]["cover_letter_at"] == journeys[0]["created_at"]

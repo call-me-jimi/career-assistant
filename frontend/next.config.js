@@ -6,6 +6,7 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${BACKEND}/api/:path*` },
+      { source: "/media/:path*", destination: `${BACKEND}/media/:path*` },
     ];
   },
 };

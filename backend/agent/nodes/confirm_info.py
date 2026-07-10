@@ -10,7 +10,7 @@ from backend.agent.interrupts import emit_message
 from backend.agent.state import ApplicationState
 from backend.storage.journeys import create_journey, find_journey, update_journey
 
-_JOURNEY_FIELDS = ("job_url", "job_title", "company_name", "location", "job_description", "job_ad_language")
+_JOURNEY_FIELDS = ("job_url", "job_title", "company_name", "location", "job_description", "job_ad_language", "job_screenshot_path")
 
 FIELDS = [
     ("job_title", "Job title"),

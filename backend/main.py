@@ -8,8 +8,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.api import routes, uploads, ws
+from backend.config import DATA_DIR
 from backend.observability.otel import init_otel
 from backend.storage.db import init_db
 
@@ -40,6 +42,10 @@ app.include_router(routes.router)
 app.include_router(uploads.router)
 app.include_router(uploads.voice_router)
 app.include_router(ws.router)
+
+# Serve captured job-page screenshots (backend/data/screenshots/*.png).
+(DATA_DIR / "screenshots").mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=DATA_DIR), name="media")
 
 
 @app.get("/health")

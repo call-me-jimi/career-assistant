@@ -9,22 +9,45 @@ from backend.agent.nodes import collect_job as cj
 from backend.agent.state import ApplicationState
 
 
-@pytest.mark.asyncio
-async def test_stashed_url_skips_interrupt_and_scrapes(monkeypatch):
+def _patch_scrape_flow(monkeypatch, *, screenshot):
+    """Patch collect_job's URL-scrape collaborators. ``screenshot`` is the value
+    capture_screenshot resolves to (a filename, or None on failure)."""
     def boom(payload):
         raise AssertionError("interrupt() should not be called when job_url is pre-seeded")
+
+    async def fake_capture(url, *, name_hint=""):
+        return screenshot
 
     monkeypatch.setattr(cj, "interrupt", boom)
     monkeypatch.setattr(cj, "emit_message", lambda *a, **kw: None)
     monkeypatch.setattr(cj, "action_start", lambda *a, **kw: "aid")
     monkeypatch.setattr(cj, "action_finish", lambda *a, **kw: None)
     monkeypatch.setattr(cj, "scrape_job_page", lambda url: {"title": "Engineer | ACME Careers", "raw_text": "job body"})
+    monkeypatch.setattr(cj, "capture_screenshot", fake_capture)
+
+
+@pytest.mark.asyncio
+async def test_stashed_url_skips_interrupt_and_scrapes(monkeypatch):
+    _patch_scrape_flow(monkeypatch, screenshot="acme_deadbeef.png")
 
     state = ApplicationState(session_id="s1", job_url="https://example.com/job/1")
     update = await cj.collect_job_node(state)
 
     assert update["job_url"] == "https://example.com/job/1"
     assert update["job_raw_text"] == "job body"
+    assert update["job_screenshot_path"] == "acme_deadbeef.png"
+    assert update["phase"] == "extract_info"
+
+
+@pytest.mark.asyncio
+async def test_screenshot_failure_does_not_block_scrape(monkeypatch):
+    """A failed capture (None) must leave an empty path and still advance."""
+    _patch_scrape_flow(monkeypatch, screenshot=None)
+
+    state = ApplicationState(session_id="s1", job_url="https://example.com/job/1")
+    update = await cj.collect_job_node(state)
+
+    assert update["job_screenshot_path"] == ""
     assert update["phase"] == "extract_info"
 
 

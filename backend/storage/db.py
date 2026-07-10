@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS job_journeys (
     job_description       TEXT NOT NULL DEFAULT '',
     company_description   TEXT NOT NULL DEFAULT '',
     job_ad_language       TEXT NOT NULL DEFAULT '',
+    job_screenshot_path   TEXT NOT NULL DEFAULT '',
     job_source_type       TEXT NOT NULL DEFAULT '',
     alignment_strategy    TEXT NOT NULL DEFAULT '',
     inferred_role_context TEXT NOT NULL DEFAULT '',
@@ -181,6 +182,10 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     for col in ("cover_letter_at", "interview_briefing_at", "evaluation_summary_at"):
         if col not in journey_cols:
             await db.execute(f"ALTER TABLE job_journeys ADD COLUMN {col} REAL")
+    if "job_screenshot_path" not in journey_cols:
+        await db.execute(
+            "ALTER TABLE job_journeys ADD COLUMN job_screenshot_path TEXT NOT NULL DEFAULT ''"
+        )
 
     # Backfill job_journeys from the latest application_records row per
     # (profile, company, title). Idempotent — NOT EXISTS makes reruns no-ops.

@@ -75,6 +75,20 @@ async def test_create_with_artifact_stamps_timestamp(test_db):
 
 
 @pytest.mark.asyncio
+async def test_screenshot_path_roundtrips(test_db):
+    jid = await create_journey(
+        profile_id="p1",
+        company_name="ACME",
+        job_title="Engineer",
+        job_screenshot_path="acme_deadbeef.png",
+    )
+    assert (await get_journey(jid))["job_screenshot_path"] == "acme_deadbeef.png"
+
+    await update_journey(jid, job_screenshot_path="acme_updated.png")
+    assert (await get_journey(jid))["job_screenshot_path"] == "acme_updated.png"
+
+
+@pytest.mark.asyncio
 async def test_update_unknown_field_raises(test_db):
     jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
     with pytest.raises(ValueError):

@@ -13,6 +13,7 @@ type Journey = {
   job_description: string;
   company_description: string;
   job_ad_language: string;
+  job_screenshot_path: string;
   job_source_type: string;
   alignment_strategy: string;
   inferred_role_context: string;
@@ -147,6 +148,28 @@ export default function JobDetailPage() {
           <InfoRow label="Source" value={journey.job_source_type} />
           <InfoRow label="Job ad language" value={journey.job_ad_language} />
         </div>
+      </Section>
+
+      <Section title="Job page snapshot">
+        {journey.job_screenshot_path ? (
+          <a
+            href={`/media/screenshots/${journey.job_screenshot_path}`}
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded border border-subtle/20 overflow-hidden hover:border-accent"
+            title="Open full-size snapshot"
+          >
+            <img
+              src={`/media/screenshots/${journey.job_screenshot_path}`}
+              alt="Snapshot of the job posting as it appeared when captured"
+              className="w-full max-h-96 object-cover object-top"
+            />
+          </a>
+        ) : (
+          <p className="text-sm text-subtle italic">
+            No snapshot was captured for this job page.
+          </p>
+        )}
       </Section>
 
       <TextBlock

@@ -10,6 +10,7 @@ from langgraph.types import interrupt
 from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
 from backend.tools.scraper import scrape_job_page
+from backend.tools.screenshot import capture_screenshot
 
 
 def _parse_page_title(title: str) -> tuple[str, str]:
@@ -66,11 +67,18 @@ async def collect_job_node(state: ApplicationState) -> dict:
             if not job_title:
                 job_title = _slug_to_title(url)
 
+            # Capture a screenshot while the page is still live — postings vanish
+            # once a role is filled. Best-effort: returns None on any failure.
+            shot_id = action_start(sid, "screenshot", "Saving a snapshot of the job page")
+            screenshot_path = await capture_screenshot(url, name_hint=company_name or job_title)
+            action_finish(sid, shot_id, status="ok" if screenshot_path else "error")
+
             return {
                 "job_url": url,
                 "job_raw_text": scraped["raw_text"],
                 "job_title": job_title,
                 "company_name": company_name,
+                "job_screenshot_path": screenshot_path or "",
                 "phase": "extract_info",
             }
         except Exception:

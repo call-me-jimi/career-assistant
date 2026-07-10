@@ -59,6 +59,7 @@ class ApplicationState(BaseModel):
     company_description: str = ""
     location: str = ""
     job_ad_language: str = ""  # language detected in the job ad (may differ from session language)
+    job_screenshot_path: str = ""  # filename of the captured job-page screenshot (survives the page going offline)
     job_source_type: Literal["direct", "recruiter", ""] = ""
 
     # Job-journey continuation (see backend/storage/journeys.py)

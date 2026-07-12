@@ -103,6 +103,27 @@ def _messages(system: str | None, user: str, history: list[dict] | None = None):
     return msgs
 
 
+def _content_text(content: object) -> str:
+    """Extract plain text from an AIMessage content.
+
+    With extended thinking enabled, providers return a list of content blocks
+    (thinking + text). We want only the text blocks; joining `str(content)`
+    would leak the raw block repr (signatures, thinking payloads) into the UI.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict):
+                if block.get("type") == "text" and isinstance(block.get("text"), str):
+                    parts.append(block["text"])
+            elif isinstance(block, str):
+                parts.append(block)
+        return "".join(parts)
+    return str(content)
+
+
 async def call_llm(
     *,
     task: str,
@@ -133,7 +154,7 @@ async def call_llm(
     }
     log.info("llm call task=%s provider=%s model=%s", task, cfg.provider, cfg.model_name)
     ai: AIMessage = await chat.ainvoke(messages, config=config)
-    text = ai.content if isinstance(ai.content, str) else str(ai.content)
+    text = _content_text(ai.content)
     stop_reason = ai.response_metadata.get("stop_reason") or ai.response_metadata.get("finish_reason")
     truncated = stop_reason in {"max_tokens", "length"}
     if truncated:

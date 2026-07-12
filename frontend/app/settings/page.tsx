@@ -7,6 +7,7 @@ type LLMConfig = {
   provider: string;
   model_name: string;
   base_url?: string | null;
+  max_tokens?: number | null;
 };
 
 type ModelPricing = {
@@ -161,7 +162,7 @@ function SettingsView() {
     setStatus("Saving…");
     const cleanTasks: Record<string, LLMConfig> = {};
     for (const [k, v] of Object.entries(taskCfgs)) {
-      if (v.provider && v.model_name) cleanTasks[k] = v;
+      if ((v.provider && v.model_name) || v.max_tokens != null) cleanTasks[k] = v;
     }
     const res = await fetch("/api/settings", {
       method: "PUT",

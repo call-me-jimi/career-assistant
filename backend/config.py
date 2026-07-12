@@ -78,19 +78,25 @@ def load_settings() -> AppSettings:
     """Merge .env defaults into settings.json-backed AppSettings.
 
     API keys come from env vars, never from settings.json.
+
+    LLM_PROVIDER / LLM_MODEL_NAME / LLM_BASE_URL only seed the default model on
+    first run, when no settings.json exists yet. Once settings have been saved,
+    the persisted default_llm wins — otherwise these env vars would clobber the
+    default model on every read and UI edits to it would never stick.
     """
     data = _load_settings_file()
     settings = AppSettings.model_validate(data) if data else AppSettings()
 
-    env_provider = os.getenv("LLM_PROVIDER")
-    env_model = os.getenv("LLM_MODEL_NAME")
-    env_base = os.getenv("LLM_BASE_URL")
-    if env_provider:
-        settings.default_llm.provider = env_provider
-    if env_model:
-        settings.default_llm.model_name = env_model
-    if env_base:
-        settings.default_llm.base_url = env_base
+    if not SETTINGS_FILE.exists():
+        env_provider = os.getenv("LLM_PROVIDER")
+        env_model = os.getenv("LLM_MODEL_NAME")
+        env_base = os.getenv("LLM_BASE_URL")
+        if env_provider:
+            settings.default_llm.provider = env_provider
+        if env_model:
+            settings.default_llm.model_name = env_model
+        if env_base:
+            settings.default_llm.base_url = env_base
 
     settings.default_export_folder = os.getenv(
         "DEFAULT_EXPORT_FOLDER", settings.default_export_folder

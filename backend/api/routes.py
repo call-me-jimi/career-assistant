@@ -350,7 +350,9 @@ async def update_settings(payload: SettingsPayload) -> dict:
     s = load_settings()
     s.default_llm = payload.default_llm
     s.task_llm_configs = {
-        k: v for k, v in payload.task_llm_configs.items() if v.provider and v.model_name
+        k: v
+        for k, v in payload.task_llm_configs.items()
+        if (v.provider and v.model_name) or v.max_tokens is not None
     }
     s.model_pricing = {k: v for k, v in payload.model_pricing.items() if k.strip()}
     s.google_sheets_spreadsheet_id = payload.google_sheets_spreadsheet_id

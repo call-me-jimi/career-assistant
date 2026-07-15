@@ -62,6 +62,8 @@ async def extract_info_node(state: ApplicationState) -> dict:
     company_description = parsed.get("company_description") or ""
     location = parsed.get("location") or ""
     job_language = (parsed.get("job_language") or "").strip()
+    source_raw = (parsed.get("job_source_type") or "").strip().lower()
+    job_source_type = "recruiter" if source_raw.startswith("rec") else "direct"
 
     update: dict = {
         "job_title": job_title,
@@ -71,6 +73,7 @@ async def extract_info_node(state: ApplicationState) -> dict:
         "location": location,
         "job_raw_text": raw_text,
         "job_ad_language": job_language,
+        "job_source_type": job_source_type,
         "phase": "confirm_info",
     }
 

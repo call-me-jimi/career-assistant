@@ -34,15 +34,21 @@ type QuickReply = {
   value: string;
 };
 
-function quickRepliesFor(kind?: string): QuickReply[] {
+function quickRepliesFor(pending?: InterruptPayload | null): QuickReply[] {
+  const kind = pending?.kind;
   switch (kind) {
     case "confirm_info":
       return [{ label: "Yes, looks good", value: "yes" }];
-    case "classify_flow":
-      return [
-        { label: "Direct", value: "direct" },
-        { label: "Recruiter", value: "recruiter" },
-      ];
+    case "classify_flow_confirm":
+      return pending?.inferred === "recruiter"
+        ? [
+            { label: "Yes, correct", value: "accept" },
+            { label: "No — it's a direct posting", value: "direct" },
+          ]
+        : [
+            { label: "Yes, correct", value: "accept" },
+            { label: "No — it's a recruiter ad", value: "recruiter" },
+          ];
     case "cl_review":
       return [{ label: "Accept", value: "accept" }];
     case "interview_review":
@@ -272,7 +278,7 @@ export default function InputBar({
     );
   }
 
-  const quickReplies = pending && !disabled ? quickRepliesFor(kind) : [];
+  const quickReplies = pending && !disabled ? quickRepliesFor(pending) : [];
   const showVoice = supportsVoiceInput(kind) && !disabled;
 
   return (
@@ -349,8 +355,8 @@ function placeholderFor(kind?: string): string {
       return "e.g. Acme Corp";
     case "confirm_info":
       return "yes — or corrections like `company: Acme`";
-    case "classify_flow":
-      return "direct or recruiter";
+    case "classify_flow_confirm":
+      return "yes — or `it's a recruiter ad` / `it's direct`";
     case "cl_review":
       return "accept, or describe revisions…";
     case "interview_review":

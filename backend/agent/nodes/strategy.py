@@ -16,7 +16,7 @@ async def strategy_node(state: ApplicationState) -> dict:
         # Step 1: infer_role
         aid = action_start(sid, "infer_role", "Inferring the real role from the recruiter ad")
         system = load_system_prompt("infer_role")
-        user = render_user_prompt("infer_role", job_description=state.job_description)
+        user = render_user_prompt("infer_role", recruiter_job_ad=state.job_description)
         role_result = await call_llm(
             task="infer_role", system=system, user=user, session_id=sid
         )
@@ -29,7 +29,7 @@ async def strategy_node(state: ApplicationState) -> dict:
             "position_candidate",
             candidate_profile=state.candidate_profile,
             inferred_role_context=role_result.text,
-            job_description=state.job_description,
+            recruiter_job_ad=state.job_description,
         )
         pos_result = await call_llm(
             task="position_candidate", system=system, user=user, session_id=sid

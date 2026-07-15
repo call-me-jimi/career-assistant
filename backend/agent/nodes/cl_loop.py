@@ -63,6 +63,8 @@ async def cl_loop_node(state: ApplicationState) -> dict:
             alignment_strategy=state.alignment_strategy,
             positioning_strategy=state.positioning_strategy,
             inferred_role_context=state.inferred_role_context,
+            recruiter_name=state.company_name,
+            recruiter_job_ad=state.job_description,
             cv_content=state.cv_text,
             hiring_manager_feedback=feedback_notes,
             profile_playbook=profile_playbook_text,

@@ -3,76 +3,93 @@
     "provider": "anthropic",
     "model_name": "claude-sonnet-5",
     "base_url": null,
-    "api_key": null
+    "api_key": null,
+    "max_tokens": null
   },
   "task_llm_configs": {
     "candidate_profile": {
       "provider": "anthropic",
       "model_name": "claude-haiku-4-5-20251001",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "extract_job_and_company_information": {
       "provider": "anthropic",
       "model_name": "claude-haiku-4-5-20251001",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "alignment_strategy": {
       "provider": "anthropic",
       "model_name": "claude-sonnet-4-6",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "infer_role": {
       "provider": "anthropic",
       "model_name": "claude-sonnet-4-6",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "position_candidate": {
       "provider": "anthropic",
       "model_name": "claude-sonnet-4-6",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "cover_letter_generation": {
       "provider": "anthropic",
       "model_name": "claude-opus-4-8",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "simulate_hiring_manager": {
       "provider": "anthropic",
       "model_name": "claude-opus-4-8",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "refine_cover_letter": {
       "provider": "anthropic",
       "model_name": "claude-opus-4-8",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "qa": {
       "provider": "anthropic",
       "model_name": "claude-sonnet-4-6",
       "base_url": null,
-      "api_key": null
+      "api_key": null,
+      "max_tokens": null
     },
     "interview_briefing": {
-      "provider": "",
-      "model_name": "",
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-6",
       "base_url": null,
       "api_key": null,
       "max_tokens": 16000
     },
     "refine_interview_briefing": {
+      "provider": "anthropic",
+      "model_name": "claude-sonnet-4-6",
+      "base_url": null,
+      "api_key": null,
+      "max_tokens": 16000
+    },
+    "mock_interview_feedback": {
       "provider": "",
       "model_name": "",
       "base_url": null,
       "api_key": null,
-      "max_tokens": 16000
+      "max_tokens": 8192
     },
     "interview_practice": {
       "provider": "",
@@ -89,13 +106,6 @@
       "max_tokens": 16000
     },
     "interview_questions": {
-      "provider": "",
-      "model_name": "",
-      "base_url": null,
-      "api_key": null,
-      "max_tokens": 8192
-    },
-    "mock_interview_feedback": {
       "provider": "",
       "model_name": "",
       "base_url": null,

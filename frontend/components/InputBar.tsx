@@ -277,7 +277,7 @@ export default function InputBar({
 
   return (
     <div className="border-t border-border p-4 space-y-2">
-      <div className="flex gap-3">
+      <div className="flex items-end gap-3">
         <textarea
           ref={textareaRef}
           value={text}
@@ -295,7 +295,7 @@ export default function InputBar({
               : placeholderFor(kind)
           }
           rows={2}
-          className="flex-1 rounded-xl bg-panel border border-border p-3 text-text placeholder:text-subtle focus:outline-none focus:border-accent resize-none"
+          className="flex-1 rounded-xl bg-panel border border-border p-3 text-text placeholder:text-subtle focus:outline-none focus:border-accent resize-y min-h-[3rem]"
         />
         {showVoice && (
           <MicButton

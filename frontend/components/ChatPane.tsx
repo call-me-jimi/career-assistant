@@ -50,7 +50,7 @@ function Message({ m }: { m: ChatMessage }) {
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 border prose prose-invert prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-headings:my-2 prose-pre:my-2 prose-code:text-accent ${
+        className={`max-w-[85%] rounded-2xl px-4 py-3 border prose prose-invert prose-sm max-w-none break-words prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-headings:my-2 prose-pre:my-2 prose-pre:whitespace-pre-wrap prose-pre:break-words prose-code:text-accent ${
           mine
             ? "bg-accent/10 border-accent/40"
             : "bg-panel border-border"

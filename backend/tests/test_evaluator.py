@@ -52,6 +52,20 @@ def test_interview_evaluation_handles_code_fence():
     assert ev.decision == "MAYBE"
 
 
+def test_extract_json_repairs_unescaped_inner_quotes():
+    # LLMs frequently emit literal quotes inside long prose fields, which
+    # breaks json.loads with "Expecting ',' delimiter". extract_json should
+    # repair rather than raise.
+    broken = (
+        '{"overall_score": 7, "decision": "MAYBE", '
+        '"summary": "You said "I led the migration" which landed well.", '
+        '"strengths": [], "weaknesses": [], "improvements": []}'
+    )
+    data = extract_json(broken)
+    assert data["overall_score"] == 7
+    assert "led the migration" in data["summary"]
+
+
 def test_render_evaluation_markdown_smoke():
     data = extract_json(_RAW_EVAL)
     md = _render_evaluation_markdown(data)

@@ -1,6 +1,6 @@
 [project]
 name = "assistant"
-version = "0.4.1"
+version = "0.4.2"
 description = "Personal Application Assistant — agentic, conversational cover letter + Q&A helper"
 readme = "README.md"
 license = "MIT"
@@ -37,6 +37,7 @@ dependencies = [
     "markdown>=3.10.2",
     "faster-whisper>=1.2.1",
     "playwright>=1.61.0",
+    "json-repair>=0.61.4",
 ]
 
 [dependency-groups]

@@ -190,18 +190,33 @@ async def evaluator_analyze_node(state: ApplicationState) -> dict:
 async def evaluator_review_node(state: ApplicationState) -> dict:
     sid = state.session_id
     iteration = len(state.interview_evaluation_versions)
+    has_report = bool(state.interview_evaluation)
 
-    emit_message(
-        sid,
-        "Reply `accept` to move on to export, `retry` to regenerate from the same "
-        "transcript, or describe specific revisions you'd like (e.g. "
-        "\"be harsher on the prioritisation answer\", \"add more on storytelling\").",
-        key=f"evaluator_review:prompt:{iteration}",
-    )
+    if has_report:
+        prompt = (
+            "Reply `accept` to move on to export, `retry` to regenerate from the same "
+            "transcript, or describe specific revisions you'd like (e.g. "
+            "\"be harsher on the prioritisation answer\", \"add more on storytelling\")."
+        )
+    else:
+        prompt = (
+            "No report was generated yet. Reply `retry` to try again from the same "
+            "transcript, or describe what you'd like the report to focus on."
+        )
+    emit_message(sid, prompt, key=f"evaluator_review:prompt:{iteration}")
     reply = interrupt({"kind": "evaluator_review"})
     text = (reply or "").strip() if isinstance(reply, str) else ""
     lowered = text.lower()
-    if not text or lowered in {"accept", "ok", "looks good", "yes"}:
+    accepted = not text or lowered in {"accept", "ok", "looks good", "yes"}
+    if accepted and not has_report:
+        # Nothing to accept — force another generation pass instead of
+        # exporting an empty report.
+        emit_message(
+            sid,
+            "There's no report to accept yet — reply `retry` to generate one.",
+        )
+        return {"phase": "evaluator_review"}
+    if accepted:
         if state.profile_id and state.interview_evaluation:
             try:
                 await save_coaching_insight(

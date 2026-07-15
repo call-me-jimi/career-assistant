@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from json_repair import repair_json
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
@@ -182,9 +183,17 @@ def extract_json(text: str) -> dict:
     except json.JSONDecodeError:
         # Fall back to first {...} block
         m = _JSON_BLOCK_RE.search(text)
-        if m:
-            return json.loads(m.group(0))
-        raise
+        candidate = m.group(0) if m else text
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            # Last resort: repair malformed JSON (unescaped inner quotes,
+            # trailing commas, stray control chars) that LLMs emit in long
+            # prose fields. Returns {} on total failure, so validate the shape.
+            repaired = repair_json(candidate, return_objects=True)
+            if isinstance(repaired, dict) and repaired:
+                return repaired
+            raise
 
 
 def parse_hm_feedback(text: str) -> HiringManagerFeedback:

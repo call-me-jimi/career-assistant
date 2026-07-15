@@ -36,6 +36,11 @@ _GREENHOUSE_BOARD_RE = re.compile(
     re.IGNORECASE,
 )
 
+_WORKDAY_RE = re.compile(
+    r"https?://[^/]+\.myworkdayjobs\.com/",
+    re.IGNORECASE,
+)
+
 
 def _html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
@@ -98,10 +103,55 @@ def _scrape_greenhouse(board_token: str, job_id: str, url: str, timeout: int) ->
     return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
 
 
+def _scrape_workday(url: str, timeout: int) -> dict[str, str]:
+    # Workday pages are fully JS-rendered; scrape the CXS JSON API instead.
+    # A detail URL looks like:
+    #   https://{tenant}.{dc}.myworkdayjobs.com/{locale}/{site}/job/{jobPath}
+    # and its API counterpart is:
+    #   https://{host}/wday/cxs/{tenant}/{site}/job/{jobPath}
+    parsed = urlparse(url)
+    host = parsed.netloc
+    tenant = host.split(".")[0]
+    segments = [s for s in parsed.path.split("/") if s]
+    idx = segments.index("job")
+    site = segments[idx - 1]
+    job_path = "/".join(segments[idx:])
+    api_url = f"https://{host}/wday/cxs/{tenant}/{site}/{job_path}"
+    resp = requests.get(api_url, headers={**_HEADERS, "Accept": "application/json"}, timeout=timeout)
+    resp.raise_for_status()
+    data = resp.json()
+    info = data.get("jobPostingInfo") or {}
+
+    title = info.get("title", "")
+    org_name = (data.get("hiringOrganization") or {}).get("name", "")
+    # Workday often prefixes the org name with a numeric entity code ("1000 ACME SE")
+    company = re.sub(r"^\d+\s+", "", org_name).strip() or site
+
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+    locations = [info.get("location")] + list(info.get("additionalLocations") or [])
+    locations = [loc for loc in locations if loc]
+    if locations:
+        parts.append(f"Location: {', '.join(locations)}")
+    if info.get("timeType"):
+        parts.append(f"Type: {info['timeType']}")
+    if info.get("jobReqId"):
+        parts.append(f"Req ID: {info['jobReqId']}")
+    desc = info.get("jobDescription") or ""
+    if desc.strip():
+        parts.append(f"\nDescription:\n{_html_to_text(desc)}")
+
+    raw_text = "\n".join(parts)
+    log.info("scraped workday %s via API (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
+
+
 def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
     """Return {'url', 'title', 'raw_text'} scraped from a job URL."""
     if _WORKABLE_RE.match(url):
         return _scrape_workable(url, timeout)
+
+    if _WORKDAY_RE.match(url) and "/job/" in url:
+        return _scrape_workday(url, timeout)
 
     resp = requests.get(url, headers=_HEADERS, timeout=timeout)
     resp.raise_for_status()

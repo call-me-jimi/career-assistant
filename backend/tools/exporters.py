@@ -6,11 +6,13 @@ import json
 import logging
 import os
 import re
+import shutil
 import time
 from pathlib import Path
 from typing import Any
 
 from backend.config import resolved_export_folder
+from backend.tools.screenshot import SCREENSHOT_DIR
 
 log = logging.getLogger("assistant.exporters")
 
@@ -213,6 +215,44 @@ def export_json(
     path.write_text(json.dumps(payload, indent=2, default=str))
     log.info("wrote json %s", path)
     return str(path)
+
+
+def export_job_assets(state: dict[str, Any], target_dir: Path | None = None) -> list[str]:
+    """Copy the source-of-truth job artifacts into the export folder.
+
+    Captures the job-page screenshot (which survives the posting going offline)
+    and the extracted job-ad text alongside the generated documents. Best-effort:
+    a missing screenshot file or empty job text is skipped silently. Returns the
+    list of written paths.
+    """
+    folder = _ensure_folder(state, target_dir)
+    written: list[str] = []
+
+    screenshot_name = state.get("job_screenshot_path") or ""
+    if screenshot_name:
+        src = SCREENSHOT_DIR / screenshot_name
+        if src.exists():
+            dest = folder / f"job_page{src.suffix or '.png'}"
+            shutil.copyfile(src, dest)
+            written.append(str(dest))
+        else:
+            log.warning("job screenshot %s not found, skipping", src)
+
+    job_ad = (state.get("job_description") or "").strip()
+    if job_ad:
+        lines = [f"# Job ad — {state.get('job_title') or state.get('company_name') or ''}", ""]
+        if state.get("company_name"):
+            lines.append(f"**Company:** {state.get('company_name')}")
+        if state.get("job_url"):
+            lines.append(f"**URL:** {state.get('job_url')}")
+        lines += ["", job_ad, ""]
+        dest = folder / "job_ad.md"
+        dest.write_text("\n".join(lines))
+        written.append(str(dest))
+
+    for path in written:
+        log.info("wrote job asset %s", path)
+    return written
 
 
 def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:

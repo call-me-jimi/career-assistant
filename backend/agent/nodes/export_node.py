@@ -122,6 +122,21 @@ async def export_node(state: ApplicationState) -> dict:
                 action_finish(sid, aid, status="error")
                 emit_message(sid, f"✗ {kind} export failed: {exc}")
 
+    if state.assistant_type == "cover_letter":
+        for target in targets:
+            aid = action_start(sid, "export_job_assets", "Copying job page & ad")
+            try:
+                asset_paths = await asyncio.to_thread(
+                    exporters.export_job_assets, state_dict, target
+                )
+                action_finish(sid, aid)
+                for path in asset_paths:
+                    results.append(ExportResult(kind="job_asset", path=path))
+                    emit_message(sid, f"✓ job asset → `{path}`")
+            except Exception as exc:
+                action_finish(sid, aid, status="error")
+                emit_message(sid, f"✗ job assets copy failed: {exc}")
+
     return {
         "export_results": results,
         "phase": "post_export",

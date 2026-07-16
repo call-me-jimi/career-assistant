@@ -295,23 +295,38 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
 
     path = folder / filename
     body_html = md.markdown(body_text, extensions=["tables", "fenced_code"])
+    if filename == "cover_letter.pdf":
+        # Match a Google Doc with Calibri 11 (Carlito is the metric-compatible
+        # clone): 1.15 line spacing and 1-inch margins keep a normal cover
+        # letter on a single page.
+        style = """
+      @page { size: A4; margin: 2.54cm; }
+      body { font-family: 'Carlito', 'Calibri', sans-serif; font-size: 11pt; line-height: 1.15; color: #222; }
+      p { margin: 0 0 0.5em 0; }
+      ul, ol { margin: 0 0 0.5em 1.5em; padding: 0; }
+      li { margin-bottom: 0.15em; }
+      strong { font-weight: bold; }
+      em { font-style: italic; }
+        """
+    else:
+        style = """
+      body { font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.6; color: #222; margin: 2cm; }
+      h1 { font-size: 18pt; margin: 0 0 0.4em 0; color: #111; }
+      h2 { font-size: 14pt; margin: 1.2em 0 0.3em 0; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 0.15em; }
+      h3 { font-size: 12pt; margin: 1em 0 0.2em 0; color: #333; }
+      h4 { font-size: 11pt; margin: 1.2em 0 0.2em 0; color: #111; font-weight: bold; border-left: 3px solid #888; padding-left: 0.5em; }
+      p { margin: 0 0 0.6em 0; }
+      ul, ol { margin: 0 0 0.6em 1.5em; padding: 0; }
+      li { margin-bottom: 0.25em; }
+      strong { font-weight: bold; }
+      em { font-style: italic; }
+      code { font-family: monospace; background: #f4f4f4; padding: 0.1em 0.3em; border-radius: 3px; font-size: 10pt; }
+      table { border-collapse: collapse; width: 100%; margin-bottom: 0.8em; }
+      th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: left; }
+      th { background: #f0f0f0; font-weight: bold; }
+        """
     html = f"""
-    <html><head><meta charset='utf-8'><style>
-      body {{ font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.6; color: #222; margin: 2cm; }}
-      h1 {{ font-size: 18pt; margin: 0 0 0.4em 0; color: #111; }}
-      h2 {{ font-size: 14pt; margin: 1.2em 0 0.3em 0; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 0.15em; }}
-      h3 {{ font-size: 12pt; margin: 1em 0 0.2em 0; color: #333; }}
-      h4 {{ font-size: 11pt; margin: 1.2em 0 0.2em 0; color: #111; font-weight: bold; border-left: 3px solid #888; padding-left: 0.5em; }}
-      p {{ margin: 0 0 0.6em 0; }}
-      ul, ol {{ margin: 0 0 0.6em 1.5em; padding: 0; }}
-      li {{ margin-bottom: 0.25em; }}
-      strong {{ font-weight: bold; }}
-      em {{ font-style: italic; }}
-      code {{ font-family: monospace; background: #f4f4f4; padding: 0.1em 0.3em; border-radius: 3px; font-size: 10pt; }}
-      table {{ border-collapse: collapse; width: 100%; margin-bottom: 0.8em; }}
-      th, td {{ border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: left; }}
-      th {{ background: #f0f0f0; font-weight: bold; }}
-    </style></head><body>
+    <html><head><meta charset='utf-8'><style>{style}</style></head><body>
       {body_html}
     </body></html>
     """

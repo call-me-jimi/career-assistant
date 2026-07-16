@@ -9,6 +9,7 @@ and avoids per-site scraper fragility.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from urllib.parse import parse_qs, urlparse
@@ -38,6 +39,12 @@ _GREENHOUSE_BOARD_RE = re.compile(
 
 _WORKDAY_RE = re.compile(
     r"https?://[^/]+\.myworkdayjobs\.com/",
+    re.IGNORECASE,
+)
+
+_CSOD_RE = re.compile(
+    r"https?://(?P<tenant>[^./]+)\.csod\.com/ux/ats/careersite/"
+    r"(?P<site>\d+)/home/requisition/(?P<req>\d+)",
     re.IGNORECASE,
 )
 
@@ -145,6 +152,60 @@ def _scrape_workday(url: str, timeout: int) -> dict[str, str]:
     return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
 
 
+def _scrape_csod(url: str, timeout: int) -> dict[str, str]:
+    # Cornerstone OnDemand career sites are fully JS-rendered SPAs; plain HTML
+    # scraping yields no job content. The page embeds an anonymous bearer token
+    # in a ``csod.context={...}`` script block, which the jobDetails REST
+    # endpoint requires:
+    #   https://{tenant}.csod.com/services/x/job-requisition/v2/requisitions/{req}/jobDetails
+    m = _CSOD_RE.match(url)
+    tenant, req_id = m.group("tenant"), m.group("req")
+    origin = f"https://{tenant}.csod.com"
+
+    page = requests.get(url, headers=_HEADERS, timeout=timeout)
+    page.raise_for_status()
+    ctx_match = re.search(r"csod\.context\s*=\s*(\{.*?\});", page.text, re.DOTALL)
+    if not ctx_match:
+        raise ValueError("csod.context token block not found on page")
+    ctx = json.loads(ctx_match.group(1))
+    token = ctx["token"]
+    culture_id = ctx.get("cultureID", 1)
+
+    api_url = (
+        f"{origin}/services/x/job-requisition/v2/requisitions/{req_id}"
+        f"/jobDetails?cultureId={culture_id}"
+    )
+    resp = requests.get(
+        api_url,
+        headers={**_HEADERS, "Accept": "application/json", "Authorization": f"Bearer {token}"},
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("data") or {}
+
+    title = data.get("displayTitle", "")
+    company = tenant.replace("-", " ").title()
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+
+    loc = data.get("primaryLocation") or {}
+    loc_parts: list[str] = []
+    for key in ("city", "state", "country"):
+        val = loc.get(key)
+        if val and val not in loc_parts:
+            loc_parts.append(val)
+    if loc_parts:
+        parts.append(f"Location: {', '.join(loc_parts)}")
+    if data.get("ref"):
+        parts.append(f"Req ID: {data['ref']}")
+    desc = data.get("externalDescription") or ""
+    if desc.strip():
+        parts.append(f"\nDescription:\n{_html_to_text(desc)}")
+
+    raw_text = "\n".join(parts)
+    log.info("scraped csod %s via API (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
+
+
 def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
     """Return {'url', 'title', 'raw_text'} scraped from a job URL."""
     if _WORKABLE_RE.match(url):
@@ -152,6 +213,9 @@ def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
 
     if _WORKDAY_RE.match(url) and "/job/" in url:
         return _scrape_workday(url, timeout)
+
+    if _CSOD_RE.match(url):
+        return _scrape_csod(url, timeout)
 
     resp = requests.get(url, headers=_HEADERS, timeout=timeout)
     resp.raise_for_status()

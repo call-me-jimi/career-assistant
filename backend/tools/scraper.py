@@ -48,6 +48,11 @@ _CSOD_RE = re.compile(
     re.IGNORECASE,
 )
 
+_ASHBY_RE = re.compile(
+    r"https?://jobs\.ashbyhq\.com/(?P<board>[^/?#]+)/(?P<job>[0-9a-fA-F-]{36})",
+    re.IGNORECASE,
+)
+
 
 def _html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
@@ -206,6 +211,39 @@ def _scrape_csod(url: str, timeout: int) -> dict[str, str]:
     return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
 
 
+def _scrape_ashby(url: str, timeout: int) -> dict[str, str]:
+    # Ashby job pages are fully JS-rendered SPAs; plain HTML scraping yields only
+    # the page title. The public posting API returns every listed job for a
+    # board, so fetch that and match on the job's UUID:
+    #   https://api.ashbyhq.com/posting-api/job-board/{board}
+    m = _ASHBY_RE.match(url)
+    board, job_id = m.group("board"), m.group("job")
+    api_url = f"https://api.ashbyhq.com/posting-api/job-board/{board}"
+    resp = requests.get(api_url, headers={**_HEADERS, "Accept": "application/json"}, timeout=timeout)
+    resp.raise_for_status()
+    jobs = resp.json().get("jobs") or []
+    job = next((j for j in jobs if j.get("id") == job_id), None)
+    if job is None:
+        raise ValueError(f"job {job_id} not found on Ashby board {board!r}")
+
+    title = job.get("title", "")
+    company = board.replace("-", " ").title()
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+    if job.get("location"):
+        parts.append(f"Location: {job['location']}")
+    if job.get("workplaceType"):
+        parts.append(f"Workplace: {job['workplaceType']}")
+    if job.get("employmentType"):
+        parts.append(f"Type: {job['employmentType']}")
+    desc_html = job.get("descriptionHtml") or ""
+    if desc_html.strip():
+        parts.append(f"\nDescription:\n{_html_to_text(desc_html)}")
+
+    raw_text = "\n".join(parts)
+    log.info("scraped ashby %s via API (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
+
+
 def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
     """Return {'url', 'title', 'raw_text'} scraped from a job URL."""
     if _WORKABLE_RE.match(url):
@@ -216,6 +254,9 @@ def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
 
     if _CSOD_RE.match(url):
         return _scrape_csod(url, timeout)
+
+    if _ASHBY_RE.match(url):
+        return _scrape_ashby(url, timeout)
 
     resp = requests.get(url, headers=_HEADERS, timeout=timeout)
     resp.raise_for_status()

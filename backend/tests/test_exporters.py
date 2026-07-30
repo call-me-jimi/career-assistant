@@ -29,6 +29,29 @@ def _state():
     }
 
 
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("Dr. Hendrik Hache", "HendrikHache"),
+        ("Hendrik Hache", "HendrikHache"),
+        ("Prof. Dr. Jane Q. Doe", "JaneQDoe"),
+        ("", ""),
+        ("Dr.", ""),
+    ],
+)
+def test_applicant_slug(name, expected):
+    assert exporters._applicant_slug(name) == expected
+
+
+def test_export_pdf_cover_letter_filename_includes_name():
+    state = _state()
+    state["cover_letter"] = "Dear Hiring Manager,\n\nBody.\n\nKind regards,\nDr. Hendrik Hache"
+    state["applicant_name"] = "Dr. Hendrik Hache"
+    path = Path(exporters.export_pdf(state))
+    assert path.name == "CoverLetter.HendrikHache.pdf"
+    assert path.exists()
+
+
 def test_export_markdown_writes_expected_sections():
     path = Path(exporters.export_markdown(_state()))
     content = path.read_text()

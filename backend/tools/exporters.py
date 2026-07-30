@@ -24,6 +24,22 @@ def _sanitize_filename(text: str) -> str:
     return sanitized[:200]
 
 
+# Honorifics stripped from the front of a name when building the CV/PDF filename.
+_HONORIFICS = {"dr", "prof", "mr", "mrs", "ms", "miss", "sir", "dame", "dipl", "ing", "mag", "phd", "md"}
+
+
+def _applicant_slug(name: str) -> str:
+    """Turn "Dr. Hendrik Hache" into "HendrikHache" for the PDF filename.
+
+    Drops leading honorifics and any non-alphanumeric characters, then joins the
+    remaining name parts. Returns "" when nothing usable is left.
+    """
+    tokens = (name or "").split()
+    while tokens and tokens[0].rstrip(".").lower() in _HONORIFICS:
+        tokens.pop(0)
+    return "".join(re.sub(r"[^0-9A-Za-z]", "", tok) for tok in tokens)
+
+
 def _ensure_folder(state: dict[str, Any], target_dir: Path | None = None) -> Path:
     """Pick the destination folder.
 
@@ -262,6 +278,7 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
     folder = _ensure_folder(state, target_dir)
 
     assistant_type = state.get("assistant_type") or ""
+    is_cover_letter = False
 
     if assistant_type == "interview_evaluator" and state.get("interview_evaluation"):
         body_text = (
@@ -281,7 +298,9 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
     elif state.get("cover_letter"):
         body_text = state["cover_letter"]
         title = state.get("job_title") or "Cover letter"
-        filename = "cover_letter.pdf"
+        slug = _applicant_slug(state.get("applicant_name") or "")
+        filename = f"CoverLetter.{slug}.pdf" if slug else "CoverLetter.pdf"
+        is_cover_letter = True
     elif state.get("interview_briefing"):
         body_text = state["interview_briefing"]
         title = f"Interview briefing — {state.get('job_title') or state.get('company_name') or ''}"
@@ -294,8 +313,11 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
         raise RuntimeError("Nothing to export as PDF yet.")
 
     path = folder / filename
-    body_html = md.markdown(body_text, extensions=["tables", "fenced_code"])
-    if filename == "cover_letter.pdf":
+    # nl2br keeps single line breaks (e.g. the farewell and the signed name) as
+    # separate lines in the cover letter instead of Markdown collapsing them.
+    extensions = ["tables", "fenced_code"] + (["nl2br"] if is_cover_letter else [])
+    body_html = md.markdown(body_text, extensions=extensions)
+    if is_cover_letter:
         # Match a Google Doc with Calibri 11 (Carlito is the metric-compatible
         # clone): 1.15 line spacing and 1-inch margins keep a normal cover
         # letter on a single page.

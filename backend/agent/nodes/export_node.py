@@ -72,11 +72,16 @@ async def export_node(state: ApplicationState) -> dict:
         targets = [None]
         delivery = delivery or "folder"
 
+    transcript_hint = (
+        " Your interview transcript comes along automatically."
+        if state.interview_transcript
+        else ""
+    )
     emit_message(
         sid,
         f"Time to export {artifact_hint}. Which formats would you like?\n\n"
         "Reply with any combination of: `pdf`, `md`, `json`, `sheets`, or `all`. "
-        "Say `none` to skip.",
+        f"Say `none` to skip.{transcript_hint}",
         key=f"export:prompt:{len(state.export_results)}",
     )
     reply = interrupt({"kind": "export_choice"})
@@ -121,6 +126,29 @@ async def export_node(state: ApplicationState) -> dict:
             except Exception as exc:
                 action_finish(sid, aid, status="error")
                 emit_message(sid, f"✗ {kind} export failed: {exc}")
+
+    # The transcript is never optional: re-transcribing costs the user another
+    # full pass over the recording, and the export prompt only comes round once.
+    if state.interview_transcript:
+        for target in targets:
+            label_suffix = "" if target is None else " (download)"
+            aid = action_start(
+                sid, "export_transcript", f"Exporting interview transcript{label_suffix}"
+            )
+            try:
+                path = await asyncio.to_thread(
+                    exporters.export_transcript, state_dict, target_dir=target
+                )
+                action_finish(sid, aid)
+                results.append(ExportResult(kind="transcript", path=path))
+                if target is not None:
+                    emit_export_ready(sid, "transcript", path)
+                    emit_message(sid, "✓ interview transcript ready to download.")
+                else:
+                    emit_message(sid, f"✓ transcript → `{path}`")
+            except Exception as exc:
+                action_finish(sid, aid, status="error")
+                emit_message(sid, f"✗ transcript export failed: {exc}")
 
     if state.assistant_type == "cover_letter":
         for target in targets:

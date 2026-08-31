@@ -84,6 +84,7 @@ def _render_evaluation_markdown(evaluation: dict[str, Any]) -> str:
     improvements = evaluation.get("improvements") or []
     comm = evaluation.get("communication") or {}
     per_q = evaluation.get("per_question") or []
+    insights = evaluation.get("interviewer_insights") or []
 
     def _bullets(items: list[str]) -> str:
         return "\n".join(f"- {x}" for x in items) if items else "_(none)_"
@@ -132,7 +133,44 @@ def _render_evaluation_markdown(evaluation: dict[str, Any]) -> str:
             if q.get("suggested_improvement"):
                 parts.append("")
                 parts.append(f"**Improvement:** {q['suggested_improvement']}")
+    if insights:
+        parts.append("")
+        parts.append("### What the interviewer told you")
+        parts.append("")
+        for item in insights:
+            topic = item.get("topic", "") or ""
+            detail = item.get("detail", "") or ""
+            parts.append(f"- **{topic}:** {detail}" if topic else f"- {detail}")
     return "\n".join(parts)
+
+
+def _transcript_lines(segments: list[Any]) -> list[str]:
+    """Render transcript segments as `[mm:ss] text` markdown lines.
+
+    Speaker labels (when diarization ran) are printed only when the speaker
+    changes, which keeps a human-readable transcript from turning into a wall
+    of repeated names.
+    """
+    lines = []
+    previous = None
+    for seg in segments:
+        if not isinstance(seg, dict):
+            continue
+        text = (seg.get("text") or "").strip()
+        if not text:
+            continue
+        start = float(seg.get("start") or 0.0)
+        mm, ss = divmod(int(start), 60)
+        speaker = (seg.get("speaker") or "").strip()
+        if speaker and speaker != previous:
+            prefix = f"**{speaker}** "
+        elif speaker:
+            prefix = "  "
+        else:
+            prefix = ""
+        previous = speaker or previous
+        lines.append(f"`[{mm:02d}:{ss:02d}]` {prefix}{text}")
+    return lines
 
 
 def export_markdown(state: dict[str, Any], target_dir: Path | None = None) -> str:
@@ -203,20 +241,37 @@ def export_markdown(state: dict[str, Any], target_dir: Path | None = None) -> st
             _render_evaluation_markdown(evaluation),
             "",
         ]
-        transcript = state.get("interview_transcript") or []
-        if transcript:
-            lines += ["## Interview transcript", ""]
-            for seg in transcript:
-                start = float(seg.get("start") or 0.0) if isinstance(seg, dict) else 0.0
-                text = (seg.get("text") if isinstance(seg, dict) else "") or ""
-                if not text.strip():
-                    continue
-                mm, ss = divmod(int(start), 60)
-                lines.append(f"`[{mm:02d}:{ss:02d}]` {text}")
-            lines.append("")
+        transcript_lines = _transcript_lines(state.get("interview_transcript") or [])
+        if transcript_lines:
+            lines += ["## Interview transcript", ""] + transcript_lines + [""]
 
     path.write_text("\n".join(lines))
     log.info("wrote markdown %s", path)
+    return str(path)
+
+
+def export_transcript(state: dict[str, Any], target_dir: Path | None = None) -> str:
+    """Write the interview recording's transcript as a standalone markdown file."""
+    folder = _ensure_folder(state, target_dir)
+    path = folder / "interview_transcript.md"
+    header = [
+        f"# Interview transcript — {state.get('company_name') or ''}".rstrip(" —"),
+        "",
+    ]
+    if state.get("job_title"):
+        header.append(f"**Job title:** {state.get('job_title')}")
+    if state.get("interview_recording_filename"):
+        header.append(f"**Recording:** {state.get('interview_recording_filename')}")
+    duration = float(state.get("interview_recording_duration_sec") or 0.0)
+    if duration:
+        header.append(f"**Duration:** {duration / 60:.1f} min")
+    if state.get("interview_transcript_language"):
+        header.append(f"**Language:** {state.get('interview_transcript_language')}")
+    header.append("")
+
+    body = _transcript_lines(state.get("interview_transcript") or [])
+    path.write_text("\n".join(header + (body or ["_(empty transcript)_"])) + "\n")
+    log.info("wrote transcript %s", path)
     return str(path)
 
 

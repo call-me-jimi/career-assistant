@@ -47,6 +47,9 @@ class TranscriptionConfig(BaseModel):
     beam_size: int = 5
     max_file_mb: int = 200
     voice_max_mb: int = 10
+    # Speaker labels on interview transcripts. Needs `uv sync --extra diarization`;
+    # silently falls back to unlabelled segments when those deps are absent.
+    diarize: bool = False
 
 
 class AppSettings(BaseModel):

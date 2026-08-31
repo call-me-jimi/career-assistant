@@ -62,6 +62,40 @@ def test_export_markdown_writes_expected_sections():
     assert "Why here?" in content
 
 
+def test_export_transcript_writes_standalone_file():
+    state = _state()
+    state["interview_recording_filename"] = "round2.m4a"
+    state["interview_recording_duration_sec"] = 1830.0
+    state["interview_transcript_language"] = "en"
+    state["interview_transcript"] = [
+        {"start": 0.0, "text": "Thanks for joining."},
+        {"start": 65.4, "text": "  "},  # blank segment is skipped
+        {"start": 125.0, "text": "The team is six engineers."},
+    ]
+    path = Path(exporters.export_transcript(state))
+    assert path.name == "interview_transcript.md"
+    content = path.read_text()
+    assert "round2.m4a" in content
+    assert "30.5 min" in content
+    assert "`[00:00]` Thanks for joining." in content
+    assert "`[02:05]` The team is six engineers." in content
+    assert "[01:05]" not in content
+
+
+def test_export_transcript_prints_speaker_only_on_change():
+    state = _state()
+    state["interview_transcript"] = [
+        {"start": 0.0, "text": "Tell me about yourself.", "speaker": "SPEAKER_A"},
+        {"start": 6.0, "text": "Sure, I lead data teams.", "speaker": "SPEAKER_B"},
+        {"start": 12.0, "text": "For about fifteen years.", "speaker": "SPEAKER_B"},
+        {"start": 18.0, "text": "Great.", "speaker": "SPEAKER_A"},
+    ]
+    body = Path(exporters.export_transcript(state)).read_text()
+    assert body.count("**SPEAKER_B**") == 1  # not repeated on the follow-on line
+    assert body.count("**SPEAKER_A**") == 2  # re-printed after the speaker changes
+    assert "`[00:12]`   For about fifteen years." in body
+
+
 def test_export_json_includes_state_and_traces():
     traces = [{"task": "cover_letter_generation", "duration_ms": 1234}]
     path = Path(exporters.export_json(_state(), traces))

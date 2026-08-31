@@ -52,7 +52,8 @@ assistant/
 │   │   ├── scraper.py      # job-page fetch + parse
 │   │   ├── cv_parser.py    # PDF → text (pypdf)
 │   │   ├── transcribe.py   # faster-whisper speech-to-text (interview audio + voice prompts)
-│   │   ├── exporters.py    # PDF / md / JSON / Google Sheets
+│   │   ├── diarize.py      # optional speaker labels for interview transcripts
+│   │   ├── exporters.py    # PDF / md / JSON / transcript / Google Sheets
 │   │   └── web_search.py   # Tavily wrapper
 │   ├── templates/
 │   │   ├── prompts/        # user prompts, versioned as {stem}.vN.txt
@@ -171,12 +172,28 @@ START → greeting → cv_intake → select_journey → collect_job → extract_
   (`transcription.max_file_mb`, default 200 MB).
 - **`evaluator_transcribe`** runs faster-whisper locally and streams progress to the chat. On first
   run, the configured model (default `turbo`, ~800 MB) is downloaded from HuggingFace and cached.
+  When `transcription.diarize` is on, `backend/tools/diarize.py` then labels each segment with a
+  speaker (see below).
 - **`evaluator_analyze`** calls the `analyze_interview_performance` task and validates the response
   against the `InterviewEvaluation` schema (overall score, decision, per-question breakdown,
-  communication metrics, strengths/weaknesses/improvements).
+  communication metrics, strengths/weaknesses/improvements, and `interviewer_insights` — what the
+  interviewer volunteered outside their questions: team structure, tech stack, next steps).
 - **`evaluator_review`** lets the candidate accept the report, retry verbatim, or describe specific
   revisions. All versions accumulate in `interview_evaluation_versions`. Accepting stores an
   evaluation summary on the job journey and a coaching insight for future Interview Prep sessions.
+- **`export`** writes the chosen formats, then always writes `interview_transcript.md` on top —
+  re-transcribing costs another full pass over the recording and the export prompt only comes round
+  once, so the transcript is not one of the selectable formats.
+
+**Speaker diarization** (`backend/tools/diarize.py`, optional). Whisper returns unlabelled segments,
+which leaves the evaluator inferring who spoke from phrasing alone. With the `diarization` extra
+installed and `transcription.diarize` on, each segment's audio is embedded with ECAPA-TDNN
+(speechbrain) and the embeddings are clustered into two speakers; segments under 0.8 s inherit the
+nearest label in time. Labels are neutral — `SPEAKER_A` is whoever talks first — and mapping them
+onto interviewer/candidate is left to the evaluator prompt, which decides once from the
+self-introductions rather than guessing line by line. Every failure path returns `None`, so a
+diarization problem costs speaker labels but never the transcript. The transcript sent to the LLM
+repeats the speaker on every line; exports print it only when the speaker changes.
 
 The full state lives in `backend/agent/state.py` (`ApplicationState`): `assistant_type`, applicant
 fields, job/company fields, `journey_id` / `journey_query`, strategy text,

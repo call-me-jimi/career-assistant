@@ -41,6 +41,10 @@ export type InterviewEvaluation = {
     weaknesses: string[];
     suggested_improvement: string;
   }[];
+  interviewer_insights?: {
+    topic: string;
+    detail: string;
+  }[];
 };
 
 export type LLMCard = {

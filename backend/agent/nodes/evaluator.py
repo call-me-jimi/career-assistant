@@ -132,7 +132,11 @@ def _format_transcript(segments: list[dict]) -> str:
             continue
         start = float(seg.get("start") or 0.0)
         mm, ss = divmod(int(start), 60)
-        lines.append(f"[{mm:02d}:{ss:02d}] {text}")
+        # Repeat the speaker on every line rather than only on change: the model
+        # reads this out of order when citing evidence.
+        speaker = (seg.get("speaker") or "").strip()
+        prefix = f"{speaker}: " if speaker else ""
+        lines.append(f"[{mm:02d}:{ss:02d}] {prefix}{text}")
     return "\n".join(lines)
 
 

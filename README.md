@@ -9,7 +9,9 @@ pipeline. Pick one on the landing page and start a conversation:
 
 - 🎤 **Interview Evaluator** — upload a recording of a real interview; it's transcribed **on your
   own machine** and an LLM returns a scored performance report (overall score, per-question
-  breakdown, communication critique, strengths/weaknesses, what to improve).
+  breakdown, communication critique, strengths/weaknesses, what to improve). It also captures what
+  the *interviewer* volunteered outside their questions — team structure, tech stack, priorities,
+  next steps — and hands you the full transcript as a downloadable file.
 - 📝 **Interview Prep** — from the job description plus whatever the company shared, get a briefing:
   likely questions with answer directions, STAR stories to rehearse, risks to pre-empt, and smart
   questions to ask back. Then keep practising: a mock interview with feedback, classic-question
@@ -23,8 +25,10 @@ pipeline. Pick one on the landing page and start a conversation:
 ## Why this is different
 
 - **Private interview evaluation.** Your interview audio is transcribed locally with
-  [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and is **never persisted server-side**
-  — it's deleted right after transcription. The recording stays on your machine.
+  [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and never leaves your machine — no
+  cloud speech API is involved. Uploaded recordings are kept in `backend/data/audio/` so a session
+  can be resumed without re-uploading; delete that directory when you no longer need them. (Voice
+  prompts from the in-browser mic *are* ephemeral — transcribed to a temp file, then deleted.)
 - **Bring your own model — run fully local if you want.** Anthropic, OpenAI, **Ollama**, or any
   generic HTTP endpoint. Use a local model and no data leaves your laptop at all.
 - **Voice-driven practice.** Dictate answers with the in-browser mic; the same local Whisper
@@ -104,7 +108,11 @@ voice input also need the `ffmpeg` system binary (`sudo apt install ffmpeg`).
   evaluations become coaching insights for your next prep session.
 - **Optional company research** — Tavily web search enriches thin company descriptions and salary
   answers; skipped gracefully when no key is set.
-- **Multi-format export** — PDF (WeasyPrint), Markdown, JSON, and Google Sheets append.
+- **Multi-format export** — PDF (WeasyPrint), Markdown, JSON, and Google Sheets append. Interview
+  sessions always get the transcript as a separate file, whatever else you pick.
+- **Optional speaker diarization** — label who said what in an interview transcript (ECAPA
+  embeddings + clustering) so the evaluator stops guessing. Off by default; needs
+  `uv sync --extra diarization`.
 - **Multi-provider LLM service** — Anthropic / OpenAI / Ollama / generic HTTP, with per-task model
   overrides editable in the UI.
 - **Persistent, resumable state** — SQLite stores sessions, profiles, job journeys, and full LLM

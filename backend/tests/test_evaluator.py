@@ -75,6 +75,26 @@ def test_render_evaluation_markdown_smoke():
     assert "open with current role" in md
 
 
+def test_interviewer_insights_default_to_empty_for_older_reports():
+    ev = InterviewEvaluation.model_validate(extract_json(_RAW_EVAL))
+    assert ev.interviewer_insights == []
+
+
+def test_interviewer_insights_parse_and_render():
+    data = extract_json(_RAW_EVAL)
+    data["interviewer_insights"] = [
+        {"topic": "Team structure", "detail": "Six engineers, two squads, reports to the CTO."},
+        {"topic": "Next steps", "detail": "Case study round within two weeks."},
+    ]
+    ev = InterviewEvaluation.model_validate(data)
+    assert [i.topic for i in ev.interviewer_insights] == ["Team structure", "Next steps"]
+
+    md = _render_evaluation_markdown(ev.model_dump(mode="json"))
+    assert "What the interviewer told you" in md
+    assert "**Team structure:** Six engineers" in md
+    assert "Case study round" in md
+
+
 def test_state_has_evaluator_fields():
     s = ApplicationState(session_id="x", assistant_type="interview_evaluator")
     assert s.interview_evaluation is None
@@ -87,3 +107,32 @@ def test_build_provider_returns_faster_whisper():
     provider = build_provider(cfg)
     assert isinstance(provider, FasterWhisperProvider)
     assert provider.model_size == "turbo"
+
+
+def test_build_provider_passes_diarize_flag():
+    assert build_provider(TranscriptionConfig(diarize=True)).diarize is True
+    assert build_provider(TranscriptionConfig(diarize=False)).diarize is False
+
+
+def test_format_transcript_labels_every_line_when_diarized():
+    from backend.agent.nodes.evaluator import _format_transcript
+
+    out = _format_transcript(
+        [
+            {"start": 0.0, "text": "Tell me about yourself.", "speaker": "SPEAKER_A"},
+            {"start": 65.0, "text": "Sure.", "speaker": "SPEAKER_B"},
+            {"start": 70.0, "text": "I lead data teams.", "speaker": "SPEAKER_B"},
+        ]
+    )
+    assert out.splitlines() == [
+        "[00:00] SPEAKER_A: Tell me about yourself.",
+        "[01:05] SPEAKER_B: Sure.",
+        "[01:10] SPEAKER_B: I lead data teams.",
+    ]
+
+
+def test_format_transcript_unchanged_without_speaker_labels():
+    from backend.agent.nodes.evaluator import _format_transcript
+
+    out = _format_transcript([{"start": 0.0, "text": "Tell me about yourself."}])
+    assert out == "[00:00] Tell me about yourself."

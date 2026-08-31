@@ -14,12 +14,14 @@ from typing import Any, Callable, Protocol
 from pydantic import BaseModel, Field
 
 from backend.config import TranscriptionConfig
+from backend.tools.diarize import diarize as diarize_segments
 
 
 class TranscriptSegment(BaseModel):
     start: float
     end: float
     text: str
+    speaker: str = ""  # "SPEAKER_A"/"SPEAKER_B" when diarization ran, else ""
 
 
 class TranscriptionResult(BaseModel):
@@ -51,11 +53,13 @@ class FasterWhisperProvider:
         device: str = "auto",
         compute_type: str = "auto",
         beam_size: int = 5,
+        diarize: bool = False,
     ) -> None:
         self.model_size = model_size
         self.device = device
         self.compute_type = compute_type
         self.beam_size = beam_size
+        self.diarize = diarize
         self._model: Any | None = None
 
     def _load_model(self) -> Any:
@@ -109,6 +113,12 @@ class FasterWhisperProvider:
         if on_progress and total > 0:
             on_progress(1.0, "")
 
+        if self.diarize and collected:
+            labels = diarize_segments(audio_path, collected, device=self.device)
+            if labels:
+                for seg, label in zip(collected, labels):
+                    seg.speaker = label
+
         return TranscriptionResult(
             language=info.language,
             duration_sec=info.duration or 0.0,
@@ -135,6 +145,7 @@ def build_provider(config: TranscriptionConfig) -> TranscriptionProvider:
             device=config.device,
             compute_type=config.compute_type,
             beam_size=config.beam_size,
+            diarize=config.diarize,
         )
     raise ValueError(f"unknown transcription provider: {config.provider}")
 

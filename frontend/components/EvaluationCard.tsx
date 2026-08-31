@@ -149,6 +149,25 @@ export default function EvaluationCard({ evaluation }: Props) {
           })}
         </div>
       )}
+
+      {evaluation.interviewer_insights &&
+        evaluation.interviewer_insights.length > 0 && (
+          <div className="space-y-2">
+            <div className="font-semibold text-subtle text-xs uppercase tracking-wide">
+              What the interviewer told you
+            </div>
+            <ul className="space-y-2 text-sm">
+              {evaluation.interviewer_insights.map((item, i) => (
+                <li key={i} className="rounded-xl border border-border p-3">
+                  <div className="font-medium">{item.topic}</div>
+                  {item.detail && (
+                    <div className="text-subtle mt-1">{item.detail}</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
     </div>
   );
 }

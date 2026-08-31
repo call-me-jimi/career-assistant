@@ -32,6 +32,11 @@ class QuestionAnalysis(BaseModel):
     suggested_improvement: str = ""
 
 
+class InterviewerInsight(BaseModel):
+    topic: str
+    detail: str = ""
+
+
 class InterviewEvaluation(BaseModel):
     overall_score: float = Field(ge=0.0, le=10.0)
     decision: Literal["YES", "MAYBE", "NO"]
@@ -41,3 +46,4 @@ class InterviewEvaluation(BaseModel):
     improvements: list[str] = Field(default_factory=list)
     communication: CommunicationMetrics
     per_question: list[QuestionAnalysis] = Field(default_factory=list)
+    interviewer_insights: list[InterviewerInsight] = Field(default_factory=list)

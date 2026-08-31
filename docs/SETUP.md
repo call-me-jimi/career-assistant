@@ -10,6 +10,8 @@ Full installation and optional-integration guide. For the 30-second version see 
 - Node.js 18+ and npm
 - (Optional) `ffmpeg` system binary — required for the Interview Evaluator and voice input
   (`sudo apt install ffmpeg`)
+- (Optional) The `diarization` extra for speaker labels on interview transcripts — see
+  [Speaker diarization](#speaker-diarization-optional)
 - (Optional) A Google Cloud service-account JSON for Google Sheets export
 - (Optional) A Tavily API key for web-augmented company research
 - (Optional) An OTLP-compatible collector (e.g. Phoenix, Jaeger) to ship spans off-process
@@ -22,6 +24,27 @@ uv sync
 
 `uv sync` installs runtime + dev dependencies (pytest is in the default group). Use `uv run <cmd>`
 for everything Python (`uv run uvicorn …`, `uv run pytest`).
+
+### Speaker diarization (optional)
+
+By default an interview transcript has no speaker labels, and the evaluator infers who said what
+from phrasing alone — which works on clear question/answer turns and fails on small talk. Installing
+the `diarization` extra labels each segment by voice instead:
+
+```bash
+uv sync --extra diarization
+```
+
+Then set `transcription.diarize` to `true` in `backend/config/settings.json` and restart the backend.
+
+This pulls torch, torchaudio, speechbrain and scikit-learn — roughly **2.5 GB of wheels** (CUDA
+builds on Linux), so it is opt-in. It runs on GPU when one is available and falls back to CPU
+otherwise; on a laptop RTX 3050 Ti it adds ~12 s to a 40-minute recording. The speaker-embedding
+model (~80 MB) downloads on first use and is cached in `backend/data/models/ecapa/`. Nothing here is
+gated behind a HuggingFace token.
+
+If the flag is on but the extra is not installed, transcription still works — you just get
+unlabelled segments and an info line in the log.
 
 Create `.env` at the project root — copy the template and fill it in:
 

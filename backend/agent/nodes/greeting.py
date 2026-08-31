@@ -79,7 +79,12 @@ async def greeting_node(state: ApplicationState) -> dict:
         if 1 <= idx <= len(profiles):
             matched_profile = profiles[idx - 1]
 
-    applicant_name = matched_profile["name"] if matched_profile else (raw or "Applicant")
+    if matched_profile:
+        # Use the real candidate name, not the profile's short label (which the
+        # user may have named after a role, e.g. "Head of Data").
+        applicant_name = matched_profile.get("applicant_name") or matched_profile["name"]
+    else:
+        applicant_name = raw or "Applicant"
 
     update: dict = {"applicant_name": applicant_name, "phase": "cv_intake"}
     if matched_profile:

@@ -9,6 +9,7 @@ and avoids per-site scraper fragility.
 
 from __future__ import annotations
 
+import html as html_lib
 import json
 import logging
 import re
@@ -53,11 +54,85 @@ _ASHBY_RE = re.compile(
     re.IGNORECASE,
 )
 
+# SAP SuccessFactors "Career Site Builder" sites (e.g. jobs.kpmg.de) render the
+# job body client-side via a Stencil web component; the plain HTML holds only
+# nav chrome. The component is hosted per-tenant at csbep-{customer}.firebaseapp.com
+# and POSTs to the recruiting-solutions.org search API for the job content.
+_CSB_HOST_RE = re.compile(r"csbep-([a-z0-9\-]+)\.firebaseapp\.com", re.IGNORECASE)
+_CSB_JOBID_RE = re.compile(r"jobID\s*:\s*'(\d+)")
+_CSB_SEARCH_API = "https://production.api.recruiting-solutions.org/search"
+
 
 def _html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     lines = [ln for ln in (ln.strip() for ln in soup.get_text(separator="\n").splitlines()) if ln]
     return "\n".join(lines)
+
+
+def _iter_jsonld(html: str):
+    """Yield every JSON object found in ``application/ld+json`` blocks, flattening
+    ``@graph`` containers so nested entities surface at the top level."""
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        raw = tag.string or tag.get_text() or ""
+        if not raw.strip():
+            continue
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError):
+            continue
+        for entry in data if isinstance(data, list) else [data]:
+            if isinstance(entry, dict) and isinstance(entry.get("@graph"), list):
+                yield from (g for g in entry["@graph"] if isinstance(g, dict))
+            elif isinstance(entry, dict):
+                yield entry
+
+
+def _scrape_jsonld(html: str, url: str) -> dict[str, str] | None:
+    """Extract a schema.org ``JobPosting`` embedded in the page as JSON-LD.
+
+    Many career platforms (Phenom, etc.) render the visible body client-side but
+    still emit a complete ``JobPosting`` block in the static HTML. Returns ``None``
+    when no such block (with a real description) is present, so the caller can fall
+    back to plain-text scraping.
+    """
+    job = next(
+        (e for e in _iter_jsonld(html) if e.get("@type") == "JobPosting" and e.get("description")),
+        None,
+    )
+    if job is None:
+        return None
+
+    def _first(val):
+        return val[0] if isinstance(val, list) else val
+
+    title = job.get("title", "")
+    org = _first(job.get("hiringOrganization")) or {}
+    company = org.get("name", "") if isinstance(org, dict) else ""
+
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+
+    addr = (_first(job.get("jobLocation")) or {}).get("address") if job.get("jobLocation") else None
+    if isinstance(addr, dict):
+        loc = ", ".join(
+            v for v in (addr.get("addressLocality"), addr.get("addressRegion"), addr.get("addressCountry")) if v
+        )
+        if loc:
+            parts.append(f"Location: {loc}")
+    emp = job.get("employmentType")
+    if emp:
+        parts.append(f"Type: {', '.join(emp) if isinstance(emp, list) else emp}")
+    ident = _first(job.get("identifier")) or {}
+    if isinstance(ident, dict) and ident.get("value"):
+        parts.append(f"Req ID: {ident['value']}")
+
+    # Some sites (Phenom) HTML-entity-escape the markup inside the JSON string
+    # (``&lt;h2&gt;``); unescape once so the tags are real before stripping them.
+    parts.append(f"\nDescription:\n{_html_to_text(html_lib.unescape(job['description']))}")
+
+    raw_text = "\n".join(parts)
+    log.info("scraped json-ld JobPosting %s (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}".strip(" -"), "raw_text": raw_text}
 
 
 def _scrape_workable(url: str, timeout: int) -> dict[str, str]:
@@ -244,6 +319,77 @@ def _scrape_ashby(url: str, timeout: int) -> dict[str, str]:
     return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
 
 
+def _csb_api_key(customer: str, timeout: int) -> str:
+    # The tenant's public search key (``pk_{customer}_…``) lives in a
+    # content-hashed Stencil chunk referenced by the app's entry module.
+    base = f"https://csbep-{customer}.firebaseapp.com/build/"
+    esm = requests.get(base + "csb.esm.js", headers=_HEADERS, timeout=timeout).text
+    for chunk in set(re.findall(r"p-[A-Za-z0-9_\-]{6,8}\.js", esm)):
+        text = requests.get(base + chunk, headers=_HEADERS, timeout=timeout).text
+        m = re.search(r"pk_" + re.escape(customer) + r"_[A-Za-z0-9]+", text)
+        if m:
+            return m.group(0)
+    raise ValueError(f"CSB search key not found for customer {customer!r}")
+
+
+def _scrape_successfactors_csb(page_html: str, url: str, timeout: int) -> dict[str, str]:
+    customer = _CSB_HOST_RE.search(page_html).group(1)
+    job_match = _CSB_JOBID_RE.search(page_html)
+    if not job_match:
+        raise ValueError("CSB jobID not found on page")
+    job_id = job_match.group(1)
+    api_key = _csb_api_key(customer, timeout)
+
+    body = json.dumps(
+        {"count": True, "facets": [], "filter": f"jobId eq '{job_id}' ", "search": "*", "skip": 0}
+    )
+    resp = requests.post(
+        _CSB_SEARCH_API,
+        headers={
+            **_HEADERS,
+            "Accept": "application/json",
+            "Content-Type": "application/json;charset=UTF-8",
+            "x-api-key": api_key,
+            "customerid": customer,
+            "internal": "false",
+            "privatejobboard": "false",
+        },
+        data=body,
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    values = resp.json().get("value") or []
+    if not values:
+        raise ValueError(f"CSB job {job_id} not found for customer {customer!r}")
+    job = values[0]
+
+    soup = BeautifulSoup(page_html, "lxml")
+    page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
+    company = page_title.split("|")[-1].strip() if "|" in page_title else customer.split("-")[0].title()
+
+    title = job.get("title", "")
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+    if job.get("city"):
+        parts.append(f"Location: {job['city']}")
+    if job.get("contractTypes"):
+        parts.append(f"Contract: {job['contractTypes']}")
+    if job.get("workHours"):
+        parts.append(f"Hours: {job['workHours']}")
+    for label, field in (
+        ("Overview", "description"),
+        ("Responsibilities", "tasks"),
+        ("Profile", "profile"),
+    ):
+        html = job.get(field) or ""
+        text = _html_to_text(html) if isinstance(html, str) else ""
+        if text.strip():
+            parts.append(f"\n{label}:\n{text}")
+
+    raw_text = "\n".join(parts)
+    log.info("scraped successfactors-csb %s via API (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
+
+
 def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
     """Return {'url', 'title', 'raw_text'} scraped from a job URL."""
     if _WORKABLE_RE.match(url):
@@ -269,6 +415,19 @@ def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
         job_ids = qs.get("gh_jid") or re.findall(r"gh_jid=(\d+)", resp.text)
         if job_ids:
             return _scrape_greenhouse(board_token, job_ids[0], url, timeout)
+
+    # Detect SuccessFactors Career Site Builder (JS-rendered; body via API)
+    if _CSB_HOST_RE.search(resp.text):
+        try:
+            return _scrape_successfactors_csb(resp.text, url, timeout)
+        except Exception:
+            log.warning("successfactors-csb handler failed for %s; falling back", url, exc_info=True)
+
+    # Many JS-rendered career sites (Phenom, etc.) still embed a full schema.org
+    # JobPosting in the static HTML even when the visible body is client-side only.
+    jsonld = _scrape_jsonld(resp.text, url)
+    if jsonld is not None:
+        return jsonld
 
     soup = BeautifulSoup(resp.text, "lxml")
 

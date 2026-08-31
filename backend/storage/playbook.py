@@ -40,10 +40,44 @@ async def get_playbook(profile_id: str) -> dict[str, Any]:
     }
 
 
+def _normalize_phrase_items(raw: Any) -> list[dict[str, str]]:
+    """Coerce a phrase list (never_say / prefer_phrasing) to a list of {phrase, reason} dicts.
+
+    The synthesis LLM occasionally emits bare strings instead of dicts; normalize
+    at write time so stored rows always have a consistent shape.
+    """
+    items: list[dict[str, str]] = []
+    for item in raw or []:
+        if isinstance(item, str):
+            phrase, reason = item, ""
+        elif isinstance(item, dict):
+            phrase, reason = str(item.get("phrase", "")), str(item.get("reason", ""))
+        else:
+            continue
+        if phrase:
+            items.append({"phrase": phrase, "reason": reason})
+    return items
+
+
+def _normalize_weakness_items(raw: Any) -> list[dict[str, str]]:
+    """Coerce recurring_hm_weaknesses to a list of {weakness} dicts, tolerating bare strings."""
+    items: list[dict[str, str]] = []
+    for item in raw or []:
+        if isinstance(item, str):
+            weakness = item
+        elif isinstance(item, dict):
+            weakness = str(item.get("weakness", ""))
+        else:
+            continue
+        if weakness:
+            items.append({"weakness": weakness})
+    return items
+
+
 async def upsert_playbook(profile_id: str, payload: dict[str, Any]) -> None:
-    never_say = payload.get("never_say") or []
-    prefer_phrasing = payload.get("prefer_phrasing") or []
-    recurring_hm_weaknesses = payload.get("recurring_hm_weaknesses") or []
+    never_say = _normalize_phrase_items(payload.get("never_say"))
+    prefer_phrasing = _normalize_phrase_items(payload.get("prefer_phrasing"))
+    recurring_hm_weaknesses = _normalize_weakness_items(payload.get("recurring_hm_weaknesses"))
     tone_notes = payload.get("tone_notes") or ""
     now = time.time()
     async with connect() as db:
@@ -106,19 +140,32 @@ def render_playbook_for_prompt(playbook: dict[str, Any]) -> str:
     if never_say:
         lines.append("Avoid these phrasings (they have consistently been revised out):")
         for item in never_say:
-            phrase = item.get("phrase", "")
-            reason = item.get("reason", "")
-            lines.append(f"- \"{phrase}\"" + (f" — {reason}" if reason else ""))
+            phrase, reason = _phrase_reason(item)
+            if phrase:
+                lines.append(f"- \"{phrase}\"" + (f" — {reason}" if reason else ""))
     if prefer:
         lines.append("Prefer these phrasings (consistently kept by the candidate):")
         for item in prefer:
-            phrase = item.get("phrase", "")
-            reason = item.get("reason", "")
-            lines.append(f"- \"{phrase}\"" + (f" — {reason}" if reason else ""))
+            phrase, reason = _phrase_reason(item)
+            if phrase:
+                lines.append(f"- \"{phrase}\"" + (f" — {reason}" if reason else ""))
     if weaknesses:
         lines.append("Recurring hiring-manager concerns for this candidate — address them proactively:")
         for item in weaknesses:
-            w = item.get("weakness", "")
+            w = item if isinstance(item, str) else (item.get("weakness", "") if isinstance(item, dict) else "")
             if w:
                 lines.append(f"- {w}")
     return "\n".join(lines)
+
+
+def _phrase_reason(item: Any) -> tuple[str, str]:
+    """Coerce a playbook list item to (phrase, reason).
+
+    Items are normally dicts, but the synthesis LLM occasionally emits a bare
+    string; tolerate both so rendering never crashes on legacy/malformed rows.
+    """
+    if isinstance(item, str):
+        return item, ""
+    if isinstance(item, dict):
+        return item.get("phrase", ""), item.get("reason", "")
+    return "", ""

@@ -1,6 +1,6 @@
 [project]
 name = "assistant"
-version = "0.6.1"
+version = "0.7.0"
 description = "Personal Application Assistant — agentic, conversational cover letter + Q&A helper"
 readme = "README.md"
 license = "MIT"
@@ -38,6 +38,16 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "playwright>=1.61.0",
     "json-repair>=0.61.4",
+]
+
+[project.optional-dependencies]
+# Speaker diarization for interview transcripts: `uv sync --extra diarization`.
+# Heavy (torch pulls ~2.5GB of CUDA wheels), hence opt-in.
+diarization = [
+    "torch>=2.4",
+    "torchaudio>=2.4",
+    "speechbrain>=1.0",
+    "scikit-learn>=1.5",
 ]
 
 [dependency-groups]

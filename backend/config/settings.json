@@ -23,7 +23,7 @@
     },
     "alignment_strategy": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-4-6",
+      "model_name": "claude-sonnet-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": null
@@ -37,7 +37,7 @@
     },
     "position_candidate": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-4-6",
+      "model_name": "claude-sonnet-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": null
@@ -65,21 +65,21 @@
     },
     "qa": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-4-6",
+      "model_name": "claude-sonnet-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": null
     },
     "interview_briefing": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-4-6",
+      "model_name": "claude-sonnet-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": 16000
     },
     "refine_interview_briefing": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-4-6",
+      "model_name": "claude-sonnet-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": 16000

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import time
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -104,28 +106,58 @@ def test_export_json_includes_state_and_traces():
     assert payload["llm_traces"][0]["task"] == "cover_letter_generation"
 
 
-def test_export_job_assets_copies_screenshot_and_ad(tmp_path, monkeypatch):
+def test_export_job_page_copies_the_screenshot(tmp_path, monkeypatch):
     monkeypatch.setattr(exporters, "SCREENSHOT_DIR", tmp_path / "shots")
     (tmp_path / "shots").mkdir()
-    shot_src = exporters.SCREENSHOT_DIR / "acme_abc123.png"
-    shot_src.write_bytes(b"\x89PNG fake")
+    (exporters.SCREENSHOT_DIR / "acme_abc123.png").write_bytes(b"\x89PNG fake")
 
     state = _state()
     state["job_screenshot_path"] = "acme_abc123.png"
-    state["job_description"] = "We are hiring a Head of Data to lead…"
-
-    written = exporters.export_job_assets(state)
-    names = {Path(p).name for p in written}
-    assert "job_page.png" in names
-    assert "job_ad.md" in names
-
-    ad = next(p for p in written if p.endswith("job_ad.md"))
-    assert "Head of Data" in Path(ad).read_text()
-    assert "We are hiring" in Path(ad).read_text()
+    path = Path(exporters.export_job_page(state))
+    assert path.name == "job_page.png"
+    assert path.read_bytes() == b"\x89PNG fake"
 
 
-def test_export_job_assets_skips_missing_screenshot():
+def test_export_job_page_raises_when_the_screenshot_is_gone():
     state = _state()
     state["job_screenshot_path"] = "does_not_exist.png"
-    written = exporters.export_job_assets(state)
-    assert not any(p.endswith(".png") for p in written)
+    with pytest.raises(RuntimeError, match="screenshot"):
+        exporters.export_job_page(state)
+
+
+def test_export_job_ad_writes_title_and_body():
+    state = _state()
+    state["job_description"] = "We are hiring a Head of Data to lead…"
+    path = Path(exporters.export_job_ad(state))
+    assert path.name == "job_ad.md"
+    body = path.read_text()
+    assert "Head of Data" in body
+    assert "We are hiring" in body
+
+
+def test_export_job_ad_raises_without_job_text():
+    with pytest.raises(RuntimeError, match="job ad"):
+        exporters.export_job_ad(_state())
+
+
+def test_export_zip_bundles_files_flat(tmp_path):
+    a = tmp_path / "one.md"
+    a.write_text("one")
+    b = tmp_path / "nested" / "two.pdf"
+    b.parent.mkdir()
+    b.write_text("two")
+
+    archive = Path(exporters.export_zip(_state(), [str(a), str(b)], tmp_path / "out"))
+    assert archive.name == f"Acme - {time.strftime('%Y.%m.%d')}.zip"
+    with zipfile.ZipFile(archive) as zf:
+        assert sorted(zf.namelist()) == ["one.md", "two.pdf"]
+
+
+def test_export_zip_skips_paths_that_vanished(tmp_path):
+    a = tmp_path / "one.md"
+    a.write_text("one")
+    archive = Path(
+        exporters.export_zip(_state(), [str(a), str(tmp_path / "gone.pdf")], tmp_path / "out")
+    )
+    with zipfile.ZipFile(archive) as zf:
+        assert zf.namelist() == ["one.md"]

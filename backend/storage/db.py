@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS job_journeys (
     cover_letter          TEXT NOT NULL DEFAULT '',
     interview_briefing    TEXT NOT NULL DEFAULT '',
     evaluation_summary    TEXT NOT NULL DEFAULT '',
+    export_folder         TEXT NOT NULL DEFAULT '',
     cover_letter_at       REAL,
     interview_briefing_at REAL,
     evaluation_summary_at REAL,
@@ -185,6 +186,13 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     if "job_screenshot_path" not in journey_cols:
         await db.execute(
             "ALTER TABLE job_journeys ADD COLUMN job_screenshot_path TEXT NOT NULL DEFAULT ''"
+        )
+    if "export_folder" not in journey_cols:
+        # Where this job's artifacts were first exported, so later sessions
+        # (prep, evaluator) write into the same folder instead of a new
+        # today-dated one. Empty for journeys created before this column.
+        await db.execute(
+            "ALTER TABLE job_journeys ADD COLUMN export_folder TEXT NOT NULL DEFAULT ''"
         )
 
     # Backfill job_journeys from the latest application_records row per

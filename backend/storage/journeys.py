@@ -26,6 +26,7 @@ _ALLOWED_FIELDS = frozenset(
         "cover_letter",
         "interview_briefing",
         "evaluation_summary",
+        "export_folder",
     }
 )
 
@@ -47,6 +48,7 @@ _COLUMNS = (
     "cover_letter",
     "interview_briefing",
     "evaluation_summary",
+    "export_folder",
     "cover_letter_at",
     "interview_briefing_at",
     "evaluation_summary_at",

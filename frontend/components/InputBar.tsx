@@ -82,19 +82,12 @@ function quickRepliesFor(pending?: InterruptPayload | null): QuickReply[] {
         { label: "Done", value: "done" },
       ];
     case "export_delivery":
+      // Options vary per assistant, so the node ships them with the interrupt.
+      return Array.isArray(pending?.options) ? pending.options : [];
+    case "export_sheets":
       return [
-        { label: "Download", value: "download" },
-        { label: "Folder", value: "folder" },
-        { label: "Both", value: "both" },
-      ];
-    case "export_choice":
-      return [
-        { label: "All", value: "all" },
-        { label: "PDF", value: "pdf" },
-        { label: "Markdown", value: "md" },
-        { label: "JSON", value: "json" },
-        { label: "Google Sheets", value: "sheets" },
-        { label: "None", value: "none" },
+        { label: "Yes, add a row", value: "yes" },
+        { label: "No thanks", value: "no" },
       ];
     case "language_switch":
       return [
@@ -119,6 +112,7 @@ export default function InputBar({
   sessionId,
 }: Props) {
   const [text, setText] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -131,6 +125,21 @@ export default function InputBar({
     setText((prev) => (prev ? `${prev} ${transcript}` : transcript));
     textareaRef.current?.focus();
   }
+
+  // Multi-select artifact picker (export_items). Selections must not leak from
+  // one interrupt to the next.
+  const exportItems: QuickReply[] =
+    kind === "export_items" && Array.isArray(pending?.items) ? pending.items : [];
+
+  function toggleItem(value: string) {
+    setSelected((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  }
+
+  useEffect(() => {
+    setSelected([]);
+  }, [pending]);
 
   useEffect(() => {
     if (
@@ -322,6 +331,50 @@ export default function InputBar({
       {voiceError && (
         <p className="text-xs text-err">Voice input: {voiceError}</p>
       )}
+      {kind === "export_items" && exportItems.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-subtle">Pick any:</span>
+          {exportItems.map((item) => {
+            const on = selected.includes(item.value);
+            return (
+              <button
+                key={item.value}
+                onClick={() => toggleItem(item.value)}
+                aria-pressed={on}
+                className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                  on
+                    ? "border-accent bg-accent/20 text-accent"
+                    : "border-border bg-panel text-subtle hover:border-accent/50"
+                }`}
+              >
+                <span className="mr-1.5">{on ? "✓" : "+"}</span>
+                {item.label}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => {
+              const labels = exportItems
+                .filter((i) => selected.includes(i.value))
+                .map((i) => i.label)
+                .join(", ");
+              onUserMessage(labels);
+              onSend(selected);
+            }}
+            disabled={selected.length === 0}
+            className="px-4 py-1.5 rounded-lg bg-accent text-bg text-sm font-medium disabled:opacity-40"
+          >
+            Download {selected.length || ""}
+            {selected.length ? (selected.length === 1 ? " item" : " items") : ""}
+          </button>
+          <button
+            onClick={() => submitText("none")}
+            className="px-3 py-1.5 rounded-lg border border-border text-sm text-subtle hover:border-accent/50"
+          >
+            None
+          </button>
+        </div>
+      )}
       {quickReplies.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-subtle">Quick reply:</span>
@@ -373,10 +426,12 @@ function placeholderFor(kind?: string): string {
       return "topic name, or `pick` to let me choose";
     case "qa_menu":
       return "motivation / salary / experience / custom question / done";
+    case "export_items":
+      return "pick above, or type e.g. `cover_letter job_ad` / `all` / `none`";
     case "export_delivery":
-      return "download / folder / both";
-    case "export_choice":
-      return "pdf md json sheets — or `all` / `none`";
+      return "folder / links / zip";
+    case "export_sheets":
+      return "yes / no";
     default:
       return "Your reply…";
   }

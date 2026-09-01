@@ -110,7 +110,8 @@ START → greeting → cv_intake → select_journey → collect_job → extract_
   moving on.
 - **`qa_menu` / `qa_answer`** form a loop so you can ask multiple predefined or custom questions
   before exporting.
-- **`export_node`** appends to Google Sheets and writes PDF / md / JSON to `DEFAULT_EXPORT_FOLDER`.
+- **`export_node`** asks which artifacts to take away and in what form, then writes them; for the
+  Cover Letter it also offers to append a row to Google Sheets. See [Export](#export).
 - **`post_export`** asks whether to return to the Q&A menu or wrap up; on wrap-up
   **`synthesize_learning`** and **`review_learned_suggestion`** run the learning tail — see
   [Per-profile learning](#per-profile-learning).
@@ -181,9 +182,8 @@ START → greeting → cv_intake → select_journey → collect_job → extract_
 - **`evaluator_review`** lets the candidate accept the report, retry verbatim, or describe specific
   revisions. All versions accumulate in `interview_evaluation_versions`. Accepting stores an
   evaluation summary on the job journey and a coaching insight for future Interview Prep sessions.
-- **`export`** writes the chosen formats, then always writes `interview_transcript.md` on top —
-  re-transcribing costs another full pass over the recording and the export prompt only comes round
-  once, so the transcript is not one of the selectable formats.
+- **`export`** offers the evaluation PDF and the transcript as separately selectable artifacts, plus
+  the LLM traces. See [Export](#export).
 
 **Speaker diarization** (`backend/tools/diarize.py`, optional). Whisper returns unlabelled segments,
 which leaves the evaluator inferring who spoke from phrasing alone. With the `diarization` extra
@@ -194,6 +194,35 @@ onto interviewer/candidate is left to the evaluator prompt, which decides once f
 self-introductions rather than guessing line by line. Every failure path returns `None`, so a
 diarization problem costs speaker labels but never the transcript. The transcript sent to the LLM
 repeats the speaker on every line; exports print it only when the speaker changes.
+
+### Export
+
+`export_node` is shared by all four graphs but behaves differently per assistant, driven by two
+tables in `backend/agent/nodes/export_node.py`:
+
+- **`EXPORT_ITEMS`** — the artifacts each assistant can produce, each with an `available(state)`
+  predicate. Unavailable items (no screenshot captured, no transcript, no SWOT generated) are hidden
+  rather than offered and then failed. Every assistant also offers `traces` (`llm_traces.json`:
+  full session state plus every LLM call).
+- **`DELIVERY_OPTIONS`** — how each assistant can hand them over. A single option is applied without
+  asking, which is why Career Advisor never sees a delivery question.
+
+| Assistant | Artifacts | Delivery |
+|---|---|---|
+| Cover Letter | cover letter (pdf), application info (md), job ad (md), job page (png), traces | new application folder, zip |
+| Interview Evaluator | evaluation (pdf), transcript (md), traces | application folder, download links, zip |
+| Interview Prep | briefing (pdf), traces | application folder, download links |
+| Career Advisor | SWOT (pdf), traces | download links |
+
+The node interrupts twice — `export_items` (multi-select; the UI renders toggle chips from the
+payload, and a typed `cover_letter job_ad` / `all` / `none` also works) and `export_delivery`. Cover
+Letter interrupts a third time (`export_sheets`) to offer the spreadsheet row.
+
+**Application folder reuse.** Cover Letter creates a fresh `<Company> - <date>` folder and stores
+its path on the journey as `export_folder`. Interview Prep and Interview Evaluator read that path
+back so a September evaluation lands next to the August cover letter instead of in a new
+today-dated folder. Journeys created before this column, or whose folder has since been deleted,
+fall back to creating a fresh one. Career Advisor has no journey and therefore no folder option.
 
 The full state lives in `backend/agent/state.py` (`ApplicationState`): `assistant_type`, applicant
 fields, job/company fields, `journey_id` / `journey_query`, strategy text,
@@ -289,7 +318,8 @@ Tables:
   assistants.
 - **traces** — every LLM call ever made in the session (input/output, tokens, model, timing).
 - **job_journeys** — one row per job: URL / title / company / description, research, strategies,
-  cover letter, interview briefing, evaluation summary, plus per-artifact `*_at` timestamps.
+  cover letter, interview briefing, evaluation summary, plus per-artifact `*_at` timestamps and
+  `export_folder` (where this job's artifacts were exported, so later sessions reuse it).
   Indexed per profile.
 - **application_records** / **application_hm_iterations** — completed cover-letter applications and
   their hiring-manager iterations; the history `synthesize_learning` reflects over.

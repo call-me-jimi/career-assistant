@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import time
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -281,49 +282,55 @@ def export_json(
     target_dir: Path | None = None,
 ) -> str:
     folder = _ensure_folder(state, target_dir)
-    path = folder / "application.json"
+    path = folder / "llm_traces.json"
     payload = {"state": state, "llm_traces": traces}
     path.write_text(json.dumps(payload, indent=2, default=str))
-    log.info("wrote json %s", path)
+    log.info("wrote traces %s", path)
     return str(path)
 
 
-def export_job_assets(state: dict[str, Any], target_dir: Path | None = None) -> list[str]:
-    """Copy the source-of-truth job artifacts into the export folder.
-
-    Captures the job-page screenshot (which survives the posting going offline)
-    and the extracted job-ad text alongside the generated documents. Best-effort:
-    a missing screenshot file or empty job text is skipped silently. Returns the
-    list of written paths.
-    """
-    folder = _ensure_folder(state, target_dir)
-    written: list[str] = []
-
+def export_job_page(state: dict[str, Any], target_dir: Path | None = None) -> str:
+    """Copy the job-page screenshot, which outlives the posting going offline."""
     screenshot_name = state.get("job_screenshot_path") or ""
-    if screenshot_name:
-        src = SCREENSHOT_DIR / screenshot_name
-        if src.exists():
-            dest = folder / f"job_page{src.suffix or '.png'}"
-            shutil.copyfile(src, dest)
-            written.append(str(dest))
-        else:
-            log.warning("job screenshot %s not found, skipping", src)
+    src = SCREENSHOT_DIR / screenshot_name if screenshot_name else None
+    if not src or not src.exists():
+        raise RuntimeError("No job-page screenshot captured for this job.")
+    dest = _ensure_folder(state, target_dir) / f"job_page{src.suffix or '.png'}"
+    shutil.copyfile(src, dest)
+    log.info("wrote job page %s", dest)
+    return str(dest)
 
+
+def export_job_ad(state: dict[str, Any], target_dir: Path | None = None) -> str:
+    """Write the extracted job-ad text as its own markdown file."""
     job_ad = (state.get("job_description") or "").strip()
-    if job_ad:
-        lines = [f"# Job ad — {state.get('job_title') or state.get('company_name') or ''}", ""]
-        if state.get("company_name"):
-            lines.append(f"**Company:** {state.get('company_name')}")
-        if state.get("job_url"):
-            lines.append(f"**URL:** {state.get('job_url')}")
-        lines += ["", job_ad, ""]
-        dest = folder / "job_ad.md"
-        dest.write_text("\n".join(lines))
-        written.append(str(dest))
+    if not job_ad:
+        raise RuntimeError("No job ad text to export.")
+    lines = [f"# Job ad — {state.get('job_title') or state.get('company_name') or ''}", ""]
+    if state.get("company_name"):
+        lines.append(f"**Company:** {state.get('company_name')}")
+    if state.get("job_url"):
+        lines.append(f"**URL:** {state.get('job_url')}")
+    lines += ["", job_ad, ""]
+    dest = _ensure_folder(state, target_dir) / "job_ad.md"
+    dest.write_text("\n".join(lines))
+    log.info("wrote job ad %s", dest)
+    return str(dest)
 
-    for path in written:
-        log.info("wrote job asset %s", path)
-    return written
+
+def export_zip(state: dict[str, Any], paths: list[str], target_dir: Path) -> str:
+    """Bundle already-written files into a single archive for download."""
+    company = state.get("company_name") or state.get("applicant_name") or "Session"
+    stem = _sanitize_filename(f"{company} - {time.strftime('%Y.%m.%d')}")
+    target_dir.mkdir(parents=True, exist_ok=True)
+    archive = target_dir / f"{stem}.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+        for p in paths:
+            src = Path(p)
+            if src.exists() and src != archive:
+                zf.write(src, arcname=src.name)
+    log.info("wrote zip %s", archive)
+    return str(archive)
 
 
 def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:

@@ -108,8 +108,11 @@ voice input also need the `ffmpeg` system binary (`sudo apt install ffmpeg`).
   evaluations become coaching insights for your next prep session.
 - **Optional company research** — Tavily web search enriches thin company descriptions and salary
   answers; skipped gracefully when no key is set.
-- **Multi-format export** — PDF (WeasyPrint), Markdown, JSON, and Google Sheets append. Interview
-  sessions always get the transcript as a separate file, whatever else you pick.
+- **Per-assistant export** — each assistant offers exactly the artifacts it can produce (cover
+  letter PDF, application summary, job ad, job-page screenshot, evaluation report, interview
+  transcript, briefing, SWOT, LLM traces), picked with multi-select chips. Then choose how to
+  receive them: written into the job's application folder, as individual download links, or bundled
+  into a zip. Cover-letter sessions can also append a row to your Google Sheet.
 - **Optional speaker diarization** — label who said what in an interview transcript (ECAPA
   embeddings + clustering) so the evaluator stops guessing. Off by default; needs
   `uv sync --extra diarization`.

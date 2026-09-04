@@ -76,3 +76,51 @@ def test_jsonld_returns_none_without_jobposting():
 def test_jsonld_returns_none_when_description_missing():
     ld = {"@type": "JobPosting", "title": "No body"}
     assert scraper._scrape_jsonld(_page(ld), "https://x/job/5") is None
+
+
+def _aem_page(props: dict, *, site_name: str = "Publicis Sapient Careers") -> str:
+    # AEM HTML-escapes the JSON into a single-quoted attribute
+    attr = json.dumps(props).replace("&", "&amp;").replace('"', "&#34;").replace("<", "&lt;")
+    return (
+        f'<html><head><meta property="og:site_name" content="{site_name}"/></head><body>'
+        f"<div class=\"job-details\" data-cmp-is=\"careerjobdetailstemplate\" "
+        f"data-react-props='{attr}'></div>"
+        "<h2>Qualifications</h2><h2>Company Description</h2></body></html>"
+    )
+
+
+def test_aem_jobdetails_extracts_sections():
+    props = {
+        "title": "Data Scientist - Senior Manager",
+        "description": "Job ID: 2026-170366 | Leibnizstr. 65 Berlin  10629 Germany | Full-time",
+        "jobDescriptionSection": {"title": "Job Description", "body": "<p>Join our team.</p>"},
+        "qualificationDescriptionSection": {
+            "title": "Qualifications",
+            "body": "<p><strong>Responsibilities</strong></p><p>&bull; Build ML pipelines</p>",
+        },
+        "companyDetailsSection": {"title": "Company Description", "body": "<p>We are a partner.</p>"},
+    }
+    out = scraper._scrape_aem_jobdetails(_aem_page(props), "https://careers.publicissapient.com/job-details/x")
+
+    assert out is not None
+    assert out["title"] == "Data Scientist - Senior Manager - Publicis Sapient"
+    assert "Job Title: Data Scientist - Senior Manager" in out["raw_text"]
+    assert "Company: Publicis Sapient" in out["raw_text"]
+    assert "Job ID: 2026-170366" in out["raw_text"]
+    # every section body surfaces under its own heading, tags stripped
+    assert "Job Description:\nJoin our team." in out["raw_text"]
+    assert "Qualifications:" in out["raw_text"]
+    assert "Build ML pipelines" in out["raw_text"]
+    assert "We are a partner." in out["raw_text"]
+    assert "<p>" not in out["raw_text"]
+
+
+def test_aem_jobdetails_returns_none_without_section_bodies():
+    """An expired/unpopulated posting must fall through rather than yield a
+    content-free result the LLM would report as an incomplete job ad."""
+    props = {"title": "Gone", "jobDescriptionSection": {"title": "Job Description", "body": ""}}
+    assert scraper._scrape_aem_jobdetails(_aem_page(props), "https://x/job/6") is None
+
+
+def test_aem_jobdetails_returns_none_without_component():
+    assert scraper._scrape_aem_jobdetails("<html><body>nothing</body></html>", "https://x/job/7") is None

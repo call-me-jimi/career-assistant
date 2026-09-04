@@ -390,6 +390,54 @@ def _scrape_successfactors_csb(page_html: str, url: str, timeout: int) -> dict[s
     return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
 
 
+def _scrape_aem_jobdetails(html: str, url: str) -> dict[str, str] | None:
+    """Extract the posting from an AEM career site that hydrates the job body
+    client-side from a ``data-react-props`` blob.
+
+    Publicis Groupe sites (careers.publicissapient.com, …) serve static HTML
+    holding only nav chrome and empty section headers; the React
+    ``careerjobdetailstemplate`` component carries the full posting in an
+    HTML-escaped JSON attribute. Their JSON-LD block is no substitute — its
+    ``description`` is a truncated 200-char teaser. Returns ``None`` when the
+    component is absent or carries no section bodies, so the caller can fall
+    back to JSON-LD / plain-text scraping.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    el = soup.find(attrs={"data-cmp-is": "careerjobdetailstemplate"})
+    if el is None or not el.get("data-react-props"):
+        return None
+    try:
+        props = json.loads(el["data-react-props"])
+    except (ValueError, TypeError):
+        return None
+
+    # Section bodies live under keys like ``jobDescriptionSection``,
+    # ``qualificationDescriptionSection`` — each a {title, body} pair.
+    sections = []
+    for key, section in props.items():
+        if not key.endswith("Section") or not isinstance(section, dict):
+            continue
+        text = _html_to_text(section.get("body") or "")
+        if text.strip():
+            sections.append(f"\n{section.get('title') or key}:\n{text}")
+    if not sections:
+        return None
+
+    title = props.get("title", "")
+    site_meta = soup.find("meta", attrs={"property": "og:site_name"})
+    company = re.sub(r"\s+Careers$", "", (site_meta.get("content") if site_meta else "") or "").strip()
+
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+    # ``description`` is the subtitle line: "Job ID: … | Berlin … Germany | Full-time"
+    if props.get("description"):
+        parts.append(props["description"])
+    parts.extend(sections)
+
+    raw_text = "\n".join(parts)
+    log.info("scraped aem job-details %s (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}".strip(" -"), "raw_text": raw_text}
+
+
 def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
     """Return {'url', 'title', 'raw_text'} scraped from a job URL."""
     if _WORKABLE_RE.match(url):
@@ -422,6 +470,13 @@ def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
             return _scrape_successfactors_csb(resp.text, url, timeout)
         except Exception:
             log.warning("successfactors-csb handler failed for %s; falling back", url, exc_info=True)
+
+    # Detect AEM career sites that hydrate the body from data-react-props.
+    # Must precede the JSON-LD path — those pages emit a JobPosting block whose
+    # description is only a truncated teaser.
+    aem = _scrape_aem_jobdetails(resp.text, url)
+    if aem is not None:
+        return aem
 
     # Many JS-rendered career sites (Phenom, etc.) still embed a full schema.org
     # JobPosting in the static HTML even when the visible body is client-side only.

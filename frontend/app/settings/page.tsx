@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Brand from "../../components/Brand";
 
 type LLMConfig = {
   provider: string;
@@ -193,7 +194,11 @@ function SettingsView() {
   return (
     <main className="min-h-screen">
       <header className="h-14 px-6 flex items-center justify-between border-b border-border">
-        <div className="font-semibold">Settings</div>
+        <div className="flex items-center gap-4">
+          <Brand />
+          <span className="h-5 w-px bg-border" />
+          <div className="font-semibold">Settings</div>
+        </div>
         <div className="flex items-center gap-4 text-xs">
           {status && <span className="text-subtle">{status}</span>}
           <a href={from} className="text-accent hover:underline">

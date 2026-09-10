@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import ChatPane from "../../components/ChatPane";
 import InputBar from "../../components/InputBar";
 import LLMCardPane from "../../components/LLMCardPane";
+import Brand from "../../components/Brand";
 import type {
   ActionLine,
   ChatMessage,
@@ -161,22 +162,21 @@ function SessionView() {
   const header = useMemo(
     () => (
       <header className="h-14 px-6 flex items-center justify-between border-b border-border">
-        <div className="flex items-center gap-3">
-          <a
-            href="/"
+        <div className="flex items-center gap-4">
+          <Brand
             onClick={(e) => {
               if (!done && !confirm("Leaving will end this session. Continue?")) {
                 e.preventDefault();
               }
             }}
-            className="font-semibold hover:text-accent"
-          >
-            Personal Career Assistant
-          </a>
+          />
           {assistantType && ASSISTANT_LABELS[assistantType] && (
-            <span className="px-2 py-0.5 text-xs rounded-full border border-accent/40 text-accent">
-              {ASSISTANT_LABELS[assistantType]}
-            </span>
+            <>
+              <span className="h-5 w-px bg-border" />
+              <span className="px-2 py-0.5 text-xs rounded-full border border-accent/40 text-accent">
+                {ASSISTANT_LABELS[assistantType]}
+              </span>
+            </>
           )}
         </div>
         <div className="flex items-center gap-4 text-xs">

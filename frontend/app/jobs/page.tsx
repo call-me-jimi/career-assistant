@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Brand from "../../components/Brand";
 
 type Journey = {
   journey_id: string;
@@ -90,8 +91,11 @@ export default function JobsPage() {
   return (
     <main className="min-h-screen">
       <header className="h-14 px-6 flex items-center justify-between border-b border-border">
-        <div className="font-semibold">Jobs</div>
-        <a href="/" className="text-xs text-accent hover:underline">← Home</a>
+        <div className="flex items-center gap-4">
+          <Brand />
+          <span className="h-5 w-px bg-border" />
+          <div className="font-semibold">Jobs</div>
+        </div>
       </header>
 
       <div className="max-w-3xl mx-auto p-6 space-y-6">

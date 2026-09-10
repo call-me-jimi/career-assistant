@@ -14,7 +14,11 @@ from backend.agent.nodes.cl_review import cl_review_node
 from backend.agent.nodes.collect_job import collect_job_node
 from backend.agent.nodes.confirm_info import confirm_info_node
 from backend.agent.nodes.cv_intake import cv_intake_node
-from backend.agent.nodes.export_node import export_node, post_export_node
+from backend.agent.nodes.export_node import (
+    export_node,
+    export_sheets_node,
+    post_export_node,
+)
 from backend.agent.nodes.extract_info import extract_info_node
 from backend.agent.nodes.fill_missing_info import fill_missing_info_node
 from backend.agent.nodes.language_switch import language_switch_node
@@ -49,6 +53,7 @@ def build_graph(checkpointer):
     g.add_node("qa_menu", qa_menu_node)
     g.add_node("qa_answer", qa_answer_node)
     g.add_node("export", export_node)
+    g.add_node("export_sheets", export_sheets_node)
     g.add_node("post_export", post_export_node)
     g.add_node("synthesize_learning", synthesize_learning_node)
     g.add_node("review_learned_suggestion", review_learned_suggestion_node)
@@ -92,7 +97,15 @@ def build_graph(checkpointer):
     )
     g.add_edge("qa_answer", "qa_menu")
 
-    g.add_edge("export", "post_export")
+    def export_router(state: ApplicationState) -> str:
+        return "export_sheets" if state.phase == "export_sheets" else "post_export"
+
+    g.add_conditional_edges(
+        "export",
+        export_router,
+        {"export_sheets": "export_sheets", "post_export": "post_export"},
+    )
+    g.add_edge("export_sheets", "post_export")
 
     def post_export_router(state: ApplicationState) -> str:
         return "qa_menu" if state.phase == "qa_menu" else "synthesize_learning"

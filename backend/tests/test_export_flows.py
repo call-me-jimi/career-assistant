@@ -201,20 +201,61 @@ async def test_typed_selection_is_accepted_alongside_the_ui_list(replies, writte
 
 
 @pytest.mark.asyncio
-async def test_sheets_only_offered_for_cover_letter(replies, written, monkeypatch):
-    appended: list[str] = []
-    monkeypatch.setattr(
-        mod.exporters,
-        "export_google_sheets",
-        lambda state_dict: appended.append("row") or "https://sheet",
-    )
+async def test_export_node_never_interrupts_after_writing(replies, written):
+    """The sheets question lives in its own node.
+
+    An interrupt after the writes makes LangGraph replay the whole node on
+    resume, producing a second copy of every file. Only two interrupts are
+    scripted here — a third would pop from an empty list and raise.
+    """
     state = _state("cover_letter", cover_letter="Dear team,")
-    replies.extend([["cover_letter"], "folder", "yes"])
+    replies.extend([["cover_letter"], "folder"])
 
     update = await mod.export_node(state)
 
-    assert appended == ["row"]
+    assert [k for k, _ in written] == ["cover_letter"]
+    assert update["phase"] == "export_sheets"
+
+
+@pytest.mark.asyncio
+async def test_sheets_node_appends_a_row_on_yes(replies, monkeypatch):
+    appended: list[dict] = []
+    monkeypatch.setattr(
+        mod.exporters,
+        "export_google_sheets",
+        lambda state_dict: appended.append(state_dict) or "https://sheet",
+    )
+    state = _state("cover_letter", cover_letter="Dear team,")
+    replies.append("yes")
+
+    update = await mod.export_sheets_node(state)
+
+    assert len(appended) == 1
     assert [r.kind for r in update["export_results"]][-1] == "sheets"
+    assert update["phase"] == "post_export"
+
+
+@pytest.mark.asyncio
+async def test_sheets_node_skips_on_no(replies, monkeypatch):
+    monkeypatch.setattr(
+        mod.exporters,
+        "export_google_sheets",
+        lambda state_dict: pytest.fail("must not append when declined"),
+    )
+    state = _state("cover_letter", cover_letter="Dear team,")
+    replies.append("no")
+
+    assert await mod.export_sheets_node(state) == {"phase": "post_export"}
+
+
+@pytest.mark.asyncio
+async def test_other_assistants_go_straight_to_post_export(replies, written):
+    state = _state("interview_prep", interview_briefing="# Briefing")
+    replies.extend([["briefing"], "links"])
+
+    update = await mod.export_node(state)
+
+    assert update["phase"] == "post_export"
 
 
 def _noop_update():

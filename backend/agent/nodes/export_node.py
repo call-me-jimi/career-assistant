@@ -241,7 +241,7 @@ async def export_node(state: ApplicationState) -> dict:
         written.append(path)
         if delivery == "links":
             emit_export_ready(sid, key, path)
-            emit_message(sid, f"✓ {labels[key]} ready to download.")
+            emit_message(sid, f"✓ {labels[key]} ready to download — `{Path(path).name}`")
         elif delivery == "folder":
             emit_message(sid, f"✓ {labels[key]} → `{path}`")
 
@@ -263,35 +263,51 @@ async def export_node(state: ApplicationState) -> dict:
     if delivery == "folder":
         await _remember_folder(state, written)
 
-    # 5. Cover Letter only: log the application to the tracking spreadsheet.
-    if state.assistant_type == "cover_letter":
-        emit_message(
-            sid,
-            "Want me to add a row for this application to your Google Sheet? "
-            "Reply `yes` or `no`.",
-            key=f"export:sheets:{done}",
-        )
-        sheets_reply = interrupt({"kind": "export_sheets"})
-        wants = (
-            (sheets_reply or "").strip().lower().startswith("y")
-            if isinstance(sheets_reply, str)
-            else False
-        )
-        if wants:
-            aid = action_start(sid, "export_sheets", "Appending to Google Sheets")
-            try:
-                url = await asyncio.to_thread(exporters.export_google_sheets, state_dict)
-                action_finish(sid, aid)
-                results.append(ExportResult(kind="sheets", path=url))
-                emit_message(sid, f"✓ added to your sheet → {url}")
-            except Exception as exc:
-                action_finish(sid, aid, status="error")
-                emit_message(sid, f"✗ Google Sheets append failed: {exc}")
-
+    # Nothing may interrupt below this point: the writes above have already
+    # happened, and LangGraph replays the node body from the top on resume.
     return {
         "export_results": results,
-        "phase": "post_export",
+        "phase": "export_sheets" if state.assistant_type == "cover_letter" else "post_export",
         "export_delivery": delivery,
+    }
+
+
+async def export_sheets_node(state: ApplicationState) -> dict:
+    """Cover Letter only: log the application to the tracking spreadsheet.
+
+    Its own node rather than a tail on `export_node`, because an interrupt
+    placed after the file writes makes the resume pass write every artifact a
+    second time.
+    """
+    sid = state.session_id
+    emit_message(
+        sid,
+        "Want me to add a row for this application to your Google Sheet? "
+        "Reply `yes` or `no`.",
+        key=f"export:sheets:{len(state.export_results)}",
+    )
+    reply = interrupt({"kind": "export_sheets"})
+    wants = (
+        (reply or "").strip().lower().startswith("y") if isinstance(reply, str) else False
+    )
+    if not wants:
+        return {"phase": "post_export"}
+
+    aid = action_start(sid, "export_sheets", "Appending to Google Sheets")
+    try:
+        url = await asyncio.to_thread(
+            exporters.export_google_sheets, state.model_dump(mode="json")
+        )
+    except Exception as exc:
+        action_finish(sid, aid, status="error")
+        emit_message(sid, f"✗ Google Sheets append failed: {exc}")
+        return {"phase": "post_export"}
+    action_finish(sid, aid)
+    emit_message(sid, f"✓ added to your sheet → {url}")
+
+    return {
+        "export_results": list(state.export_results) + [ExportResult(kind="sheets", path=url)],
+        "phase": "post_export",
     }
 
 

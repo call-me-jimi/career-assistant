@@ -87,6 +87,18 @@ async def test_career_advisor_skips_the_delivery_question(replies, written):
     assert [k for k, _ in written] == ["swot"]
 
 
+def test_every_delivery_option_is_a_valid_state_value():
+    """The node's answer has to survive the merge back into ApplicationState.
+
+    `zip` and `links` were offered while the state still only accepted the
+    pre-0.8.0 spellings, so choosing them killed the graph after the files had
+    already been written.
+    """
+    for options in mod.DELIVERY_OPTIONS.values():
+        for value, _label in options:
+            ApplicationState(session_id="s", export_delivery=value)
+
+
 @pytest.mark.asyncio
 async def test_zip_bundles_written_files(replies, written, monkeypatch, tmp_path):
     zipped: dict = {}
@@ -109,6 +121,7 @@ async def test_zip_bundles_written_files(replies, written, monkeypatch, tmp_path
 
     assert len(zipped["paths"]) == 2
     assert [r.kind for r in update["export_results"]][-1] == "zip"
+    ApplicationState(session_id="s", **update)  # the merge LangGraph performs
 
 
 @pytest.mark.asyncio

@@ -119,7 +119,9 @@ class ApplicationState(BaseModel):
     # Export
     export_selection: list[str] = Field(default_factory=list)
     export_results: list[ExportResult] = Field(default_factory=list)
-    export_delivery: Literal["download", "folder", "both", ""] = ""
+    # Delivery forms offered by export_node (DELIVERY_OPTIONS). "download"/"both"
+    # are the pre-0.8.0 spellings, kept so old checkpoints still deserialize.
+    export_delivery: Literal["folder", "links", "zip", "download", "both", ""] = ""
 
     # Phase tracking (for UI / sessions table)
     phase: str = "greeting"

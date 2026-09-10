@@ -1,26 +1,27 @@
 # AI Interview & Job-Application Assistant
 
-> A local, privacy-first AI assistant for the hard parts of switching jobs — practise interviews,
-> get a real recording scored, tailor cover letters, and think through your career, all from one
+> A local, privacy-first AI assistant for the hard parts of your job search — tailor cover letters,
+> prepare for interviews, get a real recording scored, and think through your career, all from one
 > chat and your own LLM key.
 
 Four specialised assistants share one candidate profile, one chat UI, and one observability
-pipeline. Pick one on the landing page and start a conversation:
+pipeline. The first three follow the arc of a single application — apply, prepare, review — and any
+of them can be your starting point. Pick one on the landing page and start a conversation:
 
+- ✉️ **Cover Letter** — ingest your CV, scrape and analyse a posting, build a positioning strategy,
+  then draft and iteratively refine a tailored letter through a simulated hiring-manager feedback
+  loop. Plus answers to common application questions.
+- 📝 **Interview Prep** — from the job description plus whatever the company shared, get a briefing:
+  likely questions with answer directions, STAR stories to rehearse, risks to pre-empt, and smart
+  questions to ask back. Then keep practising: a mock interview with feedback, classic-question
+  drills, technical refreshers, and questions to ask the interviewer.
 - 🎤 **Interview Evaluator** — upload a recording of a real interview; it's transcribed **on your
   own machine** and an LLM returns a scored performance report (overall score, per-question
   breakdown, communication critique, strengths/weaknesses, what to improve). It also captures what
   the *interviewer* volunteered outside their questions — team structure, tech stack, priorities,
   next steps — and hands you the full transcript as a downloadable file.
-- 📝 **Interview Prep** — from the job description plus whatever the company shared, get a briefing:
-  likely questions with answer directions, STAR stories to rehearse, risks to pre-empt, and smart
-  questions to ask back. Then keep practising: a mock interview with feedback, classic-question
-  drills, technical refreshers, and questions to ask the interviewer.
-- ✉️ **Cover Letter** — ingest your CV, scrape and analyse a posting, build a positioning strategy,
-  then draft and iteratively refine a tailored letter through a simulated hiring-manager feedback
-  loop. Plus answers to common application questions.
 - 🧭 **Career Advisor** — an open-ended chat grounded in your CV to clarify strengths and
-  weaknesses, with an on-demand SWOT summary.
+  weaknesses, with an on-demand SWOT summary. Available with or without a job on the table.
 
 ## Why this is different
 
@@ -84,7 +85,10 @@ npm run dev                       # http://localhost:3000
 ```
 
 Open `http://localhost:3000`, pick an assistant, and start chatting. The Interview Evaluator and
-voice input also need the `ffmpeg` system binary (`sudo apt install ffmpeg`).
+voice input also need the `ffmpeg` system binary (`sudo apt install ffmpeg`). Archiving a screenshot
+of a job posting needs a headless browser (`uv run playwright install chromium`) — `uv sync` installs
+the Python package but not the browser itself; without it, scraping still works and the screenshot
+is skipped.
 
 ➡️ Full installation, optional integrations (Google Sheets, Tavily, Phoenix), and troubleshooting:
 **[docs/SETUP.md](docs/SETUP.md)**.
@@ -103,6 +107,10 @@ voice input also need the `ffmpeg` system binary (`sudo apt install ffmpeg`).
   (strategy, cover letter, interview briefing, evaluation). A new session offers to continue a saved
   job instead of starting over, and the Jobs page lists them all with search, sort, and per-artifact
   dates.
+- **Interview rounds** — one job usually means several interviews (recruiter, screening, hiring
+  manager, technical, panel, final). Each round is tracked separately, so the briefing Interview
+  Prep wrote for a round is matched to the recording the Evaluator scores afterwards, and exported
+  files are named per round instead of overwriting each other.
 - **Learns from your applications** — each finished cover letter updates a per-profile playbook that
   feeds the next one and may propose a profile edit you can approve or reject; accepted interview
   evaluations become coaching insights for your next prep session.

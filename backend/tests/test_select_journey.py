@@ -148,8 +148,8 @@ def test_continue_phase_interview_prep_has_research():
     assert sj._continue_phase("interview_prep", j) == "interview_context"
 
 
-def test_continue_phase_interview_evaluator_always_evaluator_context():
-    assert sj._continue_phase("interview_evaluator", JOURNEY) == "evaluator_context"
+def test_continue_phase_interview_evaluator_always_select_interview():
+    assert sj._continue_phase("interview_evaluator", JOURNEY) == "select_interview"
 
 
 def test_continue_phase_cover_letter_missing_research():

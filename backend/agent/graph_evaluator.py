@@ -23,6 +23,7 @@ from backend.agent.nodes.extract_info import extract_info_node
 from backend.agent.nodes.fill_missing_info import fill_missing_info_node
 from backend.agent.nodes.language_switch import language_switch_node
 from backend.agent.nodes.greeting import greeting_node
+from backend.agent.nodes.select_interview import select_interview_node
 from backend.agent.nodes.select_journey import select_journey_node
 from backend.agent.state import ApplicationState
 
@@ -38,6 +39,7 @@ def build_evaluator_graph(checkpointer):
     g.add_node("language_switch", language_switch_node)
     g.add_node("fill_missing_info", fill_missing_info_node)
     g.add_node("confirm_info", confirm_info_node)
+    g.add_node("select_interview", select_interview_node)
     g.add_node("evaluator_context", evaluator_context_node)
     g.add_node("evaluator_upload", evaluator_upload_node)
     g.add_node("evaluator_transcribe", evaluator_transcribe_node)
@@ -51,19 +53,32 @@ def build_evaluator_graph(checkpointer):
     g.add_edge("cv_intake", "select_journey")
 
     def select_journey_router(state: ApplicationState) -> str:
-        targets = {"select_journey", "collect_job", "evaluator_context"}
+        targets = {"select_journey", "collect_job", "select_interview"}
         return state.phase if state.phase in targets else "collect_job"
 
     g.add_conditional_edges(
         "select_journey",
         select_journey_router,
-        {t: t for t in ("select_journey", "collect_job", "evaluator_context")},
+        {t: t for t in ("select_journey", "collect_job", "select_interview")},
     )
     g.add_edge("collect_job", "extract_info")
     g.add_edge("extract_info", "language_switch")
     g.add_edge("language_switch", "fill_missing_info")
     g.add_edge("fill_missing_info", "confirm_info")
-    g.add_edge("confirm_info", "evaluator_context")
+    g.add_edge("confirm_info", "select_interview")
+
+    def select_interview_router(state: ApplicationState) -> str:
+        return (
+            "select_interview"
+            if state.phase == "select_interview"
+            else "evaluator_context"
+        )
+
+    g.add_conditional_edges(
+        "select_interview",
+        select_interview_router,
+        {"select_interview": "select_interview", "evaluator_context": "evaluator_context"},
+    )
     g.add_edge("evaluator_context", "evaluator_upload")
 
     def upload_router(state: ApplicationState) -> str:

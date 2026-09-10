@@ -31,6 +31,7 @@ from backend.agent.nodes.interview_extras import (
 )
 from backend.agent.nodes.interview_review import interview_review_node
 from backend.agent.nodes.research_company import research_company_node
+from backend.agent.nodes.select_interview import select_interview_node
 from backend.agent.nodes.select_journey import select_journey_node
 from backend.agent.state import ApplicationState
 
@@ -49,6 +50,7 @@ def build_interview_graph(checkpointer):
     g.add_node("confirm_info", confirm_info_node)
     g.add_node("research_company", research_company_node)
     g.add_node("interview_context", interview_context_node)
+    g.add_node("select_interview", select_interview_node)
     g.add_node("interview_briefing", interview_briefing_node)
     g.add_node("interview_review", interview_review_node)
     g.add_node("interview_menu", interview_menu_node)
@@ -80,7 +82,20 @@ def build_interview_graph(checkpointer):
     g.add_edge("fill_missing_info", "confirm_info")
     g.add_edge("confirm_info", "research_company")
     g.add_edge("research_company", "interview_context")
-    g.add_edge("interview_context", "interview_briefing")
+    g.add_edge("interview_context", "select_interview")
+
+    def select_interview_router(state: ApplicationState) -> str:
+        return (
+            "select_interview"
+            if state.phase == "select_interview"
+            else "interview_briefing"
+        )
+
+    g.add_conditional_edges(
+        "select_interview",
+        select_interview_router,
+        {"select_interview": "select_interview", "interview_briefing": "interview_briefing"},
+    )
     g.add_edge("interview_briefing", "interview_review")
 
     def review_router(state: ApplicationState) -> str:

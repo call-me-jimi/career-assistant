@@ -7,6 +7,7 @@ BRIEFING_KWARGS = dict(
     company_name="ACME",
     job_title="Engineer",
     location="Berlin",
+    interview_type="",
     interview_context="First round screening",
     job_description="Build things",
     company_description="We build things",
@@ -130,6 +131,7 @@ EVALUATOR_KWARGS = dict(
     job_title="Engineer",
     job_description="Build things",
     candidate_profile="Experienced engineer",
+    interview_type="",
     interview_context="Panel round",
     transcript="[00:00] Hello",
     revision_feedback="",
@@ -153,3 +155,38 @@ def test_evaluator_v3_briefing_section_absent_when_empty():
         "analyze_interview_performance", **EVALUATOR_KWARGS, interview_briefing=""
     )
     assert "INTERVIEW BRIEFING THE CANDIDATE PREPARED WITH" not in result
+
+
+# ---- v4: interview round section ---------------------------------------------
+
+
+def test_evaluator_v4_round_section_renders_when_set():
+    _clear_cache()
+    kwargs = {**EVALUATOR_KWARGS, "interview_type": "Technical — coding deep-dive"}
+    result = render_user_prompt(
+        "analyze_interview_performance", **kwargs, interview_briefing=""
+    )
+    assert "INTERVIEW ROUND" in result
+    assert "Technical — coding deep-dive" in result
+
+
+def test_evaluator_v4_round_section_absent_when_empty():
+    _clear_cache()
+    result = render_user_prompt(
+        "analyze_interview_performance", **EVALUATOR_KWARGS, interview_briefing=""
+    )
+    assert "INTERVIEW ROUND" not in result
+
+
+def test_briefing_v4_round_section_renders_when_set():
+    _clear_cache()
+    kwargs = {**BRIEFING_KWARGS, "interview_type": "Panel — several interviewers at once"}
+    result = render_user_prompt("generate_interview_briefing", **kwargs, coaching_history=[])
+    assert "INTERVIEW ROUND" in result
+    assert "Panel — several interviewers at once" in result
+
+
+def test_briefing_v4_round_section_absent_when_empty():
+    _clear_cache()
+    result = render_user_prompt("generate_interview_briefing", **BRIEFING_KWARGS, coaching_history=[])
+    assert "INTERVIEW ROUND" not in result

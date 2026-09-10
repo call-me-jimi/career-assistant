@@ -55,7 +55,7 @@ def _continue_phase(assistant_type: str, journey: dict) -> str:
     if assistant_type == "interview_prep":
         return "research_company" if not journey["company_description"] else "interview_context"
     if assistant_type == "interview_evaluator":
-        return "evaluator_context"  # evaluator graph has no research node
+        return "select_interview"  # evaluator graph has no research node
     # cover_letter
     if not journey["company_description"]:
         return "research_company"

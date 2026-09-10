@@ -88,6 +88,11 @@ class ApplicationState(BaseModel):
     qa_items: list[QAItem] = Field(default_factory=list)
 
     # Interview prep
+    # The interview round this session prepares for / evaluates (see
+    # backend/storage/interviews.py). Shared by the prep and evaluator graphs.
+    interview_id: str | None = None
+    interview_type: str = ""  # taxonomy slug, e.g. "hiring_manager"
+    interview_label: str = ""  # optional free-text label, e.g. "2nd round w/ Anna"
     interview_context: str = ""
     interview_briefing: str = ""
     interview_briefing_versions: list[dict[str, Any]] = Field(default_factory=list)

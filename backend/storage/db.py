@@ -151,6 +151,25 @@ CREATE TABLE IF NOT EXISTS job_journeys (
 
 CREATE INDEX IF NOT EXISTS idx_job_journeys_profile
     ON job_journeys(profile_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS job_interviews (
+    interview_id       TEXT PRIMARY KEY,
+    journey_id         TEXT NOT NULL,
+    profile_id         TEXT,
+    interview_type     TEXT NOT NULL DEFAULT 'other',
+    label              TEXT NOT NULL DEFAULT '',
+    context            TEXT NOT NULL DEFAULT '',
+    briefing           TEXT NOT NULL DEFAULT '',
+    evaluation_summary TEXT NOT NULL DEFAULT '',
+    briefing_at        REAL,
+    evaluation_at      REAL,
+    created_at         REAL NOT NULL,
+    updated_at         REAL NOT NULL,
+    FOREIGN KEY (journey_id) REFERENCES job_journeys(journey_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_interviews_journey
+    ON job_interviews(journey_id, created_at);
 """
 
 
@@ -222,6 +241,23 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         """
         UPDATE job_journeys SET cover_letter_at = created_at
         WHERE cover_letter != '' AND cover_letter_at IS NULL
+        """
+    )
+
+    # Briefings written before per-round tracking existed belong to some round we
+    # can no longer identify — file them as one 'other' round so the interview
+    # picker can still offer them. Idempotent: skipped once a journey has rounds.
+    await db.execute(
+        """
+        INSERT INTO job_interviews (interview_id, journey_id, profile_id, interview_type,
+            label, briefing, briefing_at, created_at, updated_at)
+        SELECT lower(hex(randomblob(16))), j.journey_id, j.profile_id, 'other',
+            'Earlier round', j.interview_briefing,
+            COALESCE(j.interview_briefing_at, j.updated_at),
+            COALESCE(j.interview_briefing_at, j.created_at), j.updated_at
+        FROM job_journeys j
+        WHERE j.interview_briefing != ''
+          AND NOT EXISTS (SELECT 1 FROM job_interviews i WHERE i.journey_id = j.journey_id)
         """
     )
 

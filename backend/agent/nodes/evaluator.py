@@ -23,23 +23,36 @@ from backend.llm.schemas import InterviewEvaluation
 from backend.llm.service import call_llm, extract_json
 from backend.llm.translate import with_language_directive
 from backend.storage.coaching_insights import save_coaching_insight
+from backend.storage.interviews import describe_type, type_label, update_interview
 from backend.storage.journeys import update_journey
 from backend.tools.transcribe import get_cached_provider
 
 
 async def evaluator_context_node(state: ApplicationState) -> dict:
     sid = state.session_id
-    emit_message(
-        sid,
-        "Tell me anything you know about this interview round — format (screening, "
-        "panel, technical, behavioural), interviewers, focus areas, length. Reply "
-        "`none` if you'd rather just dive into the transcript.",
-        key="evaluator_context:prompt",
-    )
+    if state.interview_context:
+        prompt = (
+            "Here's what I already have about this round:\n\n"
+            f"> {state.interview_context}\n\n"
+            "Reply `none` to keep that, or describe the interview again to replace it."
+        )
+    else:
+        round_name = type_label(state.interview_type) if state.interview_type else "interview"
+        prompt = (
+            f"Tell me anything you know about this {round_name.lower()} round — "
+            "interviewers, focus areas, length, how it was run. Reply `none` if you'd "
+            "rather just dive into the transcript."
+        )
+    emit_message(sid, prompt, key="evaluator_context:prompt")
     reply = interrupt({"kind": "evaluator_context"})
     text = (reply or "").strip() if isinstance(reply, str) else ""
     if text.lower() == "none":
-        text = ""
+        return {"interview_context": state.interview_context, "phase": "evaluator_upload"}
+    if state.interview_id and text:
+        try:
+            await update_interview(state.interview_id, context=text)
+        except Exception:
+            pass  # context is a nice-to-have on the round record, never a blocker
     return {"interview_context": text, "phase": "evaluator_upload"}
 
 
@@ -151,6 +164,7 @@ async def _generate_evaluation(
         job_title=state.job_title,
         job_description=state.job_description,
         candidate_profile=state.candidate_profile,
+        interview_type=describe_type(state.interview_type, state.interview_label),
         interview_context=state.interview_context or "",
         interview_briefing=state.interview_briefing or "",
         transcript=_format_transcript(state.interview_transcript),
@@ -232,15 +246,16 @@ async def evaluator_review_node(state: ApplicationState) -> dict:
                 )
             except Exception:
                 pass  # never block the accept flow
-        if state.journey_id and state.interview_evaluation:
+        if state.interview_evaluation and (state.journey_id or state.interview_id):
+            ev = state.interview_evaluation
+            summary = json.dumps(
+                {"overall_score": ev.get("overall_score"), "summary": ev.get("summary", "")}
+            )
             try:
-                ev = state.interview_evaluation
-                await update_journey(
-                    state.journey_id,
-                    evaluation_summary=json.dumps(
-                        {"overall_score": ev.get("overall_score"), "summary": ev.get("summary", "")}
-                    ),
-                )
+                if state.journey_id:
+                    await update_journey(state.journey_id, evaluation_summary=summary)
+                if state.interview_id:
+                    await update_interview(state.interview_id, evaluation_summary=summary)
             except Exception:
                 pass
         return {"phase": "export"}

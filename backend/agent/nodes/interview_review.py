@@ -9,6 +9,7 @@ from backend.agent.state import ApplicationState
 from backend.llm.prompts import load_system_prompt
 from backend.llm.service import call_llm
 from backend.llm.translate import with_language_directive
+from backend.storage.interviews import update_interview
 from backend.storage.journeys import update_journey
 
 
@@ -33,9 +34,16 @@ async def interview_review_node(state: ApplicationState) -> dict:
 
     text = (reply or "").strip() if isinstance(reply, str) else ""
     if not text or text.lower() in {"accept", "ok", "looks good", "yes"}:
-        if state.journey_id and state.interview_briefing:
+        if state.interview_briefing:
             try:
-                await update_journey(state.journey_id, interview_briefing=state.interview_briefing)
+                if state.journey_id:
+                    await update_journey(
+                        state.journey_id, interview_briefing=state.interview_briefing
+                    )
+                if state.interview_id:
+                    await update_interview(
+                        state.interview_id, briefing=state.interview_briefing
+                    )
             except Exception:
                 pass
         return {"phase": "interview_menu"}

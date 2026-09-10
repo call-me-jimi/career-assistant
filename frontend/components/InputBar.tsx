@@ -82,7 +82,8 @@ function quickRepliesFor(pending?: InterruptPayload | null): QuickReply[] {
         { label: "Done", value: "done" },
       ];
     case "export_delivery":
-      // Options vary per assistant, so the node ships them with the interrupt.
+    case "select_interview":
+      // Options vary per assistant / per job, so the node ships them with the interrupt.
       return Array.isArray(pending?.options) ? pending.options : [];
     case "export_sheets":
       return [
@@ -414,8 +415,10 @@ function placeholderFor(kind?: string): string {
       return "accept, or describe revisions…";
     case "interview_review":
       return "accept, or describe revisions to the briefing…";
+    case "select_interview":
+      return "number to continue a round · round type for a new one · `skip`";
     case "evaluator_context":
-      return "round / format / focus areas — or `none`";
+      return "interviewers / format / focus areas — or `none`";
     case "evaluator_review":
       return "accept, retry, or describe revisions to the report…";
     case "interview_menu":

@@ -7,6 +7,7 @@ from backend.agent.state import ApplicationState
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
 from backend.llm.translate import with_language_directive
+from backend.storage.interviews import describe_type
 
 
 async def interview_briefing_node(state: ApplicationState) -> dict:
@@ -19,6 +20,7 @@ async def interview_briefing_node(state: ApplicationState) -> dict:
         company_name=state.company_name,
         job_title=state.job_title,
         location=state.location,
+        interview_type=describe_type(state.interview_type, state.interview_label),
         interview_context=state.interview_context or "",
         job_description=state.job_description,
         company_description=state.company_description,

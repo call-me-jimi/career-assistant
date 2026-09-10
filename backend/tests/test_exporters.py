@@ -84,6 +84,64 @@ def test_export_transcript_writes_standalone_file():
     assert "[01:05]" not in content
 
 
+def _evaluator_state(interview_type="recruiter"):
+    state = _state()
+    state["assistant_type"] = "interview_evaluator"
+    state["interview_type"] = interview_type
+    state["interview_transcript"] = [{"start": 0.0, "text": "Thanks for joining."}]
+    state["interview_evaluation"] = {"overall_score": 7.0, "summary": "Solid round."}
+    return state
+
+
+@pytest.mark.parametrize(
+    "interview_type, expected",
+    [
+        ("recruiter", "recruiter_interview_transcript.md"),
+        ("hiring_manager", "hiring_manager_interview_transcript.md"),
+        ("", "interview_transcript.md"),  # unclassified round keeps the plain name
+    ],
+)
+def test_evaluator_transcript_is_prefixed_with_the_round(interview_type, expected):
+    path = Path(exporters.export_transcript(_evaluator_state(interview_type)))
+    assert path.name == expected
+
+
+def test_evaluator_traces_are_prefixed_but_the_zip_is_not(tmp_path):
+    state = _evaluator_state("technical")
+    assert Path(exporters.export_json(state, [])).name == "technical_llm_traces.json"
+
+    src = tmp_path / "technical_interview_transcript.md"
+    src.write_text("x")
+    archive = Path(exporters.export_zip(state, [str(src)], tmp_path / "out"))
+    assert archive.name.startswith("Acme - ")  # bundle stays company-dated
+
+
+def test_evaluator_pdf_is_prefixed_with_the_round():
+    path = Path(exporters.export_pdf(_evaluator_state("leadership")))
+    assert path.name == "leadership_interview_evaluation.pdf"
+    assert path.exists()
+
+
+def test_prep_briefing_and_traces_are_prefixed_with_the_round():
+    state = _state()
+    state["assistant_type"] = "interview_prep"
+    state["interview_type"] = "hiring_manager"
+    state["interview_briefing"] = "## Snapshot\n\nLead with the platform story."
+    path = Path(exporters.export_pdf(state))
+    assert path.name == "hiring_manager_interview_briefing.pdf"
+    assert path.exists()
+    assert Path(exporters.export_json(state, [])).name == "hiring_manager_llm_traces.json"
+
+
+def test_assistants_without_rounds_keep_unprefixed_names():
+    """A cover letter or SWOT belongs to the job, not to an interview round."""
+    state = _state()
+    state["assistant_type"] = "cover_letter"
+    state["interview_type"] = "technical"  # ignored outside the interview flows
+    assert Path(exporters.export_json(state, [])).name == "llm_traces.json"
+    assert Path(exporters.export_pdf(state)).name == "CoverLetter.JaneDoe.pdf"
+
+
 def test_export_transcript_prints_speaker_only_on_change():
     state = _state()
     state["interview_transcript"] = [
@@ -96,6 +154,45 @@ def test_export_transcript_prints_speaker_only_on_change():
     assert body.count("**SPEAKER_B**") == 1  # not repeated on the follow-on line
     assert body.count("**SPEAKER_A**") == 2  # re-printed after the speaker changes
     assert "`[00:12]`   For about fifteen years." in body
+
+
+def test_unique_path_walks_up_the_numbering(tmp_path):
+    target = tmp_path / "interview_transcript.md"
+    assert exporters._unique_path(target) == target
+
+    target.write_text("first")
+    second = exporters._unique_path(target)
+    assert second.name == "interview_transcript (2).md"
+
+    second.write_text("second")
+    assert exporters._unique_path(target).name == "interview_transcript (3).md"
+
+
+def test_re_export_never_overwrites_an_existing_file():
+    state = _evaluator_state("technical")
+    first = Path(exporters.export_transcript(state))
+    first.write_text("hand-edited notes")
+
+    state["interview_transcript"] = [{"start": 0.0, "text": "A later round."}]
+    second = Path(exporters.export_transcript(state))
+
+    assert second.name == "technical_interview_transcript (2).md"
+    assert first.read_text() == "hand-edited notes"  # untouched
+    assert "A later round." in second.read_text()
+
+
+def test_re_export_never_overwrites_json_or_zip(tmp_path):
+    state = _evaluator_state("panel")
+    first = Path(exporters.export_json(state, []))
+    assert Path(exporters.export_json(state, [])).name == "panel_llm_traces (2).json"
+    assert first.exists()
+
+    src = tmp_path / "artifact.md"
+    src.write_text("x")
+    out = tmp_path / "out"
+    archive = Path(exporters.export_zip(state, [str(src)], out))
+    again = Path(exporters.export_zip(state, [str(src)], out))
+    assert archive.exists() and again.name.endswith(" (2).zip")
 
 
 def test_export_json_includes_state_and_traces():

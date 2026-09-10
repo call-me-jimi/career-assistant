@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import logging
 import os
@@ -39,6 +40,40 @@ def _applicant_slug(name: str) -> str:
     while tokens and tokens[0].rstrip(".").lower() in _HONORIFICS:
         tokens.pop(0)
     return "".join(re.sub(r"[^0-9A-Za-z]", "", tok) for tok in tokens)
+
+
+def _unique_path(path: Path) -> Path:
+    """Never write over an existing export — fall back to `name (2).ext`.
+
+    Exports land in a folder that is reused across sessions (same job, later
+    round, second attempt), so a fixed filename would silently replace work the
+    user still has. The caller reports the path it actually wrote.
+    """
+    if not path.exists():
+        return path
+    for n in itertools.count(2):
+        candidate = path.with_name(f"{path.stem} ({n}){path.suffix}")
+        if not candidate.exists():
+            return candidate
+    raise AssertionError("unreachable")  # itertools.count never ends
+
+
+# Assistants whose artifacts belong to one interview round rather than to the job.
+_PER_ROUND_ASSISTANTS = {"interview_evaluator", "interview_prep"}
+
+
+def _round_prefix(state: dict[str, Any]) -> str:
+    """`recruiter_` etc. for the per-round assistants' files.
+
+    A job is interviewed several times, and every round's artifacts land in the
+    same application folder — without the round in the filename the second
+    briefing or evaluation would overwrite the first. Empty for the other
+    assistants and for an unclassified round.
+    """
+    if state.get("assistant_type") not in _PER_ROUND_ASSISTANTS:
+        return ""
+    slug = (state.get("interview_type") or "").strip()
+    return f"{slug}_" if slug else ""
 
 
 def _ensure_folder(state: dict[str, Any], target_dir: Path | None = None) -> Path:
@@ -176,7 +211,7 @@ def _transcript_lines(segments: list[Any]) -> list[str]:
 
 def export_markdown(state: dict[str, Any], target_dir: Path | None = None) -> str:
     folder = _ensure_folder(state, target_dir)
-    path = folder / "application.md"
+    path = _unique_path(folder / "application.md")
     lines = [
         f"# Session — {state.get('company_name') or state.get('applicant_name') or ''}",
         "",
@@ -254,7 +289,7 @@ def export_markdown(state: dict[str, Any], target_dir: Path | None = None) -> st
 def export_transcript(state: dict[str, Any], target_dir: Path | None = None) -> str:
     """Write the interview recording's transcript as a standalone markdown file."""
     folder = _ensure_folder(state, target_dir)
-    path = folder / "interview_transcript.md"
+    path = _unique_path(folder / f"{_round_prefix(state)}interview_transcript.md")
     header = [
         f"# Interview transcript — {state.get('company_name') or ''}".rstrip(" —"),
         "",
@@ -282,7 +317,7 @@ def export_json(
     target_dir: Path | None = None,
 ) -> str:
     folder = _ensure_folder(state, target_dir)
-    path = folder / "llm_traces.json"
+    path = _unique_path(folder / f"{_round_prefix(state)}llm_traces.json")
     payload = {"state": state, "llm_traces": traces}
     path.write_text(json.dumps(payload, indent=2, default=str))
     log.info("wrote traces %s", path)
@@ -295,7 +330,9 @@ def export_job_page(state: dict[str, Any], target_dir: Path | None = None) -> st
     src = SCREENSHOT_DIR / screenshot_name if screenshot_name else None
     if not src or not src.exists():
         raise RuntimeError("No job-page screenshot captured for this job.")
-    dest = _ensure_folder(state, target_dir) / f"job_page{src.suffix or '.png'}"
+    dest = _unique_path(
+        _ensure_folder(state, target_dir) / f"job_page{src.suffix or '.png'}"
+    )
     shutil.copyfile(src, dest)
     log.info("wrote job page %s", dest)
     return str(dest)
@@ -312,7 +349,7 @@ def export_job_ad(state: dict[str, Any], target_dir: Path | None = None) -> str:
     if state.get("job_url"):
         lines.append(f"**URL:** {state.get('job_url')}")
     lines += ["", job_ad, ""]
-    dest = _ensure_folder(state, target_dir) / "job_ad.md"
+    dest = _unique_path(_ensure_folder(state, target_dir) / "job_ad.md")
     dest.write_text("\n".join(lines))
     log.info("wrote job ad %s", dest)
     return str(dest)
@@ -323,7 +360,7 @@ def export_zip(state: dict[str, Any], paths: list[str], target_dir: Path) -> str
     company = state.get("company_name") or state.get("applicant_name") or "Session"
     stem = _sanitize_filename(f"{company} - {time.strftime('%Y.%m.%d')}")
     target_dir.mkdir(parents=True, exist_ok=True)
-    archive = target_dir / f"{stem}.zip"
+    archive = _unique_path(target_dir / f"{stem}.zip")
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
         for p in paths:
             src = Path(p)
@@ -348,11 +385,11 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
             + _render_evaluation_markdown(state["interview_evaluation"])
         )
         title = f"Interview evaluation — {state.get('job_title') or state.get('company_name') or ''}"
-        filename = "interview_evaluation.pdf"
+        filename = f"{_round_prefix(state)}interview_evaluation.pdf"
     elif assistant_type == "interview_prep" and state.get("interview_briefing"):
         body_text = state["interview_briefing"]
         title = f"Interview briefing — {state.get('job_title') or state.get('company_name') or ''}"
-        filename = "interview_briefing.pdf"
+        filename = f"{_round_prefix(state)}interview_briefing.pdf"
     elif assistant_type == "career_advisor" and state.get("advisor_swot"):
         body_text = state["advisor_swot"]
         title = "Career SWOT"
@@ -374,7 +411,7 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
     else:
         raise RuntimeError("Nothing to export as PDF yet.")
 
-    path = folder / filename
+    path = _unique_path(folder / filename)
     # nl2br keeps single line breaks (e.g. the farewell and the signed name) as
     # separate lines in the cover letter instead of Markdown collapsing them.
     extensions = ["tables", "fenced_code"] + (["nl2br"] if is_cover_letter else [])

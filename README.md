@@ -114,6 +114,14 @@ is skipped.
 - **Learns from your applications** — each finished cover letter updates a per-profile playbook that
   feeds the next one and may propose a profile edit you can approve or reject; accepted interview
   evaluations become coaching insights for your next prep session.
+- **Learns from what companies actually told you** — paste the feedback you got with a rejection (or
+  an offer) onto the job it belongs to. It shapes the strategy and interview briefing for your next
+  applications, and recurring themes are distilled into your playbook. Only what was *said about you*
+  is ever used: the outcome itself never teaches the system anything, because a rejection can just as
+  easily mean an internal hire or a frozen budget.
+- **Tells you where the evaluator was wrong** — when a round has both an AI evaluation and real
+  feedback from the company, the job page shows them side by side, and the Interview Evaluator uses
+  those pairs to calibrate its next read against how you were actually perceived.
 - **Optional company research** — Tavily web search enriches thin company descriptions and salary
   answers; skipped gracefully when no key is set.
 - **Per-assistant export** — each assistant offers exactly the artifacts it can produce (cover

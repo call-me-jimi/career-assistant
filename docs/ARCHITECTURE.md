@@ -251,13 +251,17 @@ over.
   layer (`backend/storage/journeys.py`) automatically stamps `cover_letter_at` /
   `interview_briefing_at` / `evaluation_summary_at` when the matching artifact is written.
 - **UI**: `app/jobs/page.tsx` lists journeys with search, four-way sort, paging, and delete;
-  `app/jobs/[id]/page.tsx` shows the job ad, research, strategies, and each artifact with its
-  generation date.
-- **API**: `GET /api/journeys`, `GET /api/journeys/{id}`, `DELETE /api/journeys/{id}`.
+  `app/jobs/[id]/page.tsx` is the job's asset hub — job ad, research, strategies, each artifact with
+  its generation date, one card per interview round, the employer feedback recorded for the job, and
+  an "assistant said / they said" panel wherever a round has both an evaluation and covering feedback.
+- **API**: `GET /api/journeys`, `GET /api/journeys/{id}`, `DELETE /api/journeys/{id}`,
+  `POST /api/journeys/{id}/feedback`, `DELETE /api/journeys/{id}/feedback/{feedback_id}`.
+  The detail response carries `interviews`, `feedback`, and `calibration` alongside the journey row.
 
 ## Per-profile learning
 
-Two feedback loops persist knowledge per applicant profile:
+Three feedback loops persist knowledge per applicant profile. The first two learn from the tool's
+own output; the third is the only one fed by the outside world.
 
 - **Cover-letter playbook.** When a cover-letter session wraps up, `synthesize_learning` persists
   the completed application (`application_records` + `application_hm_iterations`) and runs one LLM
@@ -269,6 +273,27 @@ Two feedback loops persist knowledge per applicant profile:
 - **Interview coaching.** Accepted interview evaluations store a **coaching insight**;
   `load_coaching_history` loads the profile's insights at the start of each Interview Prep session
   so briefings account for past performance.
+- **Employer feedback** (`backend/storage/feedback.py`). What a company actually told the candidate,
+  recorded per job from the job detail page. One entry can cover several rounds at once — a
+  recruiter usually summarises the whole loop — so `interview_ids` is a list, and an empty list
+  means the whole process. Two channels consume it, deliberately non-overlapping so no prompt sees
+  the same signal twice:
+  - **Raw, next session.** `strategy` (both the direct and recruiter branches) and
+    `interview_briefing` inject the most recent entries, with same-company entries prioritised
+    inside the window. Cover-letter generation gets none directly — it inherits the signal through
+    the strategy it consumes.
+  - **Distilled, over time.** `synthesize_learning` promotes themes recurring across **two or more
+    different employers** into `profile_playbook.employer_feedback_themes`, kept separate from the
+    simulator's `recurring_hm_weaknesses`. Because the cover-letter templates already interpolate
+    the rendered playbook, themes reach generation with no template change.
+
+  **Evaluator calibration.** `list_evaluator_calibration` joins each feedback entry to the
+  evaluations it covers (pinned rounds, or every evaluated round of the job when the entry is
+  process-wide) and feeds the pairs to `analyze_interview_performance`, so the evaluator can see
+  where its read diverged from how the candidate was actually perceived. The `outcome` field is
+  deliberately excluded from those pairs: a rejection is not evidence that a score was too
+  generous, and treating it as such would drift the evaluator pessimistic over time. Only what was
+  said about the candidate is ever used, and entries that name nothing specific are ignored.
 
 ## Session runner and human-in-the-loop
 
@@ -323,9 +348,16 @@ Tables:
   Indexed per profile.
 - **application_records** / **application_hm_iterations** — completed cover-letter applications and
   their hiring-manager iterations; the history `synthesize_learning` reflects over.
-- **profile_playbook** — per-profile learned guidance injected into cover-letter generation.
+- **profile_playbook** — per-profile learned guidance injected into cover-letter generation,
+  including `employer_feedback_themes` distilled from what real companies said.
 - **profile_suggestions** — LLM-proposed candidate-profile edits awaiting approve / reject.
-- **coaching_insights** — evaluator findings surfaced to later interview-prep sessions.
+- **coaching_insights** — evaluator findings surfaced to later interview-prep sessions. Carries
+  `journey_id` / `interview_id` so an evaluation can be paired with the employer feedback covering
+  that round; rows written before those columns existed stay `NULL` and are skipped.
+- **job_interviews** — one row per interview round of a job (type, label, briefing, evaluation).
+- **job_feedback** — what a company told the candidate about an application: verbatim text, stage,
+  source, outcome, and the rounds it covers. Deleted with its journey explicitly, since SQLite runs
+  with `foreign_keys` off and the declared cascade never fires.
 
 LangGraph checkpoints live in their own SQLite file (`backend/agent/checkpoint.py`) so a graph can
 be resumed across process restarts.

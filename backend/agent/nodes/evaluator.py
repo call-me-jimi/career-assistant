@@ -23,6 +23,10 @@ from backend.llm.schemas import InterviewEvaluation
 from backend.llm.service import call_llm, extract_json
 from backend.llm.translate import with_language_directive
 from backend.storage.coaching_insights import save_coaching_insight
+from backend.storage.feedback import (
+    list_evaluator_calibration,
+    render_calibration_for_prompt,
+)
 from backend.storage.interviews import describe_type, type_label, update_interview
 from backend.storage.journeys import update_journey
 from backend.tools.transcribe import get_cached_provider
@@ -157,9 +161,20 @@ async def _generate_evaluation(
     state: ApplicationState, *, revision_feedback: str = ""
 ) -> InterviewEvaluation:
     sid = state.session_id
+
+    settings = load_settings()
+    calibration = ""
+    if settings.learning_enabled and state.profile_id:
+        calibration = render_calibration_for_prompt(
+            await list_evaluator_calibration(
+                state.profile_id, limit=settings.calibration_window_n
+            )
+        )
+
     system = load_system_prompt("interview_evaluator")
     user = render_user_prompt(
         "analyze_interview_performance",
+        calibration=calibration,
         company_name=state.company_name,
         job_title=state.job_title,
         job_description=state.job_description,
@@ -243,6 +258,8 @@ async def evaluator_review_node(state: ApplicationState) -> dict:
                     evaluation_dict=state.interview_evaluation,
                     job_title=state.job_title,
                     company_name=state.company_name,
+                    journey_id=state.journey_id,
+                    interview_id=state.interview_id,
                 )
             except Exception:
                 pass  # never block the accept flow

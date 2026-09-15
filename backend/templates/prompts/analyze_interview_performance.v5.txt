@@ -1,0 +1,89 @@
+Evaluate this real interview the candidate has just given. Return the JSON object specified in the system prompt — nothing else.
+
+--------------------------------------------------
+ROLE INFORMATION
+
+Company:
+{{ company_name }}
+
+Job Title:
+{{ job_title }}
+
+--------------------------------------------------
+{% if interview_type %}
+INTERVIEW ROUND
+
+{{ interview_type }}
+
+Judge the candidate against what this specific round is for. A recruiter or screening round is passed by being clear, motivated and easy to work with; a technical round by demonstrated depth and reasoning; a hiring-manager or leadership round by ownership, judgement and scope. Do not penalise the candidate for not doing something the round did not call for.
+
+--------------------------------------------------
+{% endif %}
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+--------------------------------------------------
+CANDIDATE PROFILE (CV — use ONLY to identify missed opportunities, never as evidence of what was said)
+The candidate's CV is provided so you can flag things they could have mentioned but didn't.
+Do NOT attribute anything from this profile to the candidate unless it also appears in the transcript.
+"""
+{{ candidate_profile }}
+"""
+
+--------------------------------------------------
+INTERVIEW CONTEXT (format, interviewers, focus areas — if the candidate shared any)
+"""
+{{ interview_context }}
+"""
+
+--------------------------------------------------
+{% if interview_briefing %}
+INTERVIEW BRIEFING THE CANDIDATE PREPARED WITH
+
+This briefing was prepared for this exact round. Assess how well they executed on it — did they land the positioning, stories, and answers they had planned? Note both where the preparation paid off and where they failed to use it.
+"""
+{{ interview_briefing }}
+"""
+
+--------------------------------------------------
+{% endif %}
+INTERVIEW TRANSCRIPT (the only source of evidence for what the candidate actually said)
+The transcript was produced by automatic speech recognition with no speaker labels. Interpret who said what from phrasing and structure.
+
+"""
+{{ transcript }}
+"""
+
+--------------------------------------------------
+
+{% if calibration %}
+CALIBRATION — YOUR PAST READS VERSUS WHAT THE EMPLOYER SAID
+
+Below are past interviews where both your own assessment and the employer's message are known. Use them to calibrate this assessment: look for dimensions you consistently missed, and for a systematic tendency to be harsher or more generous than the employer.
+"""
+{{ calibration }}
+"""
+
+Read them under these constraints:
+- The employer's message is evidence about how the candidate was perceived, not about objective performance. They saw one conversation; you see the full transcript.
+- Whether the candidate was hired or rejected is deliberately not shown to you, because it is not evidence about your accuracy. Candidates are turned down for internal hires, frozen budgets and stronger applicants. Only what was said about the candidate counts.
+- Many such messages name nothing specific about the candidate at all ("a very strong field", "not the right fit at this time"). Those carry no calibration information. Pass over them; do not mine them for an implied criticism.
+- Weight by who spoke. An interviewer's or hiring manager's debrief reflects the room; a recruiter's form letter reflects a template.
+- One pair is never enough to conclude you are miscalibrated. Only act on a gap that shows up in at least two independent pairs.
+
+Where they repeatedly flagged something you did not raise, that is a blind spot — look for it in this transcript. Where they praised something you marked as weak, your bar is too high. Do not restate their verdict, and do not mention this calibration section in your output.
+
+--------------------------------------------------
+
+{% endif -%}
+{% if revision_feedback %}
+The candidate has reviewed your previous evaluation and asked for these revisions:
+"""
+{{ revision_feedback }}
+"""
+Address their feedback while keeping the evaluation honest and evidence-based.
+{% endif %}
+
+Return the InterviewEvaluation JSON object now. No prose around it.

@@ -17,6 +17,7 @@ BRIEFING_KWARGS = dict(
     cover_letter="",
     positioning_strategy="",
     previous_briefing="",
+    employer_feedback="",
 )
 
 MOCK_KWARGS = dict(
@@ -135,6 +136,7 @@ EVALUATOR_KWARGS = dict(
     interview_context="Panel round",
     transcript="[00:00] Hello",
     revision_feedback="",
+    calibration="",
 )
 
 

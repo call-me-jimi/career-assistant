@@ -14,11 +14,13 @@ type ProfileDetail = {
 
 type PlaybookItem = { phrase?: string; reason?: string; count?: number };
 type WeaknessItem = { weakness?: string; count?: number; last_seen?: string };
+type ThemeItem = { theme?: string; evidence?: string; count?: number };
 
 type Playbook = {
   never_say: PlaybookItem[];
   prefer_phrasing: PlaybookItem[];
   recurring_hm_weaknesses: WeaknessItem[];
+  employer_feedback_themes: ThemeItem[];
   tone_notes: string;
   updated_at: number | null;
 };
@@ -37,16 +39,50 @@ type EditingItem = { category: string; index: number };
 type AddingItem = { category: string };
 type Tab = "overview" | "playbook" | "suggestions";
 
-const LIST_CATEGORIES: ("never_say" | "prefer_phrasing" | "recurring_hm_weaknesses")[] = [
+type Category =
+  | "never_say"
+  | "prefer_phrasing"
+  | "recurring_hm_weaknesses"
+  | "employer_feedback_themes";
+
+const LIST_CATEGORIES: Category[] = [
   "never_say",
   "prefer_phrasing",
   "recurring_hm_weaknesses",
+  "employer_feedback_themes",
 ];
 
-const CATEGORY_LABELS: Record<(typeof LIST_CATEGORIES)[number], string> = {
+const CATEGORY_LABELS: Record<Category, string> = {
   never_say: "Never say",
   prefer_phrasing: "Prefer phrasing",
   recurring_hm_weaknesses: "Recurring HM concerns",
+  employer_feedback_themes: "What employers told you",
+};
+
+// Each category stores its text under different keys; this is the one place that knows which.
+const CATEGORY_FIELDS: Record<
+  Category,
+  { label: string; reason?: string; labelPlaceholder: string; reasonPlaceholder?: string }
+> = {
+  never_say: {
+    label: "phrase",
+    reason: "reason",
+    labelPlaceholder: "Phrase…",
+    reasonPlaceholder: "Reason (optional)…",
+  },
+  prefer_phrasing: {
+    label: "phrase",
+    reason: "reason",
+    labelPlaceholder: "Phrase…",
+    reasonPlaceholder: "Reason (optional)…",
+  },
+  recurring_hm_weaknesses: { label: "weakness", labelPlaceholder: "Concern…" },
+  employer_feedback_themes: {
+    label: "theme",
+    reason: "evidence",
+    labelPlaceholder: "Theme…",
+    reasonPlaceholder: "Evidence (which employers, how often)…",
+  },
 };
 
 function formatDate(ts: number | null | undefined) {
@@ -307,41 +343,40 @@ function PlaybookTab({
   if (!draft) return <p className="text-subtle text-sm">No playbook yet.</p>;
 
   const isEmpty =
-    draft.never_say.length === 0 &&
-    draft.prefer_phrasing.length === 0 &&
-    draft.recurring_hm_weaknesses.length === 0 &&
-    !draft.tone_notes;
+    LIST_CATEGORIES.every((cat) => (draft![cat] as any[]).length === 0) && !draft.tone_notes;
 
-  function getItemLabel(cat: string, item: PlaybookItem | WeaknessItem) {
-    if ("phrase" in item && item.phrase) return item.phrase;
-    if ("weakness" in item && item.weakness) return item.weakness;
-    return "";
+  function getItemLabel(cat: Category, item: PlaybookItem | WeaknessItem | ThemeItem) {
+    return (item as any)[CATEGORY_FIELDS[cat].label] || "";
   }
 
-  function getItemReason(item: PlaybookItem | WeaknessItem) {
-    if ("reason" in item && item.reason) return item.reason;
-    if ("last_seen" in item && item.last_seen) return item.last_seen;
-    return "";
+  function getItemReason(cat: Category, item: PlaybookItem | WeaknessItem | ThemeItem) {
+    const field = CATEGORY_FIELDS[cat].reason;
+    const value = field ? (item as any)[field] : "";
+    return value || ("last_seen" in item ? item.last_seen || "" : "");
   }
 
-  function updateItem(cat: string, index: number, label: string, reason: string) {
+  function writeItem(cat: Category, base: any, label: string, reason: string) {
+    const fields = CATEGORY_FIELDS[cat];
+    return {
+      ...base,
+      [fields.label]: label,
+      ...(fields.reason ? { [fields.reason]: reason } : {}),
+    };
+  }
+
+  function updateItem(cat: Category, index: number, label: string, reason: string) {
     const updated = { ...draft! };
-    const isWeakness = cat === "recurring_hm_weaknesses";
-    const items = [...(updated[cat as keyof Playbook] as any[])];
-    const existing = items[index];
-    items[index] = isWeakness
-      ? { ...existing, weakness: label }
-      : { ...existing, phrase: label, reason };
+    const items = [...(updated[cat] as any[])];
+    items[index] = writeItem(cat, items[index], label, reason);
     (updated as any)[cat] = items;
     setDraft(updated);
     return updated;
   }
 
-  function addItem(cat: string, label: string, reason: string) {
+  function addItem(cat: Category, label: string, reason: string) {
     const updated = { ...draft! };
-    const isWeakness = cat === "recurring_hm_weaknesses";
-    const items = [...(updated[cat as keyof Playbook] as any[])];
-    items.push(isWeakness ? { weakness: label } : { phrase: label, reason });
+    const items = [...(updated[cat] as any[])];
+    items.push(writeItem(cat, {}, label, reason));
     (updated as any)[cat] = items;
     setDraft(updated);
     return updated;
@@ -391,8 +426,8 @@ function PlaybookTab({
       </Section>
 
       {LIST_CATEGORIES.map((cat) => {
-        const items = draft[cat] as Array<PlaybookItem | WeaknessItem>;
-        const isWeakness = cat === "recurring_hm_weaknesses";
+        const items = draft[cat] as Array<PlaybookItem | WeaknessItem | ThemeItem>;
+        const fields = CATEGORY_FIELDS[cat];
         const isAdding = addingItem?.category === cat;
 
         return (
@@ -401,7 +436,7 @@ function PlaybookTab({
               {items.map((item, i) => {
                 const isEditing = editingItem?.category === cat && editingItem.index === i;
                 const label = getItemLabel(cat, item);
-                const reason = getItemReason(item);
+                const reason = getItemReason(cat, item);
                 const count = item.count ?? 0;
                 const busyKey = `playbook-${cat}-${i}`;
 
@@ -411,7 +446,8 @@ function PlaybookTab({
                       <ItemEditor
                         initialLabel={label}
                         initialReason={reason}
-                        isWeakness={isWeakness}
+                        labelPlaceholder={fields.labelPlaceholder}
+                        reasonPlaceholder={fields.reasonPlaceholder}
                         saving={saving}
                         onSave={(l, r) => {
                           const updated = updateItem(cat, i, l, r);
@@ -463,7 +499,8 @@ function PlaybookTab({
                   <ItemEditor
                     initialLabel=""
                     initialReason=""
-                    isWeakness={isWeakness}
+                    labelPlaceholder={fields.labelPlaceholder}
+                    reasonPlaceholder={fields.reasonPlaceholder}
                     saving={saving}
                     onSave={(l, r) => {
                       if (!l.trim()) { setAddingItem(null); return; }
@@ -502,14 +539,16 @@ function PlaybookTab({
 function ItemEditor({
   initialLabel,
   initialReason,
-  isWeakness,
+  labelPlaceholder,
+  reasonPlaceholder,
   saving,
   onSave,
   onCancel,
 }: {
   initialLabel: string;
   initialReason: string;
-  isWeakness: boolean;
+  labelPlaceholder: string;
+  reasonPlaceholder?: string;
   saving: boolean;
   onSave: (label: string, reason: string) => void;
   onCancel: () => void;
@@ -522,14 +561,14 @@ function ItemEditor({
         autoFocus
         value={label}
         onChange={(e) => setLabel(e.target.value)}
-        placeholder={isWeakness ? "Concern…" : "Phrase…"}
+        placeholder={labelPlaceholder}
         className="w-full text-sm bg-transparent border border-subtle/30 rounded px-2 py-1 focus:outline-none focus:border-accent"
       />
-      {!isWeakness && (
+      {reasonPlaceholder && (
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason (optional)…"
+          placeholder={reasonPlaceholder}
           className="w-full text-sm bg-transparent border border-subtle/30 rounded px-2 py-1 focus:outline-none focus:border-accent"
         />
       )}

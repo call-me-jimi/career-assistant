@@ -17,6 +17,8 @@ async def save_coaching_insight(
     evaluation_dict: dict[str, Any],
     job_title: str = "",
     company_name: str = "",
+    journey_id: str | None = None,
+    interview_id: str | None = None,
 ) -> None:
     if not profile_id:
         return
@@ -25,14 +27,16 @@ async def save_coaching_insight(
         await db.execute(
             """
             INSERT INTO coaching_insights
-                (profile_id, session_id, job_title, company_name,
+                (profile_id, session_id, journey_id, interview_id, job_title, company_name,
                  overall_score, decision, summary,
                  weaknesses, improvements, filler_words, pace, clarity, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 profile_id,
                 session_id,
+                journey_id or None,
+                interview_id or None,
                 job_title or "",
                 company_name or "",
                 evaluation_dict.get("overall_score"),

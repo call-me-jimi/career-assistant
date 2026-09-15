@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS profile_playbook (
     never_say                TEXT NOT NULL DEFAULT '[]',
     prefer_phrasing          TEXT NOT NULL DEFAULT '[]',
     recurring_hm_weaknesses  TEXT NOT NULL DEFAULT '[]',
+    employer_feedback_themes TEXT NOT NULL DEFAULT '[]',
     tone_notes               TEXT NOT NULL DEFAULT '',
     updated_at               REAL NOT NULL
 );
@@ -107,6 +108,8 @@ CREATE TABLE IF NOT EXISTS coaching_insights (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     profile_id    TEXT NOT NULL,
     session_id    TEXT NOT NULL,
+    journey_id    TEXT,
+    interview_id  TEXT,
     job_title     TEXT NOT NULL DEFAULT '',
     company_name  TEXT NOT NULL DEFAULT '',
     overall_score REAL,
@@ -170,6 +173,25 @@ CREATE TABLE IF NOT EXISTS job_interviews (
 
 CREATE INDEX IF NOT EXISTS idx_job_interviews_journey
     ON job_interviews(journey_id, created_at);
+
+CREATE TABLE IF NOT EXISTS job_feedback (
+    feedback_id   TEXT PRIMARY KEY,
+    journey_id    TEXT NOT NULL,
+    profile_id    TEXT,
+    interview_ids TEXT NOT NULL DEFAULT '[]',
+    stage         TEXT NOT NULL DEFAULT 'unknown',
+    outcome       TEXT NOT NULL DEFAULT 'rejected',
+    source        TEXT NOT NULL DEFAULT '',
+    feedback_text TEXT NOT NULL DEFAULT '',
+    created_at    REAL NOT NULL,
+    FOREIGN KEY (journey_id) REFERENCES job_journeys(journey_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_feedback_journey
+    ON job_feedback(journey_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_job_feedback_profile
+    ON job_feedback(profile_id, created_at DESC);
 """
 
 
@@ -196,6 +218,25 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     profile_cols = {row[1] for row in await cur.fetchall()}
     if "applicant_name" not in profile_cols:
         await db.execute("ALTER TABLE profiles ADD COLUMN applicant_name TEXT")
+
+    # Themes distilled from what employers actually said, kept apart from the
+    # simulator's recurring_hm_weaknesses so real and simulated signal stay distinct.
+    cur = await db.execute("PRAGMA table_info(profile_playbook)")
+    playbook_cols = {row[1] for row in await cur.fetchall()}
+    if "employer_feedback_themes" not in playbook_cols:
+        await db.execute(
+            "ALTER TABLE profile_playbook "
+            "ADD COLUMN employer_feedback_themes TEXT NOT NULL DEFAULT '[]'"
+        )
+
+    # Which job and which round an evaluation belongs to. Without these an evaluation
+    # cannot be paired with the employer feedback that covers it (see job_feedback).
+    # Rows written before this stay NULL and are skipped by the pairing query.
+    cur = await db.execute("PRAGMA table_info(coaching_insights)")
+    coaching_cols = {row[1] for row in await cur.fetchall()}
+    for col in ("journey_id", "interview_id"):
+        if col not in coaching_cols:
+            await db.execute(f"ALTER TABLE coaching_insights ADD COLUMN {col} TEXT")
 
     cur = await db.execute("PRAGMA table_info(job_journeys)")
     journey_cols = {row[1] for row in await cur.fetchall()}

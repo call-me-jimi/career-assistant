@@ -29,6 +29,7 @@ from backend.storage.applications import (
     insert_hm_iteration,
     list_recent_applications,
 )
+from backend.storage.feedback import employer_feedback_block
 from backend.storage.journeys import update_journey
 from backend.storage.playbook import get_playbook, upsert_playbook
 from backend.storage.suggestions import (
@@ -134,6 +135,9 @@ async def synthesize_learning_node(state: ApplicationState) -> dict:
             current_candidate_profile=state.candidate_profile or "",
             this_session_signals=json.dumps(this_session, indent=2, default=str),
             recent_applications=json.dumps(recent_prior, indent=2, default=str),
+            employer_feedback=await employer_feedback_block(
+                state.profile_id, limit=settings.feedback_window_n
+            ),
         )
         result = await call_llm(
             task="synthesize_learning",

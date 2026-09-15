@@ -169,6 +169,9 @@ async def list_journeys(
 
 async def delete_journey(journey_id: str) -> bool:
     async with connect() as db:
+        # SQLite runs with foreign_keys OFF by default, so the ON DELETE CASCADE
+        # declared on job_feedback never fires — drop those rows explicitly.
+        await db.execute("DELETE FROM job_feedback WHERE journey_id = ?", (journey_id,))
         cur = await db.execute("DELETE FROM job_journeys WHERE journey_id = ?", (journey_id,))
         await db.commit()
         return cur.rowcount > 0

@@ -1,0 +1,127 @@
+Prepare an interview briefing for this specific upcoming interview.
+
+Write directly to the candidate in second person. Follow the section structure defined in the system prompt. Ground every suggestion in the inputs below and do not invent facts.
+
+--------------------------------------------------
+ROLE INFORMATION
+
+Company:
+{{ company_name }}
+
+Job Title:
+{{ job_title }}
+
+Location:
+{{ location }}
+
+--------------------------------------------------
+{% if interview_type %}
+INTERVIEW ROUND
+
+{{ interview_type }}
+
+Tailor the whole briefing to this round. Prepare the candidate for what this round actually decides — a recruiter or screening round turns on clarity, motivation and salary/logistics; a technical round on depth, trade-offs and thinking out loud; a hiring-manager or leadership round on ownership, scope and judgement; a team or peer round on collaboration. Do not pad the briefing with preparation that belongs to a different round.
+
+--------------------------------------------------
+{% endif %}
+INTERVIEW CONTEXT (from the company, if provided)
+"""
+{{ interview_context }}
+"""
+
+If this section is empty, work from the interview round above; if that is empty too, assume a first-round screening and say so explicitly in the interview snapshot.
+
+--------------------------------------------------
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+--------------------------------------------------
+COMPANY DESCRIPTION
+"""
+{{ company_description }}
+"""
+
+--------------------------------------------------
+CANDIDATE PROFILE
+"""
+{{ candidate_profile }}
+"""
+
+--------------------------------------------------
+CANDIDATE CV (raw)
+"""
+{{ cv_content }}
+"""
+
+--------------------------------------------------
+ALIGNMENT STRATEGY (how the candidate plans to position for this role)
+"""
+{{ alignment_strategy }}
+"""
+
+--------------------------------------------------
+{% if cover_letter %}
+SUBMITTED COVER LETTER
+
+This is how the candidate positioned themselves in the application. Keep the briefing consistent with it — the interviewers have likely read it, so the candidate's story in the interview must match.
+"""
+{{ cover_letter }}
+"""
+
+--------------------------------------------------
+{% endif %}
+{% if positioning_strategy %}
+POSITIONING STRATEGY
+
+How the candidate was positioned for this role (from the application phase). Keep the briefing aligned with this positioning.
+"""
+{{ positioning_strategy }}
+"""
+
+--------------------------------------------------
+{% endif %}
+{% if previous_briefing %}
+PREVIOUS BRIEFING FOR THIS JOB
+
+The candidate already received this briefing for an earlier round at the same company. Build on it; refresh it for the round described above instead of starting from scratch. Do not repeat preparation the candidate has already done unless it is still relevant.
+"""
+{{ previous_briefing }}
+"""
+
+--------------------------------------------------
+{% endif %}
+{% if coaching_history %}
+COACHING REMINDERS FROM PAST INTERVIEWS
+
+The candidate has {{ coaching_history | length }} prior interview evaluation(s) on record. Use this to personalise the briefing — surface recurring weaknesses as actionable reminders. Do not repeat strengths; the candidate already knows what they do well.
+
+{% for entry in coaching_history %}
+Interview {{ loop.index }}{% if entry.job_title %} — {{ entry.job_title }}{% if entry.company_name %} at {{ entry.company_name }}{% endif %}{% endif %} (score: {{ entry.overall_score }}/10, outcome: {{ entry.decision }}):
+  Weaknesses: {{ entry.weaknesses | join("; ") if entry.weaknesses else "none recorded" }}
+  Work on: {{ entry.improvements | join("; ") if entry.improvements else "none recorded" }}{% if entry.filler_words %}
+  Speech habits to fix: filler words — {{ entry.filler_words | join(", ") }}; pace — {{ entry.pace or "not noted" }}{% endif %}
+{% endfor %}
+
+After the main briefing sections, add a "## Coaching Reminders" section. Write 3–5 bullet points that directly reference the patterns above. Be concrete and direct: "In your last interview you tended to [X] — this time [specific fix]." Do not be vague or encouraging without substance.
+{% endif %}
+{%- if employer_feedback %}
+WHAT EMPLOYERS ACTUALLY SAID ABOUT PAST APPLICATIONS
+
+These are real messages the candidate received from employers about earlier applications. This is a different signal from the self-evaluations above: it is how the candidate was actually perceived, not how they assessed themselves.
+"""
+{{ employer_feedback }}
+"""
+
+Where a concern raised here is relevant to this round, turn it into concrete preparation — the story to have ready, the evidence to lead with, the question to expect.
+
+Constraints:
+- Never suggest raising a past rejection in the interview, and never suggest apologising or hedging.
+- A message that names nothing specific about the candidate ("a very strong field", "not the right fit at this time") carries no information. Pass over it; do not mine it for an implied criticism.
+- Weight themes that recur across employers over a single remark, and weight what an interviewer or hiring manager said over a recruiter's form letter.
+{% endif %}
+
+--------------------------------------------------
+
+Produce the briefing now, in Markdown, following the section order from the system prompt. Output the briefing only.

@@ -11,6 +11,13 @@ from pydantic import BaseModel
 from backend.agent.interrupts import emit_message
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
+from backend.storage.feedback import (
+    add_feedback,
+    delete_feedback,
+    list_evaluator_calibration,
+    list_feedback,
+)
+from backend.storage.interviews import list_interviews, type_label
 from backend.storage.journeys import delete_journey, get_journey, list_journeys
 from backend.storage.playbook import get_playbook, remove_playbook_item, upsert_playbook
 from backend.storage.profiles import delete_profile, get_profile, list_profiles
@@ -93,7 +100,63 @@ async def journey_detail(journey_id: str) -> dict:
     j = await get_journey(journey_id)
     if not j:
         raise HTTPException(404, "journey not found")
-    return j
+    return {
+        **j,
+        # type_label comes from the backend taxonomy so the UI never has to keep its
+        # own copy of the round slugs.
+        "interviews": [
+            {**i, "type_label": type_label(i["interview_type"])}
+            for i in await list_interviews(journey_id)
+        ],
+        "feedback": await list_feedback(journey_id),
+        "calibration": await list_evaluator_calibration(
+            j["profile_id"], journey_id=journey_id
+        ),
+    }
+
+
+class FeedbackPayload(BaseModel):
+    feedback_text: str = ""
+    stage: str = "unknown"
+    outcome: str = "rejected"
+    source: str = ""
+    interview_ids: list[str] = []
+
+
+@router.post("/journeys/{journey_id}/feedback")
+async def add_journey_feedback(journey_id: str, payload: FeedbackPayload) -> dict:
+    journey = await get_journey(journey_id)
+    if not journey:
+        raise HTTPException(404, "journey not found")
+
+    known = {i["interview_id"] for i in await list_interviews(journey_id)}
+    unknown = sorted(set(payload.interview_ids) - known)
+    if unknown:
+        raise HTTPException(400, f"interview round(s) not on this job: {unknown}")
+
+    try:
+        feedback_id = await add_feedback(
+            journey_id=journey_id,
+            # Never from the client: feedback inherits the job's owner.
+            profile_id=journey["profile_id"],
+            interview_ids=payload.interview_ids,
+            stage=payload.stage,
+            outcome=payload.outcome,
+            source=payload.source,
+            feedback_text=payload.feedback_text,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"feedback_id": feedback_id}
+
+
+@router.delete("/journeys/{journey_id}/feedback/{feedback_id}")
+async def remove_journey_feedback(journey_id: str, feedback_id: str) -> dict:
+    owned = {e["feedback_id"] for e in await list_feedback(journey_id)}
+    if feedback_id not in owned:
+        raise HTTPException(404, "feedback not found")
+    await delete_feedback(feedback_id)
+    return {"deleted": True}
 
 
 @router.delete("/journeys/{journey_id}")

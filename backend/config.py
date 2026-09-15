@@ -66,6 +66,10 @@ class AppSettings(BaseModel):
     learning_enabled: bool = True
     synthesis_window_n: int = 5
     inline_surface_threshold: int = 3
+    # How many past employer-feedback entries reach a prompt, and how many
+    # evaluator-vs-employer pairs the evaluator gets to calibrate against.
+    feedback_window_n: int = 5
+    calibration_window_n: int = 3
 
 
 def _load_settings_file() -> dict[str, Any]:

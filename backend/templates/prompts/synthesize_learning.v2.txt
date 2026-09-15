@@ -1,0 +1,29 @@
+CURRENT PLAYBOOK (JSON)
+"""
+{{ current_playbook }}
+"""
+
+CURRENT CANDIDATE PROFILE
+"""
+{{ current_candidate_profile }}
+"""
+
+THIS SESSION — SIGNALS
+"""
+{{ this_session_signals }}
+"""
+
+RECENT PRIOR APPLICATIONS (most recent first, JSON array)
+"""
+{{ recent_applications }}
+"""
+{%- if employer_feedback %}
+WHAT EMPLOYERS ACTUALLY SAID (most recent first)
+
+Real messages the candidate received from employers about past applications. This is the only input here that comes from outside the tool — everything else is the tool's own output, its own simulator, or the candidate's own revisions. Weight it accordingly.
+"""
+{{ employer_feedback }}
+"""
+{% endif %}
+
+Return the updated playbook and optional suggestion as a single JSON object, per the system instructions.

@@ -4,13 +4,24 @@ from __future__ import annotations
 
 from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
+from backend.config import load_settings
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
+from backend.storage.feedback import employer_feedback_block
 from backend.storage.journeys import update_journey
 
 
 async def strategy_node(state: ApplicationState) -> dict:
     sid = state.session_id
+
+    settings = load_settings()
+    employer_feedback = ""
+    if settings.learning_enabled and state.profile_id:
+        employer_feedback = await employer_feedback_block(
+            state.profile_id,
+            limit=settings.feedback_window_n,
+            company_name=state.company_name,
+        )
 
     if state.job_source_type == "recruiter":
         # Step 1: infer_role
@@ -30,6 +41,7 @@ async def strategy_node(state: ApplicationState) -> dict:
             candidate_profile=state.candidate_profile,
             inferred_role_context=role_result.text,
             recruiter_job_ad=state.job_description,
+            employer_feedback=employer_feedback,
         )
         pos_result = await call_llm(
             task="position_candidate", system=system, user=user, session_id=sid
@@ -59,6 +71,7 @@ async def strategy_node(state: ApplicationState) -> dict:
         "generate_alignment_strategy",
         candidate_profile=state.candidate_profile,
         job_profile=state.job_description,
+        employer_feedback=employer_feedback,
     )
     result = await call_llm(
         task="alignment_strategy", system=system, user=user, session_id=sid

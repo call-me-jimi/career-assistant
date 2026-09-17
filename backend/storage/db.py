@@ -148,6 +148,14 @@ CREATE TABLE IF NOT EXISTS job_journeys (
     cover_letter_at       REAL,
     interview_briefing_at REAL,
     evaluation_summary_at REAL,
+    applied_at            REAL,
+    on_hold_at            REAL,
+    rejected_at           REAL,
+    dropped_at            REAL,
+    offer_at              REAL,
+    notes                 TEXT NOT NULL DEFAULT '',
+    next_step             TEXT NOT NULL DEFAULT '',
+    next_step_at          REAL,
     created_at            REAL NOT NULL,
     updated_at            REAL NOT NULL
 );
@@ -166,6 +174,7 @@ CREATE TABLE IF NOT EXISTS job_interviews (
     evaluation_summary TEXT NOT NULL DEFAULT '',
     briefing_at        REAL,
     evaluation_at      REAL,
+    scheduled_at       REAL,
     created_at         REAL NOT NULL,
     updated_at         REAL NOT NULL,
     FOREIGN KEY (journey_id) REFERENCES job_journeys(journey_id) ON DELETE CASCADE
@@ -192,6 +201,21 @@ CREATE INDEX IF NOT EXISTS idx_job_feedback_journey
 
 CREATE INDEX IF NOT EXISTS idx_job_feedback_profile
     ON job_feedback(profile_id, created_at DESC);
+
+-- The application tracker's event log: a follow-up sent, a recruiter who called.
+-- Deliberately never consulted when deriving a job's status — only dates do that.
+CREATE TABLE IF NOT EXISTS job_events (
+    event_id    TEXT PRIMARY KEY,
+    journey_id  TEXT NOT NULL,
+    kind        TEXT NOT NULL DEFAULT 'note',
+    occurred_at REAL NOT NULL,
+    text        TEXT NOT NULL DEFAULT '',
+    created_at  REAL NOT NULL,
+    FOREIGN KEY (journey_id) REFERENCES job_journeys(journey_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_events_journey
+    ON job_events(journey_id, occurred_at DESC);
 """
 
 
@@ -255,6 +279,25 @@ async def _migrate(db: aiosqlite.Connection) -> None:
             "ALTER TABLE job_journeys ADD COLUMN export_folder TEXT NOT NULL DEFAULT ''"
         )
 
+    # The application tracker's dates. Status is never stored — derive_status()
+    # in journeys.py reads these five plus job_interviews.scheduled_at, so a
+    # status can never drift from the dates that define it.
+    for col in ("applied_at", "on_hold_at", "rejected_at", "dropped_at", "offer_at",
+                "next_step_at"):
+        if col not in journey_cols:
+            await db.execute(f"ALTER TABLE job_journeys ADD COLUMN {col} REAL")
+    for col in ("notes", "next_step"):
+        if col not in journey_cols:
+            await db.execute(
+                f"ALTER TABLE job_journeys ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            )
+
+    # When the round actually happened, as opposed to when a graph created the row.
+    cur = await db.execute("PRAGMA table_info(job_interviews)")
+    interview_cols = {row[1] for row in await cur.fetchall()}
+    if "scheduled_at" not in interview_cols:
+        await db.execute("ALTER TABLE job_interviews ADD COLUMN scheduled_at REAL")
+
     # Backfill job_journeys from the latest application_records row per
     # (profile, company, title). Idempotent — NOT EXISTS makes reruns no-ops.
     await db.execute(
@@ -301,6 +344,45 @@ async def _migrate(db: aiosqlite.Connection) -> None:
           AND NOT EXISTS (SELECT 1 FROM job_interviews i WHERE i.journey_id = j.journey_id)
         """
     )
+
+    # --- Tracker backfill. Every statement is WHERE ... IS NULL, so reruns are
+    # no-ops and a date the user corrected by hand is never overwritten.
+
+    # A journey exists because an assistant was run on that job, so treat it as
+    # applied. The cover letter's timestamp is the closest thing to a send date.
+    await db.execute(
+        """
+        UPDATE job_journeys SET applied_at = COALESCE(cover_letter_at, created_at)
+        WHERE applied_at IS NULL
+        """
+    )
+
+    await db.execute(
+        "UPDATE job_interviews SET scheduled_at = created_at WHERE scheduled_at IS NULL"
+    )
+
+    # An employer's verdict already sits in job_feedback — move it onto the date
+    # column that derive_status() reads. 'ghosted' maps to nothing on purpose:
+    # no response is not an outcome date, so those rows stay Applied.
+    for outcome, column in (
+        ("rejected", "rejected_at"),
+        ("offer", "offer_at"),
+        ("withdrawn", "dropped_at"),
+    ):
+        await db.execute(
+            f"""
+            UPDATE job_journeys SET {column} = (
+                SELECT MAX(f.created_at) FROM job_feedback f
+                WHERE f.journey_id = job_journeys.journey_id AND f.outcome = ?
+            )
+            WHERE {column} IS NULL
+              AND EXISTS (
+                SELECT 1 FROM job_feedback f
+                WHERE f.journey_id = job_journeys.journey_id AND f.outcome = ?
+              )
+            """,
+            (outcome, outcome),
+        )
 
 
 async def init_db() -> None:

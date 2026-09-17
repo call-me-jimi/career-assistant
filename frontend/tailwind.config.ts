@@ -15,6 +15,7 @@ const config: Config = {
         ok: "#6ee7b7",
         warn: "#fcd34d",
         err: "#f87171",
+        hold: "#c4b5fd",
       },
     },
   },

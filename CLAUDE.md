@@ -25,7 +25,7 @@ backend/
     service.py        # multi-provider dispatch (Anthropic, OpenAI, Ollama, generic HTTP)
     prompts.py        # versioned prompt resolution
     schemas.py        # task-specific response schemas
-  storage/            # aiosqlite: sessions, profiles, traces, job journeys, playbook, coaching
+  storage/            # aiosqlite: sessions, profiles, traces, job journeys, events, playbook, coaching
   tools/              # scraper, cv_parser, exporters, web_search
   templates/
     prompts/          # user prompt templates — {stem}.vN.txt
@@ -59,6 +59,8 @@ frontend/             # Next.js; use npm (not uv) inside this directory
 - **Secrets go in `.env`, never in `settings.json`.** `backend/config/settings.json` is tracked by git and holds only runtime config (models, pricing, locale). API keys must stay in `.env`.
 
 - **`ApplicationState` has fields for all four assistants.** Unused fields stay empty for a given flow — don't remove them or make them conditional. All four graphs share the same state class (`backend/agent/state.py`).
+
+- **An application's status is derived, never stored.** There is no `status` column. `derive_status()` in `backend/storage/journeys.py` reads five dates on `job_journeys` (`applied_at`, `on_hold_at`, `rejected_at`, `dropped_at`, `offer_at`) plus `job_interviews.scheduled_at`, first match wins. The API returns `status` read-only; `PATCH /api/journeys/{id}` accepts dates only. Adding a status column would let it drift from the dates that define it.
 
 - **`PATCH /api/sessions/{id}/state` requires the runner to be paused at an interrupt.** It returns 409 if the graph is currently running. Only patch state from the details page, not mid-stream.
 

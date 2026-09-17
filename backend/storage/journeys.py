@@ -27,6 +27,15 @@ _ALLOWED_FIELDS = frozenset(
         "interview_briefing",
         "evaluation_summary",
         "export_folder",
+        # Tracker dates. There is no status field — see derive_status().
+        "applied_at",
+        "on_hold_at",
+        "rejected_at",
+        "dropped_at",
+        "offer_at",
+        "notes",
+        "next_step",
+        "next_step_at",
     }
 )
 
@@ -52,6 +61,14 @@ _COLUMNS = (
     "cover_letter_at",
     "interview_briefing_at",
     "evaluation_summary_at",
+    "applied_at",
+    "on_hold_at",
+    "rejected_at",
+    "dropped_at",
+    "offer_at",
+    "notes",
+    "next_step",
+    "next_step_at",
     "created_at",
     "updated_at",
 )
@@ -62,6 +79,42 @@ _ARTIFACT_STAMPS = {
     "interview_briefing": "interview_briefing_at",
     "evaluation_summary": "evaluation_summary_at",
 }
+
+
+# The tracker's seven states. Never stored — see derive_status().
+STATUSES = ("draft", "applied", "in_progress", "on_hold", "offer", "rejected", "dropped")
+
+
+def derive_status(journey: dict[str, Any], interviews: list[dict[str, Any]]) -> str:
+    """Status is whatever the dates say it is, evaluated top to bottom.
+
+    Keeping it a function rather than a column means a status can never drift
+    from the dates that define it, and exports, prompts and the UI all agree on
+    what 'in_progress' means.
+    """
+    if journey.get("rejected_at"):
+        return "rejected"  # terminal: nothing below is consulted
+    if journey.get("offer_at"):
+        return "offer"
+    if journey.get("dropped_at"):
+        return "dropped"
+
+    last_round = max(
+        (i["scheduled_at"] for i in interviews if i.get("scheduled_at")), default=None
+    )
+
+    on_hold_at = journey.get("on_hold_at")
+    if on_hold_at:
+        # A round dated after the hold means the hold was lifted.
+        if last_round is not None and last_round > on_hold_at:
+            return "in_progress"
+        return "on_hold"
+
+    if last_round is not None:
+        return "in_progress"
+    if journey.get("applied_at"):
+        return "applied"
+    return "draft"
 
 
 def _row_to_journey(r: Any) -> dict[str, Any]:
@@ -147,8 +200,10 @@ async def find_journey(
 
 
 async def list_journeys(
-    profile_id: str | None = None, query: str = "", limit: int = 10
+    profile_id: str | None = None, query: str = "", limit: int | None = 10
 ) -> list[dict[str, Any]]:
+    """Journeys, newest first. ``limit=None`` returns all of them — the tracker
+    shows every application, not a page."""
     sql = f"SELECT {', '.join(_COLUMNS)} FROM job_journeys WHERE 1 = 1"
     params: list[Any] = []
     if profile_id is not None:
@@ -158,8 +213,10 @@ async def list_journeys(
         sql += " AND (company_name LIKE ? COLLATE NOCASE OR job_title LIKE ? COLLATE NOCASE)"
         like = f"%{query}%"
         params.extend([like, like])
-    sql += " ORDER BY updated_at DESC LIMIT ?"
-    params.append(limit)
+    sql += " ORDER BY updated_at DESC"
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
 
     async with connect() as db:
         cur = await db.execute(sql, params)
@@ -170,8 +227,9 @@ async def list_journeys(
 async def delete_journey(journey_id: str) -> bool:
     async with connect() as db:
         # SQLite runs with foreign_keys OFF by default, so the ON DELETE CASCADE
-        # declared on job_feedback never fires — drop those rows explicitly.
+        # declared on job_feedback and job_events never fires — drop them explicitly.
         await db.execute("DELETE FROM job_feedback WHERE journey_id = ?", (journey_id,))
+        await db.execute("DELETE FROM job_events WHERE journey_id = ?", (journey_id,))
         cur = await db.execute("DELETE FROM job_journeys WHERE journey_id = ?", (journey_id,))
         await db.commit()
         return cur.rowcount > 0

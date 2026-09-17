@@ -89,6 +89,7 @@ _ALLOWED_FIELDS = frozenset(
         "context",
         "briefing",
         "evaluation_summary",
+        "scheduled_at",
     }
 )
 
@@ -103,6 +104,7 @@ _COLUMNS = (
     "evaluation_summary",
     "briefing_at",
     "evaluation_at",
+    "scheduled_at",
     "created_at",
     "updated_at",
 )
@@ -127,6 +129,10 @@ async def create_interview(
 
     interview_id = uuid.uuid4().hex
     now = time.time()
+    # A round exists because an interview is happening, so it carries a date from
+    # the start — that is what moves the job to 'in_progress'. The user can
+    # correct it in the tracker.
+    fields.setdefault("scheduled_at", now)
     stamps = {_ARTIFACT_STAMPS[f]: now for f, v in fields.items() if f in _ARTIFACT_STAMPS and v}
     cols = [
         "interview_id",

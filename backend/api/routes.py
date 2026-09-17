@@ -17,8 +17,23 @@ from backend.storage.feedback import (
     list_evaluator_calibration,
     list_feedback,
 )
-from backend.storage.interviews import list_interviews, type_label
-from backend.storage.journeys import delete_journey, get_journey, list_journeys
+from backend.storage.events import add_event, delete_event, list_events, update_event
+from backend.storage.interviews import (
+    INTERVIEW_TYPES,
+    create_interview,
+    list_interviews,
+    resolve_type,
+    type_label,
+    update_interview,
+)
+from backend.storage.journeys import (
+    create_journey,
+    delete_journey,
+    derive_status,
+    get_journey,
+    list_journeys,
+    update_journey,
+)
 from backend.storage.playbook import get_playbook, remove_playbook_item, upsert_playbook
 from backend.storage.profiles import delete_profile, get_profile, list_profiles
 from backend.storage.sessions import ASSISTANT_TYPES, create_session, get_session
@@ -89,10 +104,39 @@ async def remove_profile(profile_id: str) -> dict:
     return {"ok": True}
 
 
+@router.get("/interview-types")
+async def interview_types() -> dict:
+    """The round taxonomy, so the tracker's type picker never keeps its own copy."""
+    return {
+        "types": [
+            {"slug": slug, "label": label, "hint": hint}
+            for slug, (label, hint) in INTERVIEW_TYPES.items()
+        ]
+    }
+
+
+async def _with_tracker_fields(j: dict) -> dict:
+    """A journey as the tracker needs it: its rounds, its events, and the status
+    those dates imply. ``status`` is read-only — PATCH rejects it."""
+    # type_label comes from the backend taxonomy so the UI never has to keep its
+    # own copy of the round slugs.
+    interviews = [
+        {**i, "type_label": type_label(i["interview_type"])}
+        for i in await list_interviews(j["journey_id"])
+    ]
+    return {
+        **j,
+        "status": derive_status(j, interviews),
+        "interviews": interviews,
+        "events": await list_events(j["journey_id"]),
+    }
+
+
 @router.get("/journeys")
 async def journeys() -> dict:
-    rows = await list_journeys(profile_id=None, limit=100)
-    return {"journeys": rows}
+    # limit=None: the tracker is the main overview, not a page of recent jobs.
+    rows = await list_journeys(profile_id=None, limit=None)
+    return {"journeys": [await _with_tracker_fields(j) for j in rows]}
 
 
 @router.get("/journeys/{journey_id}")
@@ -101,18 +145,187 @@ async def journey_detail(journey_id: str) -> dict:
     if not j:
         raise HTTPException(404, "journey not found")
     return {
-        **j,
-        # type_label comes from the backend taxonomy so the UI never has to keep its
-        # own copy of the round slugs.
-        "interviews": [
-            {**i, "type_label": type_label(i["interview_type"])}
-            for i in await list_interviews(journey_id)
-        ],
+        **await _with_tracker_fields(j),
         "feedback": await list_feedback(journey_id),
         "calibration": await list_evaluator_calibration(
             j["profile_id"], journey_id=journey_id
         ),
     }
+
+
+# Text columns are NOT NULL, so a null from the client means "empty", not "NULL".
+_JOURNEY_TEXT_FIELDS = frozenset(
+    {"job_title", "company_name", "location", "job_url", "notes", "next_step"}
+)
+
+
+class JourneyCreatePayload(BaseModel):
+    profile_id: str | None = None
+    job_title: str = ""
+    company_name: str = ""
+    location: str = ""
+    job_url: str = ""
+    notes: str = ""
+    applied_at: float | None = None
+
+
+class JourneyPatchPayload(BaseModel):
+    job_title: str | None = None
+    company_name: str | None = None
+    location: str | None = None
+    job_url: str | None = None
+    notes: str | None = None
+    next_step: str | None = None
+    applied_at: float | None = None
+    on_hold_at: float | None = None
+    rejected_at: float | None = None
+    dropped_at: float | None = None
+    offer_at: float | None = None
+    next_step_at: float | None = None
+
+
+@router.post("/journeys")
+async def add_journey(payload: JourneyCreatePayload) -> dict:
+    """Track a job applied to outside the assistant."""
+    fields = payload.model_dump(exclude={"profile_id"})
+    journey_id = await create_journey(profile_id=payload.profile_id, **fields)
+    return await _with_tracker_fields(await get_journey(journey_id))
+
+
+@router.patch("/journeys/{journey_id}")
+async def patch_journey(journey_id: str, payload: JourneyPatchPayload) -> dict:
+    if not await get_journey(journey_id):
+        raise HTTPException(404, "journey not found")
+
+    # exclude_unset is what makes clearing a date possible: an omitted field is
+    # left alone, an explicit null wipes it (and so moves the status).
+    fields = payload.model_dump(exclude_unset=True)
+    fields = {
+        k: ("" if v is None and k in _JOURNEY_TEXT_FIELDS else v) for k, v in fields.items()
+    }
+    if fields:
+        await update_journey(journey_id, **fields)
+    return await _with_tracker_fields(await get_journey(journey_id))
+
+
+class InterviewCreatePayload(BaseModel):
+    interview_type: str = "other"
+    label: str = ""
+    scheduled_at: float | None = None
+
+
+class InterviewPatchPayload(BaseModel):
+    interview_type: str | None = None
+    label: str | None = None
+    scheduled_at: float | None = None
+
+
+def _resolved_type(raw: str) -> str:
+    slug = resolve_type(raw)
+    if not slug:
+        raise HTTPException(400, f"unknown interview type: {raw}")
+    return slug
+
+
+@router.post("/journeys/{journey_id}/interviews")
+async def add_journey_interview(journey_id: str, payload: InterviewCreatePayload) -> dict:
+    """Record a round the assistant did not prepare — without this, a job you
+    interviewed for elsewhere could never reach 'in_progress'."""
+    journey = await get_journey(journey_id)
+    if not journey:
+        raise HTTPException(404, "journey not found")
+
+    fields: dict = {
+        "interview_type": _resolved_type(payload.interview_type),
+        "label": payload.label,
+    }
+    if payload.scheduled_at is not None:
+        fields["scheduled_at"] = payload.scheduled_at
+    interview_id = await create_interview(
+        journey_id=journey_id,
+        # Never from the client: a round inherits the job's owner.
+        profile_id=journey["profile_id"],
+        **fields,
+    )
+    return {"interview_id": interview_id}
+
+
+@router.patch("/journeys/{journey_id}/interviews/{interview_id}")
+async def patch_journey_interview(
+    journey_id: str, interview_id: str, payload: InterviewPatchPayload
+) -> dict:
+    owned = {i["interview_id"] for i in await list_interviews(journey_id)}
+    if interview_id not in owned:
+        raise HTTPException(404, "interview round not found")
+
+    fields = payload.model_dump(exclude_unset=True)
+    if "interview_type" in fields:
+        fields["interview_type"] = _resolved_type(fields["interview_type"] or "")
+    if "label" in fields and fields["label"] is None:
+        fields["label"] = ""
+    if fields:
+        await update_interview(interview_id, **fields)
+    return await _with_tracker_fields(await get_journey(journey_id))
+
+
+class EventCreatePayload(BaseModel):
+    occurred_at: float
+    text: str = ""
+    kind: str = "note"
+
+
+class EventPatchPayload(BaseModel):
+    occurred_at: float | None = None
+    text: str | None = None
+    kind: str | None = None
+
+
+@router.post("/journeys/{journey_id}/events")
+async def add_journey_event(journey_id: str, payload: EventCreatePayload) -> dict:
+    if not await get_journey(journey_id):
+        raise HTTPException(404, "journey not found")
+    try:
+        event_id = await add_event(
+            journey_id=journey_id,
+            occurred_at=payload.occurred_at,
+            text=payload.text,
+            kind=payload.kind,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"event_id": event_id}
+
+
+@router.patch("/journeys/{journey_id}/events/{event_id}")
+async def patch_journey_event(
+    journey_id: str, event_id: str, payload: EventPatchPayload
+) -> dict:
+    owned = {e["event_id"] for e in await list_events(journey_id)}
+    if event_id not in owned:
+        raise HTTPException(404, "event not found")
+
+    fields = payload.model_dump(exclude_unset=True)
+    if fields.get("text") is None:
+        fields.pop("text", None)
+    # occurred_at is NOT NULL — an explicit null means "leave it", not "clear it".
+    if fields.get("occurred_at") is None:
+        fields.pop("occurred_at", None)
+    if fields.get("kind") is None:
+        fields.pop("kind", None)
+    try:
+        await update_event(event_id, **fields)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"events": await list_events(journey_id)}
+
+
+@router.delete("/journeys/{journey_id}/events/{event_id}")
+async def remove_journey_event(journey_id: str, event_id: str) -> dict:
+    owned = {e["event_id"] for e in await list_events(journey_id)}
+    if event_id not in owned:
+        raise HTTPException(404, "event not found")
+    await delete_event(event_id)
+    return {"deleted": True}
 
 
 class FeedbackPayload(BaseModel):

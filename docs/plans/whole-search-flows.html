@@ -1,0 +1,2239 @@
+<title>Career Assistant — Search Flows</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --deck: #07080b;
+    --panel: #141822;
+    --panel2: #1b2030;
+    --border: #242a3a;
+    --border2: #2f3648;
+    --text: #e6e8ee;
+    --subtle: #8a93a8;
+    --faint: #5b6478;
+    --accent: #7aa2ff;
+    --ok: #6ee7b7;
+    --warn: #fcd34d;
+    --err: #f87171;
+    --hold: #c4b5fd;
+
+    --ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--deck);
+    color: var(--text);
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--subtle);
+  }
+
+  .num { font-variant-numeric: tabular-nums; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    color: var(--hold);
+  }
+
+  /* ---------- deck shell ---------- */
+
+  .deck { max-width: 1180px; margin: 0 auto; padding: 0 28px 120px; }
+
+  .masthead { padding: 72px 0 40px; border-bottom: 1px solid var(--border); }
+
+  .masthead h1 {
+    margin: 14px 0 0;
+    font-size: clamp(28px, 4.2vw, 44px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+
+  .masthead .standfirst {
+    margin: 16px 0 0;
+    max-width: 62ch;
+    color: var(--subtle);
+    font-size: 16px;
+  }
+
+  .changelog {
+    margin-top: 28px;
+    display: grid;
+    gap: 7px;
+    max-width: 74ch;
+  }
+
+  .changelog div {
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    gap: 14px;
+    font-size: 13px;
+    color: var(--subtle);
+  }
+
+  .changelog .tag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding-top: 3px;
+  }
+
+  .tag-cut  { color: var(--err); }
+  .tag-keep { color: var(--ok); }
+  .tag-new  { color: var(--accent); }
+
+  .changelog b { color: var(--text); font-weight: 500; }
+
+  /* ---------- flow band ---------- */
+
+  .flow { padding: 64px 0 8px; border-bottom: 1px solid var(--border); }
+
+  .flow-head { display: grid; gap: 10px; margin-bottom: 26px; }
+
+  .flow-eyebrow { display: flex; align-items: center; gap: 12px; }
+
+  .flow-eyebrow .rule { height: 1px; flex: 1; background: var(--border); }
+
+  .flow-head h2 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .flow-head .thesis { margin: 0; max-width: 68ch; color: var(--subtle); }
+
+  .flow-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+
+  @media (min-width: 1000px) {
+    .flow-body { grid-template-columns: minmax(0, 1fr) 248px; gap: 32px; }
+  }
+
+  /* ---------- step tabs ---------- */
+
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+
+  .step-btn {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--subtle);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 13px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+
+  .step-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  .step-btn[aria-selected="true"] {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .step-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .step-panel[hidden] { display: none; }
+
+  /* ---------- screen frame ---------- */
+
+  .screen {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .screen-chrome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    background: var(--deck);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--border2); }
+
+  .screen-url { margin-left: 8px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .screen-url b { color: var(--subtle); font-weight: 400; }
+
+  /* ---------- app header ---------- */
+
+  .app-head {
+    height: 52px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .brand .shield {
+    display: grid;
+    place-items: center;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+  }
+
+  .app-nav { display: flex; align-items: center; gap: 18px; font-size: 13px; color: var(--subtle); }
+  .app-nav .on { color: var(--text); }
+  .app-nav .pipe { width: 1px; height: 18px; background: var(--border); }
+
+  .app-body { padding: 20px 18px 24px; display: grid; gap: 20px; }
+
+  /* ---------- landing ---------- */
+
+  .landing { padding: 34px 26px 30px; display: grid; gap: 30px; }
+
+  .landing-hero { text-align: center; display: grid; gap: 7px; }
+  .landing-hero h3 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.022em; }
+  .landing-hero p { margin: 0; color: var(--subtle); font-size: 14.5px; }
+
+  .track-lbl { display: flex; align-items: center; gap: 13px; margin-bottom: 12px; }
+  .track-lbl .rule { flex: 1; height: 1px; background: var(--border); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 13px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 17px;
+    display: grid;
+    gap: 11px;
+    align-content: start;
+    transition: border-color .15s, background .15s;
+  }
+
+  .card:hover { border-color: var(--accent); background: var(--panel2); }
+
+  .card-top { display: flex; align-items: center; justify-content: space-between; }
+
+  .card-ico {
+    display: grid;
+    place-items: center;
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 11%, transparent);
+    color: var(--accent);
+  }
+
+  .card h4 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.012em; }
+  .card .desc { font-size: 13px; line-height: 1.45; color: var(--text); }
+  .card .go { font-size: 13px; color: var(--accent); }
+
+  .advisor {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+    background: transparent;
+    border: 1px dashed var(--border2);
+    border-radius: 12px;
+    padding: 15px 17px;
+    margin-top: 13px;
+  }
+
+  .advisor:hover { border-style: solid; border-color: var(--accent); }
+  .advisor h4 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.012em; }
+  .advisor .desc { font-size: 13px; color: var(--subtle); margin-top: 2px; }
+  .advisor .go { font-size: 13px; color: var(--accent); white-space: nowrap; }
+
+  /* ---------- counter strip ---------- */
+
+  .counters {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    display: grid;
+    gap: 11px;
+  }
+
+  .counter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 2px; }
+
+  .ct {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 13px 12px;
+    display: grid;
+    gap: 3px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+
+  .ct:hover { border-color: var(--accent); background: var(--panel2); }
+
+  .ct .v { font-size: 22px; font-weight: 600; line-height: 1.05; }
+  .ct .k { font-size: 11.5px; color: var(--subtle); }
+
+  .v-live { color: var(--warn); }
+  .v-silent { color: var(--faint); }
+  .v-hold { color: var(--hold); }
+  .v-rej { color: var(--err); }
+  .v-wd { color: var(--subtle); }
+
+  .counters-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+
+  /* ---------- generic ---------- */
+
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-bottom: 9px; }
+
+  .btn {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--subtle);
+    white-space: nowrap;
+    cursor: pointer;
+    font-family: var(--ui);
+    transition: color .15s, border-color .15s, background .15s;
+  }
+
+  .btn:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .btn-primary {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--accent);
+  }
+
+  .btn-primary:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+  .btn-danger { color: var(--err); border-color: color-mix(in srgb, var(--err) 40%, transparent); }
+  .btn-danger:hover { color: var(--err); border-color: var(--err); background: color-mix(in srgb, var(--err) 12%, transparent); }
+
+  .btn-sm { font-size: 11px; padding: 4px 9px; }
+
+  .hint { font-size: 12px; color: var(--subtle); margin: 0; }
+  .hint b { color: var(--text); font-weight: 500; }
+
+  /* ---------- tables ---------- */
+
+  .tbl-wrap { border: 1px solid var(--border); border-radius: 9px; overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+
+  thead th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--subtle);
+    background: var(--panel);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: color-mix(in srgb, var(--panel2) 45%, transparent); }
+
+  .co { font-weight: 600; }
+  .role { color: var(--subtle); font-size: 12.5px; }
+  .dim { color: var(--subtle); }
+  .faint { color: var(--faint); }
+
+  /* ---------- grouped table ---------- */
+
+  tbody tr.grp-row:hover { background: var(--panel); }
+
+  .grp-row td {
+    background: var(--panel);
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+  }
+
+  .grp-hd { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+
+  .grp-hd .caret { color: var(--faint); font-size: 9px; width: 9px; }
+
+  .grp-hd .name {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--subtle);
+  }
+
+  .grp-hd .n { font-family: var(--mono); font-size: 9.5px; color: var(--faint); }
+
+  .grp-hd .show { margin-left: auto; font-size: 11.5px; color: var(--accent); }
+
+  tbody tr.stale td { opacity: .58; }
+
+  .sortbar {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 12px;
+    color: var(--subtle);
+    flex-wrap: wrap;
+  }
+
+  /* ---------- graph chain ---------- */
+
+  .chain { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+  .chain .nd {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    color: var(--subtle);
+    white-space: nowrap;
+  }
+
+  .chain .nd.skip {
+    opacity: .4;
+    border-style: dashed;
+    text-decoration: line-through;
+  }
+
+  .chain .nd.land {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .chain .arw { color: var(--faint); font-size: 9px; }
+
+  .chain-row { display: grid; gap: 7px; }
+
+  .submenu {
+    margin: 3px 0 3px 12px;
+    border-left: 1px solid var(--border);
+    padding-left: 10px;
+    display: grid;
+    gap: 1px;
+  }
+
+  .sortbar .sel {
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: 12px;
+  }
+
+  /* ---------- pills ---------- */
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .pill::before { content: ""; width: 5px; height: 5px; border-radius: 999px; background: currentColor; }
+
+  .p-applied  { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .p-progress { color: var(--warn);   border-color: color-mix(in srgb, var(--warn) 40%, transparent);   background: color-mix(in srgb, var(--warn) 10%, transparent); }
+  .p-silent   { color: var(--faint);  border-color: var(--border2); }
+  .p-rejected { color: var(--err);    border-color: color-mix(in srgb, var(--err) 35%, transparent);    background: color-mix(in srgb, var(--err) 10%, transparent); }
+  .p-offer    { color: var(--ok);     border-color: color-mix(in srgb, var(--ok) 40%, transparent);     background: color-mix(in srgb, var(--ok) 10%, transparent); }
+  .p-hold     { color: var(--hold);   border-color: color-mix(in srgb, var(--hold) 40%, transparent);   background: color-mix(in srgb, var(--hold) 10%, transparent); }
+  .p-wd       { color: var(--subtle); border-color: var(--border2); text-decoration: line-through; }
+
+  /* ---------- progress strip ---------- */
+
+  .strip { display: flex; gap: 2px; width: 104px; }
+
+  .strip i {
+    flex: 1; height: 15px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    display: block;
+  }
+
+  .strip i.on  { background: var(--accent); border-color: var(--accent); }
+  .strip i.bad { background: var(--err);    border-color: var(--err); }
+  .strip i.good{ background: var(--ok);     border-color: var(--ok); }
+
+  /* ---------- filters ---------- */
+
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  .chip {
+    font-size: 11.5px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--subtle);
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--ui);
+  }
+
+  .chip.on {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: color-mix(in srgb, var(--accent) 11%, transparent);
+  }
+
+  .chip .c { color: var(--faint); margin-left: 5px; }
+  .chip.on .c { color: color-mix(in srgb, var(--accent) 70%, transparent); }
+
+  .search {
+    flex: 1;
+    min-width: 160px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--faint);
+    font-family: var(--ui);
+  }
+
+  /* ---------- row action menu ---------- */
+
+  .menu-host { position: relative; }
+
+  .menu {
+    position: absolute;
+    right: 0;
+    top: 6px;
+    width: 232px;
+    background: var(--panel2);
+    border: 1px solid var(--border2);
+    border-radius: 9px;
+    padding: 5px;
+    z-index: 5;
+    box-shadow: 0 16px 40px rgba(0,0,0,.55);
+    display: grid;
+    gap: 1px;
+  }
+
+  .menu .grp {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--faint);
+    padding: 8px 10px 4px;
+  }
+
+  .menu .mi {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .menu .mi:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+  .menu .mi .k { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+  .menu .mi.danger { color: var(--err); }
+  .menu .mi.danger:hover { background: color-mix(in srgb, var(--err) 13%, transparent); color: var(--err); }
+  .menu .sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+  /* ---------- capture panel ---------- */
+
+  .capture {
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    border-radius: 9px;
+    background: var(--panel);
+    padding: 15px 16px;
+    display: grid;
+    gap: 13px;
+  }
+
+  .capture-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .capture-head .who { font-size: 14px; font-weight: 600; }
+  .capture-head .who span { color: var(--subtle); font-weight: 400; }
+
+  .field { display: grid; gap: 5px; }
+  .field > .lbl { color: var(--faint); }
+
+  .inp {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 7px 10px;
+    color: var(--text);
+    font-family: var(--ui);
+    font-size: 13.5px;
+    width: 100%;
+  }
+
+  textarea.inp { resize: vertical; line-height: 1.55; min-height: 74px; }
+
+  .row3 { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+  .datebtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .capture-foot { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+
+  /* ---------- result ---------- */
+
+  .result {
+    border: 1px solid color-mix(in srgb, var(--ok) 32%, transparent);
+    background: color-mix(in srgb, var(--ok) 6%, transparent);
+    border-radius: 9px;
+    padding: 14px 16px;
+    display: grid;
+    gap: 11px;
+  }
+
+  .result-title { display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 600; }
+  .result-title .tick { color: var(--ok); }
+
+  .delta { display: grid; gap: 7px; }
+
+  .delta-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 11px;
+    align-items: start;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 13px;
+  }
+
+  .delta-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+
+  .t-new { color: var(--ok);   background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .t-up  { color: var(--warn); background: color-mix(in srgb, var(--warn) 13%, transparent); }
+
+  .delta-row p { margin: 0; font-size: 13.5px; }
+  .delta-row .ev { margin: 4px 0 0; font-size: 12px; color: var(--subtle); }
+
+  /* ---------- job page ---------- */
+
+  .job-head { display: grid; gap: 12px; }
+  .job-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .job-title h3 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+  .job-title .sub { color: var(--subtle); font-size: 13px; margin-top: 4px; display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+
+  .tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--border); }
+
+  .tab {
+    font-size: 13px;
+    color: var(--subtle);
+    padding: 0 0 9px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: none;
+    border-top: 0; border-left: 0; border-right: 0;
+    cursor: pointer;
+    font-family: var(--ui);
+  }
+
+  .tab.on { color: var(--text); border-bottom-color: var(--accent); }
+  .tab .c { color: var(--faint); font-size: 11px; margin-left: 5px; }
+
+  .profile-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--hold);
+    border: 1px solid color-mix(in srgb, var(--hold) 30%, transparent);
+    background: color-mix(in srgb, var(--hold) 8%, transparent);
+    border-radius: 999px;
+    padding: 2px 9px;
+  }
+
+  /* ---------- timeline ---------- */
+
+  .tl { display: grid; gap: 0; position: relative; padding-left: 2px; }
+
+  .tl-row { display: grid; grid-template-columns: 74px 22px 1fr; gap: 12px; align-items: start; padding: 9px 0; }
+
+  .tl-date { font-family: var(--mono); font-size: 11px; color: var(--subtle); padding-top: 3px; text-align: right; }
+
+  .tl-mark { position: relative; display: flex; justify-content: center; }
+  .tl-mark .line { position: absolute; top: -14px; bottom: -14px; width: 1px; background: var(--border); }
+
+  .tl-mark .node {
+    position: relative;
+    width: 9px; height: 9px;
+    border-radius: 999px;
+    margin-top: 6px;
+    background: var(--bg);
+    border: 1.5px solid var(--faint);
+  }
+
+  .n-accent .node { border-color: var(--accent); background: var(--accent); }
+  .n-warn   .node { border-color: var(--warn);   background: var(--warn); }
+  .n-err    .node { border-color: var(--err);    background: var(--err); }
+  .n-quote  .node { border-color: var(--hold);   background: var(--hold); }
+  .n-open   .node { border-color: var(--accent); background: var(--bg); }
+
+  .tl-body { min-width: 0; }
+  .tl-body .t { font-size: 13.5px; }
+  .tl-body .t b { font-weight: 600; }
+  .tl-body .s { font-size: 12.5px; color: var(--subtle); margin-top: 2px; }
+
+  .quote {
+    margin: 7px 0 0;
+    border-left: 2px solid var(--hold);
+    background: var(--panel);
+    border-radius: 0 6px 6px 0;
+    padding: 9px 13px;
+    font-size: 13px;
+  }
+
+  .quote .attr { display: block; margin-top: 6px; font-size: 11.5px; color: var(--subtle); }
+
+  .artifact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: 5px;
+    padding: 3px 9px;
+  }
+
+  .artifact-link:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+  .prov {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--hold);
+    border: 1px solid color-mix(in srgb, var(--hold) 32%, transparent);
+    background: color-mix(in srgb, var(--hold) 8%, transparent);
+    border-radius: 999px;
+    padding: 3px 11px;
+  }
+
+  /* ---------- learned ---------- */
+
+  .theme {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 13px 15px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .theme.shared { border-color: color-mix(in srgb, var(--ok) 30%, transparent); }
+
+  .theme-top { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+  .theme-top .th { font-size: 14px; font-weight: 600; }
+
+  .count {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--warn);
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+    background: color-mix(in srgb, var(--warn) 10%, transparent);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+
+  .ev-list { display: grid; gap: 6px; }
+
+  .ev-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    font-size: 12.5px;
+    color: var(--subtle);
+    padding-left: 11px;
+    border-left: 1px solid var(--border);
+  }
+
+  .ev-item .src { color: var(--accent); white-space: nowrap; }
+
+  .theme-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  .promote {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    padding: 3px 11px;
+    color: var(--subtle);
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--ui);
+  }
+
+  .promote:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+
+  .promote.on {
+    color: var(--ok);
+    border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+    background: color-mix(in srgb, var(--ok) 10%, transparent);
+  }
+
+  .scope-band {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 12.5px;
+    color: var(--subtle);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--ok);
+    border-radius: 0 7px 7px 0;
+    padding: 9px 13px;
+  }
+
+  .calib { display: grid; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .calib-bars { display: grid; gap: 9px; }
+  .cb { display: grid; grid-template-columns: 132px 1fr 42px; gap: 11px; align-items: center; font-size: 12.5px; }
+  .cb .track { height: 7px; border-radius: 999px; background: var(--panel2); overflow: hidden; }
+  .cb .fill { height: 100%; border-radius: 999px; }
+  .cb .n { font-family: var(--mono); font-size: 12px; text-align: right; }
+
+  /* ---------- scenario map ---------- */
+
+  .map-wrap { border: 1px solid var(--border); border-radius: 9px; overflow-x: auto; }
+
+  .map { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+
+  .map th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--subtle);
+    background: var(--panel);
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .map td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .map tr:last-child td { border-bottom: 0; }
+  .map tr:hover { background: color-mix(in srgb, var(--panel2) 40%, transparent); }
+
+  .map .want { color: var(--text); }
+  .map .path { color: var(--subtle); font-size: 12.5px; }
+  .map .path b { color: var(--accent); font-weight: 500; }
+
+  .map .isnew {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ok);
+    border: 1px solid color-mix(in srgb, var(--ok) 32%, transparent);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-left: 7px;
+    vertical-align: 1px;
+  }
+
+  /* ---------- rail ---------- */
+
+  .rail { display: grid; gap: 14px; align-content: start; }
+
+  @media (min-width: 1000px) { .rail { position: sticky; top: 24px; } }
+
+  .note { border-left: 2px solid var(--border2); padding: 1px 0 1px 13px; display: grid; gap: 5px; }
+  .note.key { border-left-color: var(--accent); }
+  .note.warnnote { border-left-color: var(--warn); }
+  .note .nt { font-size: 12.5px; line-height: 1.5; color: var(--subtle); margin: 0; }
+  .note .nt b { color: var(--text); font-weight: 600; }
+
+  /* ---------- closing ---------- */
+
+  .closing { padding: 64px 0 0; display: grid; gap: 18px; }
+  .closing h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.015em; }
+  .closing p { margin: 0; max-width: 68ch; color: var(--subtle); }
+
+  .qlist { display: grid; gap: 11px; margin: 6px 0 0; padding: 0; list-style: none; }
+
+  .qlist li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 13px;
+    align-items: start;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 15px;
+  }
+
+  .qlist .qn { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--accent); padding-top: 3px; }
+  .qlist p { margin: 0; color: var(--text); font-size: 13.5px; }
+  .qlist .why { margin-top: 4px; font-size: 12.5px; color: var(--subtle); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="deck">
+
+  <header class="masthead">
+    <div class="lbl">Design review · revision 4 · not built · 18 Sep 2026</div>
+    <h1>From one application to a whole search</h1>
+    <p class="standfirst">
+      Redrawn against your notes. The landing page stays a launcher, the table moves to its own
+      page and carries the actions, and every scenario you listed now has one obvious starting
+      point. Mocked with your real data — 51 journeys, the DKB and voize rejections, three profiles.
+    </p>
+    <div class="changelog">
+      <div><span class="tag tag-cut">Cut</span><span>The <b>morning check</b> — no reminders, no urgency triage, no personal-assistant framing.</span></div>
+      <div><span class="tag tag-cut">Cut</span><span>The <b>silent-clearing</b> flow and <code>closed_at</code>. Silence is a counter; withdrawal is the only tracked exit.</span></div>
+      <div><span class="tag tag-cut">Cut</span><span><b>They said it on</b>. A rejection carries one date.</span></div>
+      <div><span class="tag tag-keep">Kept</span><span>The <b>job timeline</b> and <b>artifact overview</b>, extended with hold, withdraw, delete and the profile used.</span></div>
+      <div><span class="tag tag-new">New</span><span>A <b>scenario map</b>: thirteen things you might want to do, and where each one starts.</span></div>
+      <div><span class="tag tag-new">New</span><span>Learnings are <b>profile-specific until promoted</b>, with a shared pool you opt items into — and promoting offers to <b>re-run synthesis</b> for the other CVs.</span></div>
+      <div><span class="tag tag-new">New</span><span>The table <b>groups by status</b> and collapses the long tail, so it reads the same at 51 or 200.</span></div>
+      <div><span class="tag tag-new">New</span><span><b>Continue the application</b> renamed to whatever step is actually next, read from <code>_continue_phase()</code>.</span></div>
+      <div><span class="tag tag-new">New</span><span>Assistants launched from a row <b>skip straight past the pickers</b> — profile, job and round arrive with the session.</span></div>
+      <div><span class="tag tag-new">New</span><span>Re-applying to a company <b>carries the last rejection</b> into the new letter. The quiet line is configurable; collapsed groups are remembered.</span></div>
+    </div>
+  </header>
+
+  <!-- ============ FLOW 01 ============ -->
+  <section class="flow">
+    <div class="flow-head">
+      <div class="flow-eyebrow">
+        <span class="lbl">Flow 01</span>
+        <span class="rule"></span>
+        <span class="lbl">Landing</span>
+      </div>
+      <h2>Launcher, with the search visible underneath</h2>
+      <p class="thesis">
+        The page you have, unchanged in structure and tone, plus one strip of counters below the
+        fold line. Nothing here reminds you of anything — it tells you the size and shape of the
+        search and gets out of the way.
+      </p>
+    </div>
+
+    <div class="flow-body">
+      <div>
+        <div class="screen">
+          <div class="screen-chrome">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="screen-url">localhost:3000<b>/</b></span>
+          </div>
+          <div>
+            <div class="app-head">
+              <span class="brand">
+                <span class="shield">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 8 4.5-.5 8-3 8-8V7z"/></svg>
+                </span>
+                Career Assistant
+              </span>
+              <nav class="app-nav">
+                <span>Applications</span><span>Profiles</span><span>Learned</span><span>Settings</span>
+                <span class="pipe"></span>
+                <span class="lbl">English</span>
+              </nav>
+            </div>
+
+            <div class="landing">
+              <div class="landing-hero">
+                <h3>Personal Career Assistant</h3>
+                <p>Specialised assistants for the hard parts of your job search.</p>
+              </div>
+
+              <div>
+                <div class="track-lbl">
+                  <span class="lbl">Three stages of one application — start at any of them</span>
+                  <span class="rule"></span>
+                </div>
+                <div class="cards">
+                  <div class="card">
+                    <div class="card-top">
+                      <span class="card-ico">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 16.5h3"/></svg>
+                      </span>
+                      <span class="lbl">Apply</span>
+                    </div>
+                    <h4>Cover Letter</h4>
+                    <div class="desc">A letter for one role, not a template.</div>
+                    <div class="go">Start →</div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-top">
+                      <span class="card-ico">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3v4l4.5-4H20a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/><path d="M10.2 8.4a1.9 1.9 0 0 1 3.6.8c0 1.3-1.8 1.5-1.8 2.8"/><path d="M12 13.9v.1"/></svg>
+                      </span>
+                      <span class="lbl">Prepare</span>
+                    </div>
+                    <h4>Interview Prep</h4>
+                    <div class="desc">Walk in knowing what they'll ask.</div>
+                    <div class="go">Start →</div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-top">
+                      <span class="card-ico">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5v3M8 7v10M12 4.5v15M16 8.5v7M20 11v2"/></svg>
+                      </span>
+                      <span class="lbl">Review</span>
+                    </div>
+                    <h4>Interview Evaluator</h4>
+                    <div class="desc">Hear how the last one actually went.</div>
+                    <div class="go">Upload a recording →</div>
+                  </div>
+                </div>
+
+                <div class="advisor">
+                  <span class="card-ico">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.2 8.8 13.6 13.6 8.8 15.2l1.6-4.8z"/></svg>
+                  </span>
+                  <span>
+                    <h4>Career Advisor</h4>
+                    <div class="desc">Talk through your experience any time, with or without a job on the table.</div>
+                  </span>
+                  <span class="go">Talk to your Career Advisor →</span>
+                </div>
+              </div>
+
+              <div class="counters">
+                <div class="counter-grid">
+                  <div class="ct"><span class="v num">51</span><span class="k">Applications</span></div>
+                  <div class="ct"><span class="v num v-live">7</span><span class="k">In progress</span></div>
+                  <div class="ct"><span class="v num v-silent">27</span><span class="k">Open &gt; 30 days</span></div>
+                  <div class="ct"><span class="v num v-hold">2</span><span class="k">On hold</span></div>
+                  <div class="ct"><span class="v num v-rej">9</span><span class="k">Rejected</span></div>
+                  <div class="ct"><span class="v num v-wd">3</span><span class="k">Withdrawn</span></div>
+                </div>
+                <div class="counters-foot">
+                  <p class="hint">Each counter opens the table already filtered.</p>
+                  <span style="font-size:13px; color:var(--accent)">All applications →</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <div class="note key">
+          <span class="lbl">What changed</span>
+          <p class="nt">The attention list is gone. The only thing added to your existing page is <b>six numbers and a link</b> — nothing that behaves like a reminder.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Counters are filters</span>
+          <p class="nt">Clicking <b>On hold</b> lands on the table with that filter applied. The number is both the summary and the way in — no separate navigation to learn.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Nav renamed</span>
+          <p class="nt"><b>Jobs → Applications</b>, and <b>Dashboard</b> becomes <b>Learned</b>. Token cost moves under Settings, where it stops competing with the search for attention.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Pooled, by decision</span>
+          <p class="nt">One set of numbers across all three CVs. The search is one search — which profile you used is a detail of the application, not a separate campaign.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ FLOW 02 ============ -->
+  <section class="flow">
+    <div class="flow-head">
+      <div class="flow-eyebrow">
+        <span class="lbl">Flow 02</span>
+        <span class="rule"></span>
+        <span class="lbl">Its own page · the hub</span>
+      </div>
+      <h2>The table, and everything you can do from it</h2>
+      <p class="thesis">
+        One row, one menu, every scenario. Assistants and record-keeping sit in the same place
+        because from the row they are the same gesture — pick the job, then say what you want.
+      </p>
+    </div>
+
+    <div class="flow-body">
+      <div>
+        <div class="steps" role="tablist" aria-label="Applications page steps">
+          <button class="step-btn" role="tab" aria-selected="true" data-flow="f2" data-step="0">1 · The table</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f2" data-step="1">2 · Row menu</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f2" data-step="2">3 · Schedule a round</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f2" data-step="3">4 · Log a rejection</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f2" data-step="4">5 · What it changed</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f2" data-step="5">6 · At 112 applications</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f2" data-step="6">7 · Launching an assistant</button>
+        </div>
+
+        <!-- 1 table -->
+        <div class="step-panel" data-flow="f2" data-panel="0">
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications</b></span>
+            </div>
+            <div>
+              <div class="app-head">
+                <span class="brand">
+                  <span class="shield">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 8 4.5-.5 8-3 8-8V7z"/></svg>
+                  </span>
+                  Career Assistant
+                </span>
+                <nav class="app-nav">
+                  <span class="on">Applications</span><span>Profiles</span><span>Learned</span><span>Settings</span>
+                </nav>
+              </div>
+
+              <div class="app-body">
+                <div class="filters">
+                  <span class="search">Search title, company, notes or what they said…</span>
+                  <button class="chip on">All <span class="c">51</span></button>
+                  <button class="chip">In progress <span class="c">7</span></button>
+                  <button class="chip">&gt; 30 days <span class="c">27</span></button>
+                  <button class="chip">On hold <span class="c">2</span></button>
+                  <button class="chip">Rejected <span class="c">9</span></button>
+                  <button class="chip">Withdrawn <span class="c">3</span></button>
+                  <button class="btn btn-sm btn-primary">+ Application</button>
+                </div>
+
+                <div class="sortbar">
+                  <span class="lbl">Sort</span>
+                  <span class="sel">Last contact, newest first ▾</span>
+                  <span class="faint">Grouped by status · quiet groups start collapsed</span>
+                </div>
+
+                <div class="tbl-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Company / role</th><th>Progress</th><th>Applied</th><th>Last contact</th><th>Waiting</th><th>Artifacts</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      <tr class="grp-row"><td colspan="7">
+                        <div class="grp-hd"><span class="caret">▾</span><span class="name">In progress</span><span class="n">7</span></div>
+                      </td></tr>
+                      <tr>
+                        <td><div class="co">voize</div><div class="role">Head of Data &amp; AI</div></td>
+                        <td><span class="strip"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></td>
+                        <td class="dim num">08 Sep</td>
+                        <td class="dim num">16 Sep</td>
+                        <td class="num dim">2d</td>
+                        <td class="dim" style="font-family:var(--mono); font-size:10px">CL BR EV</td>
+                        <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                      </tr>
+                      <tr>
+                        <td><div class="co">Deluxe</div><div class="role">Director, AI Engineering &amp; Platform</div></td>
+                        <td><span class="strip"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
+                        <td class="dim num">06 Sep</td>
+                        <td class="dim num">12 Sep</td>
+                        <td class="num dim">6d</td>
+                        <td class="dim" style="font-family:var(--mono); font-size:10px">CL BR</td>
+                        <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                      </tr>
+                      <tr>
+                        <td><div class="co">nextbike</div><div class="role">Head of Data &amp; AI</div></td>
+                        <td><span class="strip"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
+                        <td class="dim num">04 Sep</td>
+                        <td class="dim num">11 Sep</td>
+                        <td class="num dim">7d</td>
+                        <td class="dim" style="font-family:var(--mono); font-size:10px">CL BR</td>
+                        <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                      </tr>
+                      <tr class="grp-row"><td colspan="7">
+                        <div class="grp-hd"><span class="caret">▾</span><span class="name">Applied, no reply yet</span><span class="n">3</span><span class="show">show all 3</span></div>
+                      </td></tr>
+                      <tr>
+                        <td><div class="co">Decathlon Digital</div><div class="role">Head of Data &amp; AI, Customer &amp; Omnicommerce</div></td>
+                        <td><span class="strip"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></span></td>
+                        <td class="dim num">14 Sep</td>
+                        <td class="faint">—</td>
+                        <td class="num dim">4d</td>
+                        <td class="dim" style="font-family:var(--mono); font-size:10px">CL</td>
+                        <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                      </tr>
+                      <tr class="grp-row"><td colspan="7">
+                        <div class="grp-hd"><span class="caret">▸</span><span class="name">Open over 30 days</span><span class="n">27</span><span class="show">show</span></div>
+                      </td></tr>
+                      <tr class="grp-row"><td colspan="7">
+                        <div class="grp-hd"><span class="caret">▾</span><span class="name">On hold</span><span class="n">2</span></div>
+                      </td></tr>
+                      <tr>
+                        <td><div class="co">AXA Partners</div><div class="role">Head of AI Factory</div></td>
+                        <td><span class="strip"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
+                        <td class="dim num">07 Sep</td>
+                        <td class="dim num">09 Sep</td>
+                        <td class="num dim">9d</td>
+                        <td class="dim" style="font-family:var(--mono); font-size:10px">CL BR</td>
+                        <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                      </tr>
+                      <tr class="grp-row"><td colspan="7">
+                        <div class="grp-hd"><span class="caret">▸</span><span class="name">Rejected</span><span class="n">9</span><span class="show">show</span></div>
+                      </td></tr>
+                      <tr class="grp-row"><td colspan="7">
+                        <div class="grp-hd"><span class="caret">▸</span><span class="name">Withdrawn</span><span class="n">3</span><span class="show">show</span></div>
+                      </td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <p class="hint">
+                  The status column is gone — the <b>group heading is the status</b>, so it never
+                  repeats itself 51 times. <b>Waiting</b> is the derived number: days since anyone
+                  last said anything.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 menu -->
+        <div class="step-panel" data-flow="f2" data-panel="1" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications</b> — row menu on voize</span>
+            </div>
+            <div class="app-body">
+              <div class="tbl-wrap" style="overflow:visible">
+                <table>
+                  <thead>
+                    <tr><th>Company / role</th><th>Status</th><th>Applied</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><div class="co">voize</div><div class="role">Head of Data &amp; AI</div></td>
+                      <td><span class="pill p-progress">In progress</span></td>
+                      <td class="dim num">08 Sep</td>
+                      <td style="text-align:right; position:relative" class="menu-host">
+                        <button class="btn btn-sm btn-primary">⋯</button>
+                        <div class="menu">
+                          <div class="grp">Work on it</div>
+                          <div class="mi">Revise the cover letter<span class="k">C</span></div>
+                          <div class="mi">Prep for a round<span class="k">P</span></div>
+                          <div class="mi">Evaluate a round<span class="k">E</span></div>
+                          <div class="sep"></div>
+                          <div class="grp">Just for the record</div>
+                          <div class="mi">Schedule an interview<span class="k">I</span></div>
+                          <div class="mi">Log a rejection<span class="k">R</span></div>
+                          <div class="mi">Log an offer</div>
+                          <div class="mi">Put on hold<span class="k">H</span></div>
+                          <div class="mi">Withdraw<span class="k">W</span></div>
+                          <div class="sep"></div>
+                          <div class="mi">Open full detail<span class="k">↵</span></div>
+                          <div class="mi danger">Delete from record</div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr><td colspan="4" style="height:168px"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="hint">
+                Two groups, and the split is the point: the top three <b>start an assistant</b> on
+                this job, the middle five <b>only write a date</b>. You never have to wonder which
+                one costs an LLM call.
+              </p>
+              <p class="hint" style="margin-top:9px">
+                The first item is not a fixed label. <code>_continue_phase()</code> already knows
+                which step is missing, so the menu says it: <b>Research the company</b> →
+                <b>Work out the angle</b> → <b>Write the cover letter</b> → <b>Revise the cover
+                letter</b>. voize has a letter already, so it reads <b>Revise</b>.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 schedule -->
+        <div class="step-panel" data-flow="f2" data-panel="2" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications</b> — scheduling a round on Deluxe</span>
+            </div>
+            <div class="app-body">
+              <div class="capture">
+                <div class="capture-head">
+                  <span class="who">Deluxe <span>— Director, AI Engineering &amp; Platform</span></span>
+                  <span class="lbl">Round 3 · nothing generated</span>
+                </div>
+
+                <div class="row3">
+                  <div class="field">
+                    <span class="lbl">Round type</span>
+                    <div class="inp">Hiring manager</div>
+                  </div>
+                  <div class="field">
+                    <span class="lbl">Date</span>
+                    <span class="datebtn num">25 Sep 2026</span>
+                  </div>
+                  <div class="field">
+                    <span class="lbl">Label <span style="text-transform:none; letter-spacing:0">optional</span></span>
+                    <div class="inp">With Tobias, VP Eng</div>
+                  </div>
+                </div>
+
+                <div class="capture-foot">
+                  <button class="btn btn-primary">Save</button>
+                  <button class="btn">Save and prep for it</button>
+                  <span class="hint" style="margin-left:auto">Status stays <span class="pill p-progress">In progress</span>.</span>
+                </div>
+              </div>
+
+              <p class="hint">
+                Three fields, no LLM. <b>Save and prep for it</b> is the bridge — the only place the
+                record-keeping path hands off to an assistant, and it is opt-in.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 rejection -->
+        <div class="step-panel" data-flow="f2" data-panel="3" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications</b> — logging a rejection on voize</span>
+            </div>
+            <div class="app-body">
+              <div class="capture">
+                <div class="capture-head">
+                  <span class="who">voize <span>— Head of Data &amp; AI</span></span>
+                  <span class="lbl">After round 3 · final</span>
+                </div>
+
+                <div class="row3">
+                  <div class="field">
+                    <span class="lbl">Rejected on</span>
+                    <span class="datebtn num">17 Sep 2026</span>
+                  </div>
+                  <div class="field">
+                    <span class="lbl">Who told you</span>
+                    <div class="inp">Hiring manager</div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <span class="lbl">Did they say why?</span>
+                  <textarea class="inp" rows="3">After thoughtful consideration, we've decided to move forward with candidates that are a closer match, given the current stage we're at — we were looking for someone who has already scaled a data team from scratch inside a regulated healthcare setting.</textarea>
+                  <p class="hint">Paste their words. <b>Don't paraphrase</b> — the learning loop reads this verbatim.</p>
+                </div>
+
+                <div class="capture-foot">
+                  <button class="btn btn-primary">Save</button>
+                  <button class="btn">They gave no reason</button>
+                  <span class="hint" style="margin-left:auto">Status becomes <span class="pill p-rejected">Rejected</span> on save.</span>
+                </div>
+              </div>
+
+              <p class="hint">
+                One date. The outcome is not a field you pick — choosing <b>Log a rejection</b> in the
+                menu <em>is</em> the choice, and it writes <code>rejected_at</code>.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 result -->
+        <div class="step-panel" data-flow="f2" data-panel="4" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications</b> — saved</span>
+            </div>
+            <div class="app-body">
+              <div class="result">
+                <div class="result-title"><span class="tick">✓</span> Logged voize — and learned from it</div>
+                <div class="delta">
+                  <div class="delta-row">
+                    <span class="delta-tag t-up">2nd time</span>
+                    <div>
+                      <p>Employers keep reaching for <b>someone who has already built a team from zero</b>.</p>
+                      <p class="ev">Also said by DKB AG on 04 Sep. Added to <b>Head of Data</b> — the profile this application used.</p>
+                    </div>
+                  </div>
+                  <div class="delta-row">
+                    <span class="delta-tag t-new">New</span>
+                    <div>
+                      <p>Regulated-domain experience is being read as <b>missing</b>, not implicit.</p>
+                      <p class="ev">Added to <b>Head of Data</b>. Looks like it might apply elsewhere too — you can promote it on the Learned page.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="capture-foot">
+                  <button class="btn btn-primary">See what I've learned</button>
+                  <button class="btn">Undo</button>
+                </div>
+              </div>
+
+              <p class="hint">
+                This is the moment the product earns its thesis. Today the equivalent moment is a
+                silent database write with no screen at all.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6 at scale -->
+        <div class="step-panel" data-flow="f2" data-panel="5" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications</b> — eighteen months in</span>
+            </div>
+            <div class="app-body">
+              <div class="filters">
+                <span class="search">Search title, company, notes or what they said…</span>
+                <button class="chip on">All <span class="c">112</span></button>
+                <button class="chip">In progress <span class="c">6</span></button>
+                <button class="chip">&gt; 30 days <span class="c">70</span></button>
+                <button class="chip">On hold <span class="c">1</span></button>
+                <button class="chip">Rejected <span class="c">23</span></button>
+                <button class="chip">Withdrawn <span class="c">8</span></button>
+              </div>
+
+              <div class="tbl-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Company / role</th><th>Progress</th><th>Applied</th><th>Last contact</th><th>Waiting</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    <tr class="grp-row"><td colspan="6">
+                      <div class="grp-hd"><span class="caret">▾</span><span class="name">In progress</span><span class="n">6</span></div>
+                    </td></tr>
+                    <tr>
+                      <td><div class="co">Sanofi</div><div class="role">Head of Data &amp; AI Product Excellence</div></td>
+                      <td><span class="strip"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></td>
+                      <td class="dim num">02 Feb</td>
+                      <td class="dim num">14 Mar</td>
+                      <td class="num dim">3d</td>
+                      <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                    </tr>
+                    <tr>
+                      <td><div class="co">Upvest</div><div class="role">Director/Head of Data &amp; AI</div></td>
+                      <td><span class="strip"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
+                      <td class="dim num">21 Jan</td>
+                      <td class="dim num">09 Mar</td>
+                      <td class="num dim">8d</td>
+                      <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                    </tr>
+                    <tr class="grp-row"><td colspan="6">
+                      <div class="grp-hd"><span class="caret">▸</span><span class="name">Applied, no reply yet</span><span class="n">4</span><span class="show">show</span></div>
+                    </td></tr>
+                    <tr class="grp-row"><td colspan="6">
+                      <div class="grp-hd"><span class="caret">▸</span><span class="name">Open over 30 days</span><span class="n">70</span><span class="show">show</span></div>
+                    </td></tr>
+                    <tr class="grp-row"><td colspan="6">
+                      <div class="grp-hd"><span class="caret">▾</span><span class="name">On hold</span><span class="n">1</span></div>
+                    </td></tr>
+                    <tr>
+                      <td><div class="co">Pfizer</div><div class="role">Director — Data Science &amp; AI</div></td>
+                      <td><span class="strip"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span></td>
+                      <td class="dim num">18 Dec</td>
+                      <td class="dim num">02 Feb</td>
+                      <td class="num dim">43d</td>
+                      <td style="text-align:right"><button class="btn btn-sm">⋯</button></td>
+                    </tr>
+                    <tr class="grp-row"><td colspan="6">
+                      <div class="grp-hd"><span class="caret">▸</span><span class="name">Rejected</span><span class="n">23</span><span class="show">show</span></div>
+                    </td></tr>
+                    <tr class="grp-row"><td colspan="6">
+                      <div class="grp-hd"><span class="caret">▸</span><span class="name">Withdrawn</span><span class="n">8</span><span class="show">show</span></div>
+                    </td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <p class="hint">
+                <b>112 applications, nine rows on screen.</b> The page doesn't grow with the pile —
+                only the collapsed groups do. The 70 that went quiet are one line, counted and
+                reachable, never in the way.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7 launching -->
+        <div class="step-panel" data-flow="f2" data-panel="6" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications</b> — prepping a round on Deluxe</span>
+            </div>
+            <div class="app-body">
+              <div class="tbl-wrap" style="overflow:visible">
+                <table>
+                  <thead>
+                    <tr><th>Company / role</th><th>Applied</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><div class="co">Deluxe</div><div class="role">Director, AI Engineering &amp; Platform</div></td>
+                      <td class="dim num">06 Sep</td>
+                      <td style="text-align:right; position:relative" class="menu-host">
+                        <button class="btn btn-sm btn-primary">⋯</button>
+                        <div class="menu">
+                          <div class="grp">Work on it</div>
+                          <div class="mi">Revise the cover letter<span class="k">C</span></div>
+                          <div class="mi" style="color:var(--accent); background:color-mix(in srgb, var(--accent) 15%, transparent)">Prep for a round<span class="k">▸</span></div>
+                          <div class="submenu">
+                            <div class="mi">Hiring manager · 25 Sep</div>
+                            <div class="mi">Screening · 11 Sep <span class="k">done</span></div>
+                            <div class="mi" style="color:var(--subtle)">A round not listed…</div>
+                          </div>
+                          <div class="mi">Evaluate a round<span class="k">E</span></div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr><td colspan="3" style="height:120px"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="capture" style="border-color:var(--border2)">
+                <div class="capture-head">
+                  <span class="who">What the session already knows</span>
+                  <span class="lbl">Interview Prep</span>
+                </div>
+
+                <div class="chain-row">
+                  <span class="lbl">Today — every session starts from the top</span>
+                  <div class="chain">
+                    <span class="nd">greeting</span><span class="arw">→</span>
+                    <span class="nd">load_coaching_history</span><span class="arw">→</span>
+                    <span class="nd">cv_intake</span><span class="arw">→</span>
+                    <span class="nd land">select_journey</span><span class="arw">→</span>
+                    <span class="nd">research_company</span><span class="arw">→</span>
+                    <span class="nd">interview_context</span><span class="arw">→</span>
+                    <span class="nd">select_interview</span>
+                  </div>
+                  <p class="hint">Stops at the numbered chat picker and asks which job — the one you just clicked.</p>
+                </div>
+
+                <div class="chain-row" style="margin-top:4px">
+                  <span class="lbl">Launched from the row</span>
+                  <div class="chain">
+                    <span class="nd">greeting</span><span class="arw">→</span>
+                    <span class="nd">load_coaching_history</span><span class="arw">→</span>
+                    <span class="nd skip">cv_intake</span><span class="arw">→</span>
+                    <span class="nd skip">select_journey</span><span class="arw">→</span>
+                    <span class="nd skip">research_company</span><span class="arw">→</span>
+                    <span class="nd skip">select_interview</span><span class="arw">→</span>
+                    <span class="nd land">interview_context</span>
+                  </div>
+                  <p class="hint">
+                    Profile, job and round all arrive with the session. First thing you see is the
+                    question only you can answer — <b>what do you know about this round?</b>
+                  </p>
+                </div>
+
+                <div class="chain-row" style="margin-top:4px">
+                  <span class="lbl">Interview Evaluator, same trick</span>
+                  <div class="chain">
+                    <span class="nd">greeting</span><span class="arw">→</span>
+                    <span class="nd skip">cv_intake</span><span class="arw">→</span>
+                    <span class="nd skip">select_journey</span><span class="arw">→</span>
+                    <span class="nd skip">select_interview</span><span class="arw">→</span>
+                    <span class="nd land">upload the recording</span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="hint">
+                <code>_continue_phase()</code> already computes the landing node — it just never gets
+                the chance, because <code>select_journey</code> interrupts first. Passing
+                <code>journey_id</code>, <code>profile_id</code> and <code>interview_id</code> into
+                <code>POST /api/sessions</code> is the whole change.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <div class="note key">
+          <span class="lbl">The hub</span>
+          <p class="nt">The table is now the only page that needs to be complete. Landing launches, detail inspects — <b>this</b> is where a job search is actually run.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Menu, not columns</span>
+          <p class="nt">Eleven actions won't fit as columns and shouldn't be a drawer. A menu keeps the row scannable and makes every scenario exactly <b>two clicks</b>.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Silence, softened</span>
+          <p class="nt">No archive page, no bulk write-off, no <code>closed_at</code>. Just a pill that counts days and a filter chip. If you give up, you <b>Withdraw</b> — and that is tracked.</p>
+        </div>
+        <div class="note key">
+          <span class="lbl">Smooth at any size</span>
+          <p class="nt">Grouping absorbs the pile. Quiet groups collapse to one line, so the page is a constant nine or ten rows whether you have <b>51 or 200</b> — no pagination, nothing hidden behind navigation. Collapse state is <b>remembered between visits</b>.</p>
+        </div>
+        <div class="note key">
+          <span class="lbl">Launched, not re-picked</span>
+          <p class="nt">Starting an assistant from a row carries <b>profile, job and round</b> with it. The numbered chat picker never appears — see step 7.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Thirty is a setting</span>
+          <p class="nt">The quiet line lives in <code>settings.json</code>. It drives one counter, one filter chip and one group heading, so moving it moves all three together.</p>
+        </div>
+        <div class="note warnnote">
+          <span class="lbl">Still true</span>
+          <p class="nt">Nothing ever leaves. Withdrawal is the only exit and it is yours to choose — the pile stays honest about how a long search actually looks.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ FLOW 03 ============ -->
+  <section class="flow">
+    <div class="flow-head">
+      <div class="flow-eyebrow">
+        <span class="lbl">Flow 03</span>
+        <span class="rule"></span>
+        <span class="lbl">Kept from revision 1</span>
+      </div>
+      <h2>One job, one timeline</h2>
+      <p class="thesis">
+        Unchanged in shape, extended where you asked: the profile the application used, an
+        explicit hold and withdraw, and a real delete. Fixes the bug where a round shows
+        <code>scheduled_at</code> in the drawer and <code>created_at</code> on the detail page.
+      </p>
+    </div>
+
+    <div class="flow-body">
+      <div>
+        <div class="steps" role="tablist" aria-label="Job page tabs">
+          <button class="step-btn" role="tab" aria-selected="true" data-flow="f3" data-step="0">Timeline</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f3" data-step="1">Artifacts</button>
+        </div>
+
+        <div class="step-panel" data-flow="f3" data-panel="0">
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications/dkb-tech-lead</b></span>
+            </div>
+            <div class="app-body">
+              <div class="job-head">
+                <div class="job-title">
+                  <div>
+                    <h3>DKB AG — Tech Lead ML &amp; Data, Retail Banking</h3>
+                    <div class="sub">
+                      Berlin · Direct application
+                      <span class="pill p-rejected">Rejected</span>
+                      <span class="profile-tag">CV: Head of Data</span>
+                    </div>
+                  </div>
+                  <div style="display:flex; gap:7px; flex-wrap:wrap">
+                    <button class="btn btn-sm">Prep a round</button>
+                    <button class="btn btn-sm">On hold</button>
+                    <button class="btn btn-sm">Withdraw</button>
+                    <button class="btn btn-sm btn-danger">Delete</button>
+                  </div>
+                </div>
+                <div class="tabs">
+                  <button class="tab on">Timeline</button>
+                  <button class="tab">Artifacts <span class="c">4</span></button>
+                  <button class="tab">Posting</button>
+                </div>
+              </div>
+
+              <div class="tl">
+                <div class="tl-row n-accent">
+                  <div class="tl-date num">03 Jun</div>
+                  <div class="tl-mark"><span class="line"></span><span class="node"></span></div>
+                  <div class="tl-body">
+                    <div class="t"><b>Applied</b></div>
+                    <div class="s">Cover letter generated the same day, hiring-manager score 8.1.</div>
+                    <a class="artifact-link" href="#">Cover letter →</a>
+                  </div>
+                </div>
+
+                <div class="tl-row n-warn">
+                  <div class="tl-date num">27 Aug</div>
+                  <div class="tl-mark"><span class="line"></span><span class="node"></span></div>
+                  <div class="tl-body">
+                    <div class="t"><b>Screening call</b> <span class="dim">— recruiter</span></div>
+                    <div class="s">Briefing prepared 26 Aug. Not evaluated.</div>
+                    <a class="artifact-link" href="#">Briefing →</a>
+                  </div>
+                </div>
+
+                <div class="tl-row n-warn">
+                  <div class="tl-date num">02 Sep</div>
+                  <div class="tl-mark"><span class="line"></span><span class="node"></span></div>
+                  <div class="tl-body">
+                    <div class="t"><b>Hiring manager round</b></div>
+                    <div class="s">Recorded and evaluated — the assistant scored you <b>7.5 / 10</b>, "likely advance".</div>
+                    <a class="artifact-link" href="#">Evaluation →</a>
+                  </div>
+                </div>
+
+                <div class="tl-row n-quote">
+                  <div class="tl-date num">04 Sep</div>
+                  <div class="tl-mark"><span class="line"></span><span class="node"></span></div>
+                  <div class="tl-body">
+                    <div class="t"><b>Rejected</b> <span class="dim">— hiring manager said why</span></div>
+                    <blockquote class="quote">
+                      Vielen Dank nochmal für deine Zeit und die Gespräche mit uns. Ich möchte dir
+                      gerne etwas konkreter mitgeben, woran es lag: fachlich hat alles gepasst, wir
+                      haben uns aber für jemanden entschieden, der ein Team dieser Größe schon
+                      einmal von Grund auf aufgebaut hat.
+                      <span class="attr">The assistant said advance two days earlier — <a href="#" style="color:var(--accent)">compare →</a></span>
+                    </blockquote>
+                  </div>
+                </div>
+
+                <div class="tl-row n-open">
+                  <div class="tl-date faint num">—</div>
+                  <div class="tl-mark"><span class="node"></span></div>
+                  <div class="tl-body">
+                    <div class="t" style="color:var(--subtle)">Add a note, a round, or what someone told you</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-panel" data-flow="f3" data-panel="1" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/applications/dkb-tech-lead</b> — artifacts</span>
+            </div>
+            <div class="app-body">
+              <div class="job-head">
+                <div class="job-title">
+                  <div>
+                    <h3>DKB AG — Tech Lead ML &amp; Data, Retail Banking</h3>
+                    <div class="sub">
+                      Berlin · Direct application
+                      <span class="pill p-rejected">Rejected</span>
+                      <span class="profile-tag">CV: Head of Data</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="tabs">
+                  <button class="tab">Timeline</button>
+                  <button class="tab on">Artifacts <span class="c">4</span></button>
+                  <button class="tab">Posting</button>
+                </div>
+              </div>
+
+              <div style="display:grid; gap:10px">
+                <div class="delta-row" style="grid-template-columns:1fr auto; align-items:center">
+                  <div>
+                    <p><b>Cover letter</b> <span class="dim">· 03 Jun · scored 8.1</span></p>
+                    <p class="ev" style="margin-top:7px"><span class="prov">Shaped by 3 employer notes &amp; 7 playbook rules</span></p>
+                  </div>
+                  <button class="btn btn-sm">Open</button>
+                </div>
+                <div class="delta-row" style="grid-template-columns:1fr auto; align-items:center">
+                  <div>
+                    <p><b>Briefing</b> <span class="dim">· screening · 26 Aug</span></p>
+                    <p class="ev" style="margin-top:7px"><span class="prov">Shaped by 2 employer notes</span></p>
+                  </div>
+                  <button class="btn btn-sm">Open</button>
+                </div>
+                <div class="delta-row" style="grid-template-columns:1fr auto; align-items:center">
+                  <div>
+                    <p><b>Evaluation</b> <span class="dim">· hiring manager · 02 Sep · 7.5/10</span></p>
+                    <p class="ev" style="margin-top:7px; color:var(--warn)">Assistant said advance. They rejected two days later.</p>
+                  </div>
+                  <button class="btn btn-sm">Compare</button>
+                </div>
+              </div>
+
+              <p class="hint">
+                The provenance chip is the whole argument for the learning loop, made visible at the
+                one moment the user cares: looking at something it produced.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <div class="note key">
+          <span class="lbl">Which CV</span>
+          <p class="nt">The profile is now on the header, because it decides which playbook shaped every artifact below — and which playbook this rejection teaches.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Delete is real</span>
+          <p class="nt">Removes the journey, its rounds, events and feedback. Distinct from <b>Withdraw</b>, which keeps the record and counts in your stats.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Quote in sequence</span>
+          <p class="nt">What they said isn't a section at the bottom. It sits on the day it happened, attached to the rejection it explains.</p>
+        </div>
+        <div class="note warnnote">
+          <span class="lbl">Real signal</span>
+          <p class="nt">DKB is your actual calibration case: evaluator said <b>7.5, likely advance</b>, employer rejected two days later.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ FLOW 04 ============ -->
+  <section class="flow">
+    <div class="flow-head">
+      <div class="flow-eyebrow">
+        <span class="lbl">Flow 04</span>
+        <span class="rule"></span>
+        <span class="lbl">Revised · profile-scoped</span>
+      </div>
+      <h2>What I've learned, per CV</h2>
+      <p class="thesis">
+        Everything is learned for the profile that earned it. Nothing crosses to another CV until
+        you say so — one toggle per item, and promoted items collect in a shared pool that every
+        profile reads.
+      </p>
+    </div>
+
+    <div class="flow-body">
+      <div>
+        <div class="steps" role="tablist" aria-label="Learned page steps">
+          <button class="step-btn" role="tab" aria-selected="true" data-flow="f4" data-step="0">1 · Per CV</button>
+          <button class="step-btn" role="tab" aria-selected="false" data-flow="f4" data-step="1">2 · Promoting one</button>
+        </div>
+
+        <div class="step-panel" data-flow="f4" data-panel="0">
+        <div class="screen">
+          <div class="screen-chrome">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="screen-url">localhost:3000<b>/learned</b></span>
+          </div>
+          <div>
+            <div class="app-head">
+              <span class="brand">
+                <span class="shield">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 8 4.5-.5 8-3 8-8V7z"/></svg>
+                </span>
+                Career Assistant
+              </span>
+              <nav class="app-nav">
+                <span>Applications</span><span>Profiles</span><span class="on">Learned</span><span>Settings</span>
+              </nav>
+            </div>
+
+            <div class="app-body">
+              <div class="filters">
+                <button class="chip on">Head of Data <span class="c">9 notes</span></button>
+                <button class="chip">Head of AI <span class="c">2</span></button>
+                <button class="chip">Head of Data in Biotech <span class="c">0</span></button>
+                <button class="chip">Shared <span class="c">3</span></button>
+              </div>
+
+              <div class="scope-band">
+                <span style="color:var(--ok)">◆</span>
+                <span>
+                  <b style="color:var(--text)">3 learnings are shared</b> with every profile — you promoted them.
+                  The 9 below belong to <b style="color:var(--text)">Head of Data</b> alone.
+                </span>
+              </div>
+
+              <div>
+                <div class="sec-head">
+                  <span class="lbl">From what employers said · Head of Data</span>
+                  <span class="lbl">9 notes · 6 applications</span>
+                </div>
+                <div style="display:grid; gap:9px">
+                  <div class="theme">
+                    <div class="theme-top">
+                      <span class="th">They want someone who has built a team from zero, not scaled an existing one</span>
+                      <span class="count">×2</span>
+                    </div>
+                    <div class="ev-list">
+                      <div class="ev-item"><span class="src">DKB AG · 04 Sep</span><span>"…jemanden entschieden, der ein Team dieser Größe schon einmal von Grund auf aufgebaut hat."</span></div>
+                      <div class="ev-item"><span class="src">voize · 17 Sep</span><span>"…someone who has already scaled a data team from scratch."</span></div>
+                    </div>
+                    <div class="theme-foot">
+                      <p class="hint">Leads your cover letters with the nextbike build-out. <a href="#" style="color:var(--accent)">Where this is used →</a></p>
+                      <button class="promote">Use for all profiles</button>
+                    </div>
+                  </div>
+
+                  <div class="theme">
+                    <div class="theme-top">
+                      <span class="th">Regulated-domain experience reads as missing unless stated outright</span>
+                      <span class="count" style="color:var(--ok); border-color:color-mix(in srgb, var(--ok) 35%, transparent); background:color-mix(in srgb, var(--ok) 10%, transparent)">New</span>
+                    </div>
+                    <div class="ev-list">
+                      <div class="ev-item"><span class="src">voize · 17 Sep</span><span>"…given the current stage we're at, in a regulated healthcare setting."</span></div>
+                    </div>
+                    <div class="theme-foot">
+                      <p class="hint">Would matter most on <b>Head of Data in Biotech</b>, which has no notes yet.</p>
+                      <button class="promote">Use for all profiles</button>
+                    </div>
+                  </div>
+
+                  <div class="theme shared">
+                    <div class="theme-top">
+                      <span class="th">Open with the outcome, not the remit — they stop reading after two lines</span>
+                      <span class="count" style="color:var(--ok); border-color:color-mix(in srgb, var(--ok) 35%, transparent); background:color-mix(in srgb, var(--ok) 10%, transparent)">Shared</span>
+                    </div>
+                    <div class="ev-list">
+                      <div class="ev-item"><span class="src">Statista · 21 Aug</span><span>"…had to read to the end to work out what you actually delivered."</span></div>
+                    </div>
+                    <div class="theme-foot">
+                      <p class="hint">Applied to <b>all three profiles</b>. How you write doesn't change with the CV.</p>
+                      <button class="promote on">✓ Shared</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="sec-head">
+                  <span class="lbl">Is the evaluator honest?</span>
+                  <span class="lbl">Head of Data · 4 evaluated rounds</span>
+                </div>
+                <div class="calib">
+                  <div class="calib-bars">
+                    <div class="cb">
+                      <span class="dim">Rounds that advanced</span>
+                      <span class="track"><span class="fill" style="width:82%; background:var(--ok)"></span></span>
+                      <span class="n" style="color:var(--ok)">8.2</span>
+                    </div>
+                    <div class="cb">
+                      <span class="dim">Rounds that were rejected</span>
+                      <span class="track"><span class="fill" style="width:76%; background:var(--err)"></span></span>
+                      <span class="n" style="color:var(--err)">7.6</span>
+                    </div>
+                  </div>
+                  <p class="hint">
+                    <b>0.6 points apart.</b> The evaluator barely separates rounds that worked from
+                    rounds that didn't — it is scoring you generously, and you should read its
+                    verdicts with that in mind.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <div class="step-panel" data-flow="f4" data-panel="1" hidden>
+          <div class="screen">
+            <div class="screen-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="screen-url">localhost:3000<b>/learned</b> — promoting a learning</span>
+            </div>
+            <div class="app-body">
+              <div class="theme shared">
+                <div class="theme-top">
+                  <span class="th">Regulated-domain experience reads as missing unless stated outright</span>
+                  <span class="count" style="color:var(--ok); border-color:color-mix(in srgb, var(--ok) 35%, transparent); background:color-mix(in srgb, var(--ok) 10%, transparent)">Now shared</span>
+                </div>
+                <div class="ev-list">
+                  <div class="ev-item"><span class="src">voize · 17 Sep</span><span>"…given the current stage we're at, in a regulated healthcare setting."</span></div>
+                </div>
+                <div class="theme-foot">
+                  <p class="hint">Learned on <b>Head of Data</b>. Now readable by every profile.</p>
+                  <button class="promote on">✓ Shared</button>
+                </div>
+              </div>
+
+              <div class="capture">
+                <div class="capture-head">
+                  <span class="who">Apply it backwards?</span>
+                  <span class="lbl">Optional</span>
+                </div>
+                <p class="hint" style="font-size:13px">
+                  Two other profiles have playbooks that were written without this learning.
+                  Re-running their synthesis folds it in — otherwise it only shapes what you
+                  generate from now on.
+                </p>
+
+                <div style="display:grid; gap:7px">
+                  <div class="delta-row" style="grid-template-columns:auto 1fr auto; align-items:center">
+                    <span class="chk on"></span>
+                    <div>
+                      <p><b>Head of AI</b></p>
+                      <p class="ev">2 employer notes · playbook last written 11 Sep</p>
+                    </div>
+                    <span class="lbl">~$0.02</span>
+                  </div>
+                  <div class="delta-row" style="grid-template-columns:auto 1fr auto; align-items:center">
+                    <span class="chk on"></span>
+                    <div>
+                      <p><b>Head of Data in Biotech</b></p>
+                      <p class="ev">no notes yet · this would be its first learning</p>
+                    </div>
+                    <span class="lbl">~$0.02</span>
+                  </div>
+                </div>
+
+                <div class="capture-foot">
+                  <button class="btn btn-primary">Re-run both · ~$0.04</button>
+                  <button class="btn">Only affect future generations</button>
+                </div>
+                <p class="hint" style="border-top:1px solid var(--border); padding-top:11px">
+                  <b>Sharing is one-way.</b> Once a learning is folded into another playbook the text
+                  is written there. Un-sharing stops it spreading further; it does not reach back in.
+                </p>
+              </div>
+
+              <p class="hint">
+                The cost is shown because you already track it per call. A confirm that names the
+                price is the difference between a helpful offer and a surprise on the bill.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <div class="note key">
+          <span class="lbl">Your answer, drawn</span>
+          <p class="nt">Nothing transfers until promoted. One boolean per playbook item; prompts read <b>this profile's items plus the shared pool</b>.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Where promotion pays</span>
+          <p class="nt"><b>Head of Data in Biotech</b> has zero notes. Without a shared pool it starts from nothing every time you try a new angle.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Evidence, not assertion</span>
+          <p class="nt">Every theme carries the quotes and the jobs it came from. A theme you can't trace is a theme you won't trust — or promote.</p>
+        </div>
+        <div class="note warnnote">
+          <span class="lbl">Cold start</span>
+          <p class="nt">You have <b>2</b> feedback entries across 51 applications, and <code>employer_feedback_themes</code> is <code>[]</code> on all three profiles. This page is empty until capture gets easy — which is why Flow 02 ships first.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ SCENARIO MAP ============ -->
+  <section class="flow">
+    <div class="flow-head">
+      <div class="flow-eyebrow">
+        <span class="lbl">Coverage</span>
+        <span class="rule"></span>
+        <span class="lbl">Every CTA, one home each</span>
+      </div>
+      <h2>Thirteen things you might want to do</h2>
+      <p class="thesis">
+        Your six scenarios plus seven more the data suggests — repeat companies, offers,
+        interviews with no recording, applications made outside the tool. Each has exactly one
+        obvious starting point, and none needs more than two clicks.
+      </p>
+    </div>
+
+    <div class="flow-body">
+      <div>
+        <div class="map-wrap">
+          <table class="map">
+            <thead>
+              <tr><th style="width:44%">You want to…</th><th>It starts at</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="want">Start a new application — usually a cover letter</td>
+                <td class="path">Landing → <b>Cover Letter</b></td>
+              </tr>
+              <tr>
+                <td class="want">Pick up an application you already started</td>
+                <td class="path">Applications → row <b>⋯ → Continue</b><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Get a briefing for an upcoming interview</td>
+                <td class="path">Applications → row <b>⋯ → Prep for a round</b>, or Landing → <b>Interview Prep</b></td>
+              </tr>
+              <tr>
+                <td class="want">Have a round evaluated from an audio recording</td>
+                <td class="path">Applications → row <b>⋯ → Evaluate a round</b>, or Landing → <b>Interview Evaluator</b></td>
+              </tr>
+              <tr>
+                <td class="want">Schedule an interview, purely for the record</td>
+                <td class="path">Applications → row <b>⋯ → Schedule an interview</b><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Log a rejection and what they said</td>
+                <td class="path">Applications → row <b>⋯ → Log a rejection</b><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Put an application on hold, or withdraw from it</td>
+                <td class="path">Applications → row <b>⋯ → Put on hold / Withdraw</b><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Record an offer</td>
+                <td class="path">Applications → row <b>⋯ → Log an offer</b><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Note what happened in a round you didn't record</td>
+                <td class="path">Detail → timeline → <b>Add a note</b><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Add a job you applied for outside the tool</td>
+                <td class="path">Applications → <b>+ Application</b>, or the CSV importer</td>
+              </tr>
+              <tr>
+                <td class="want">Apply again to a company you've approached before</td>
+                <td class="path">Detail → <b>Duplicate</b> — carries the posting, your notes <em>and what they told you last time</em><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Change which CV an application uses</td>
+                <td class="path">Detail → header → <b>CV: Head of Data</b><span class="isnew">new</span></td>
+              </tr>
+              <tr>
+                <td class="want">Remove an application from the record entirely</td>
+                <td class="path">Detail → <b>Delete</b>, or row <b>⋯ → Delete from record</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <div class="note key">
+          <span class="lbl">Why duplicate</span>
+          <p class="nt">Your data has <b>Simon Kucher twice and Jupus twice</b>. Re-applying to a company you know is a real pattern, and today it means starting from an empty form.</p>
+        </div>
+        <div class="note">
+          <span class="lbl">Notes without audio</span>
+          <p class="nt">Most rounds won't be recorded. A plain note on the timeline is the difference between a timeline with gaps and one you can actually read back.</p>
+        </div>
+        <div class="note warnnote">
+          <span class="lbl">Not covered</span>
+          <p class="nt">Follow-up reminders. You have <code>next_step</code> and <code>next_step_at</code> in the schema and nothing reads them — leaving them unused rather than building reminders you said you didn't want.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ CLOSING ============ -->
+  <section class="closing">
+    <div class="flow-eyebrow">
+      <span class="lbl">What to judge</span>
+      <span class="rule"></span>
+    </div>
+    <h2>Settled. A build order, worst risk first</h2>
+    <p>
+      Every open question from the last three revisions is answered and drawn. What remains is
+      sequencing — and the sequence is driven by one fact: the learning loop has
+      <b>2 entries across 51 applications</b>, so anything that displays learnings is worthless
+      until capture is cheap.
+    </p>
+    <ul class="qlist">
+      <li>
+        <span class="qn">01</span>
+        <div>
+          <p>Capture — the row menu and the five record-keeping panels</p>
+          <p class="why">Rejection with reason, schedule a round, offer, hold, withdraw. Drops <code>feedback.outcome</code>. This is the only step that changes whether the product works, because it is the only one that produces data.</p>
+        </div>
+      </li>
+      <li>
+        <span class="qn">02</span>
+        <div>
+          <p>The table — grouping, Waiting, remembered collapse</p>
+          <p class="why">Status column out, group headings in. <code>derive_status()</code> starts reading the clock for the quiet line, which needs an injectable <b>now</b> and a reworded invariant in CLAUDE.md. Threshold to <code>settings.json</code>.</p>
+        </div>
+      </li>
+      <li>
+        <span class="qn">03</span>
+        <div>
+          <p>Pre-seeded launches</p>
+          <p class="why"><code>journey_id</code>, <code>profile_id</code>, <code>interview_id</code> on <code>POST /api/sessions</code>, and let <code>_continue_phase()</code> pick the landing node it already knows. Small change, removes the worst duplication in the app.</p>
+        </div>
+      </li>
+      <li>
+        <span class="qn">04</span>
+        <div>
+          <p>The job page — one timeline</p>
+          <p class="why">Merges the drawer and the detail page, fixes the <code>created_at</code> / <code>scheduled_at</code> contradiction, adds hold, withdraw, delete, the CV in the header, and duplicate-carrying-feedback.</p>
+        </div>
+      </li>
+      <li>
+        <span class="qn">05</span>
+        <div>
+          <p>Learned — profile scoping and the shared pool</p>
+          <p class="why">One boolean per playbook item, prompts read own-plus-shared, promotion offers a costed re-run, sharing is one-way. Last because by then there will be something to show.</p>
+        </div>
+      </li>
+    </ul>
+    <p style="margin-top:6px">
+      The honest risk: steps 02–05 are pleasant to build and step 01 is the one that matters.
+      If capture doesn't get easier than the spreadsheet, the rest is a nicer shell around the
+      same empty playbook.
+    </p>
+  </section>
+
+</div>
+
+<script>
+  document.querySelectorAll(".step-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var flow = btn.dataset.flow;
+      var step = btn.dataset.step;
+
+      document.querySelectorAll('.step-btn[data-flow="' + flow + '"]').forEach(function (b) {
+        b.setAttribute("aria-selected", String(b === btn));
+      });
+
+      document.querySelectorAll('.step-panel[data-flow="' + flow + '"]').forEach(function (p) {
+        p.hidden = p.dataset.panel !== step;
+      });
+    });
+  });
+</script>

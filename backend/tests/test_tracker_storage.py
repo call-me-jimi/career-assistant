@@ -20,6 +20,13 @@ from backend.storage.journeys import (
 )
 
 DAY = 86_400.0
+# The `silent` rung reads the clock, so status assertions pin one. Ten days in:
+# past the fixtures below, well inside the quiet window.
+NOW = 10 * DAY
+
+
+def _status(journey: dict, rounds=()) -> str:
+    return derive_status(journey, list(rounds), now=NOW)
 
 
 async def _legacy_feedback(journey_id: str, outcome: str) -> None:
@@ -57,10 +64,10 @@ async def test_clearing_a_date_moves_the_status_back(test_db):
         applied_at=DAY, rejected_at=5 * DAY,
     )
     rounds = await list_interviews(jid)
-    assert derive_status(await get_journey(jid), rounds) == "rejected"
+    assert _status(await get_journey(jid), rounds) == "rejected"
 
     await update_journey(jid, rejected_at=None)
-    assert derive_status(await get_journey(jid), rounds) == "applied"
+    assert _status(await get_journey(jid), rounds) == "applied"
 
 
 async def test_new_journey_has_no_dates_and_reads_draft(test_db):
@@ -68,7 +75,7 @@ async def test_new_journey_has_no_dates_and_reads_draft(test_db):
     journey = await get_journey(jid)
     assert journey["applied_at"] is None
     assert journey["notes"] == ""
-    assert derive_status(journey, []) == "draft"
+    assert _status(journey, []) == "draft"
 
 
 async def test_list_journeys_unbounded(test_db):
@@ -90,7 +97,7 @@ async def test_created_round_is_dated_so_the_job_reads_in_progress(test_db):
 
     rounds = await list_interviews(jid)
     assert rounds[0]["scheduled_at"] is not None
-    assert derive_status(await get_journey(jid), rounds) == "in_progress"
+    assert _status(await get_journey(jid), rounds) == "in_progress"
 
 
 async def test_round_date_is_correctable(test_db):
@@ -158,7 +165,7 @@ async def test_events_do_not_affect_status(test_db):
         profile_id="p1", company_name="ACME", job_title="Engineer", applied_at=DAY
     )
     await add_event(journey_id=jid, occurred_at=2 * DAY, text="Invited to interview.")
-    assert derive_status(await get_journey(jid), await list_interviews(jid)) == "applied"
+    assert _status(await get_journey(jid), await list_interviews(jid)) == "applied"
 
 
 async def test_deleting_a_journey_takes_its_events(test_db):
@@ -183,7 +190,7 @@ async def test_backfill_gives_existing_journeys_a_submission_date(test_db):
 
     journey = await get_journey(jid)
     assert journey["applied_at"] == journey["cover_letter_at"]
-    assert derive_status(journey, []) == "applied"
+    assert _status(journey, []) == "applied"
 
 
 async def test_backfill_dates_existing_rounds(test_db):
@@ -225,7 +232,7 @@ async def test_backfill_maps_feedback_outcomes_onto_dates(test_db):
     ghosted_row = await get_journey(ghosted)
     assert ghosted_row["rejected_at"] is None
     assert ghosted_row["dropped_at"] is None
-    assert derive_status(ghosted_row, []) == "applied"
+    assert _status(ghosted_row, []) == "applied"
 
 
 async def test_backfill_is_idempotent_and_never_overwrites_a_correction(test_db):

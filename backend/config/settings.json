@@ -183,5 +183,6 @@
   "synthesis_window_n": 5,
   "inline_surface_threshold": 3,
   "feedback_window_n": 5,
-  "calibration_window_n": 3
+  "calibration_window_n": 3,
+  "quiet_after_days": 30
 }

@@ -81,16 +81,59 @@ _ARTIFACT_STAMPS = {
 }
 
 
-# The tracker's seven states. Never stored — see derive_status().
-STATUSES = ("draft", "applied", "in_progress", "on_hold", "offer", "rejected", "dropped")
+# The tracker's eight states. Never stored — see derive_status().
+STATUSES = (
+    "draft",
+    "applied",
+    "silent",
+    "in_progress",
+    "on_hold",
+    "offer",
+    "rejected",
+    "dropped",
+)
+
+# Mirrors AppSettings.quiet_after_days. Callers that show the user a status pass
+# the configured value; this default only keeps the function usable on its own.
+DEFAULT_QUIET_AFTER_DAYS = 30
 
 
-def derive_status(journey: dict[str, Any], interviews: list[dict[str, Any]]) -> str:
+def last_contact_at(
+    journey: dict[str, Any],
+    interviews: list[dict[str, Any]] | tuple = (),
+    feedback: list[dict[str, Any]] | tuple = (),
+) -> float | None:
+    """The most recent moment anything happened *to* this application.
+
+    Events are deliberately excluded: a follow-up you sent is not a reply, and
+    chasing a company that is ignoring you should not make the application look
+    alive again.
+    """
+    stamps = [
+        journey.get("applied_at"),
+        *(i.get("scheduled_at") for i in interviews),
+        *(f.get("created_at") for f in feedback),
+    ]
+    return max((s for s in stamps if s), default=None)
+
+
+def derive_status(
+    journey: dict[str, Any],
+    interviews: list[dict[str, Any]],
+    *,
+    now: float | None = None,
+    feedback: list[dict[str, Any]] | tuple = (),
+    quiet_after_days: int = DEFAULT_QUIET_AFTER_DAYS,
+) -> str:
     """Status is whatever the dates say it is, evaluated top to bottom.
 
     Keeping it a function rather than a column means a status can never drift
     from the dates that define it, and exports, prompts and the UI all agree on
     what 'in_progress' means.
+
+    One rung — `silent` — also reads the clock, so a row's status can change
+    overnight with nothing written. That is safe precisely because it is never
+    stored; pass `now` to keep tests from going stale.
     """
     if journey.get("rejected_at"):
         return "rejected"  # terminal: nothing below is consulted
@@ -112,8 +155,15 @@ def derive_status(journey: dict[str, Any], interviews: list[dict[str, Any]]) -> 
 
     if last_round is not None:
         return "in_progress"
-    if journey.get("applied_at"):
-        return "applied"
+
+    applied_at = journey.get("applied_at")
+    if applied_at:
+        # Applied and nothing since. No round can be dated here — one would have
+        # returned in_progress above — so only the employer saying something
+        # resets the clock.
+        contact = last_contact_at(journey, interviews, feedback) or applied_at
+        quiet_for = (time.time() if now is None else now) - contact
+        return "silent" if quiet_for > quiet_after_days * 86_400 else "applied"
     return "draft"
 
 

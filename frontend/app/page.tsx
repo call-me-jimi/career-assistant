@@ -119,12 +119,33 @@ const CARD_BASE =
   "focus-visible:ring-offset-2 focus-visible:ring-offset-bg " +
   "disabled:opacity-50 disabled:cursor-not-allowed";
 
+/* The shape of the search, pooled across profiles. Each one is a way into the
+   table, already filtered — the number is both the summary and the door. */
+type Summary = {
+  total: number;
+  in_progress: number;
+  quiet: number;
+  on_hold: number;
+  rejected: number;
+  withdrawn: number;
+};
+
+const COUNTERS: [keyof Summary, string, string, string][] = [
+  ["total", "Applications", "all", ""],
+  ["in_progress", "In progress", "in_progress", "text-warn"],
+  ["quiet", "No reply yet", "silent", "text-subtle"],
+  ["on_hold", "On hold", "on_hold", "text-hold"],
+  ["rejected", "Rejected", "rejected", "text-err"],
+  ["withdrawn", "Withdrawn", "dropped", "text-subtle"],
+];
+
 export default function LandingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState<AssistantType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState("English");
   const [hasPendingUpdates, setHasPendingUpdates] = useState(false);
+  const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {
     fetch("/api/profiles")
@@ -137,6 +158,11 @@ export default function LandingPage() {
           ),
         ),
       )
+      .catch(() => {});
+
+    fetch("/api/journeys/summary")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setSummary(d))
       .catch(() => {});
   }, []);
 
@@ -300,6 +326,38 @@ export default function LandingPage() {
                 : "Talk to your Career Advisor →"}
             </span>
           </button>
+
+          {summary && summary.total > 0 && (
+            <div className="space-y-3 border-t border-subtle/25 pt-7">
+              <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-6">
+                {COUNTERS.map(([key, label, filter, tone]) => (
+                  <a
+                    key={key}
+                    href={`/jobs?status=${filter}`}
+                    className="rounded-lg border border-subtle/25 bg-panel px-3.5 py-2.5 transition hover:border-accent hover:bg-panel2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                  >
+                    <div
+                      className={`text-[22px] font-semibold leading-none tabular-nums ${tone}`}
+                    >
+                      {summary[key]}
+                    </div>
+                    <div className="mt-1 text-xs text-subtle">{label}</div>
+                  </a>
+                ))}
+              </div>
+              <div className="flex items-baseline justify-between gap-4">
+                <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-subtle">
+                  Every application, across every profile
+                </p>
+                <a
+                  href="/jobs"
+                  className="rounded text-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                >
+                  All applications →
+                </a>
+              </div>
+            </div>
+          )}
 
           {error && (
             <p className="text-center text-sm text-err whitespace-pre-wrap">

@@ -70,6 +70,9 @@ class AppSettings(BaseModel):
     # evaluator-vs-employer pairs the evaluator gets to calibrate against.
     feedback_window_n: int = 5
     calibration_window_n: int = 3
+    # How long an application sits with no reply before the tracker stops calling
+    # it "Applied" and admits it has gone quiet.
+    quiet_after_days: int = 30
 
 
 def _load_settings_file() -> dict[str, Any]:

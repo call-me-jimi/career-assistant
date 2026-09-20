@@ -5,12 +5,28 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+import backend.api.routes as routes
 from backend.api.routes import router
 from backend.storage.events import list_events
 from backend.storage.interviews import create_interview, get_interview
 from backend.storage.journeys import create_journey, get_journey
 
 DAY = 86_400.0
+
+
+@pytest.fixture(autouse=True)
+def never_quiet(monkeypatch):
+    """These tests date applications at the epoch and none of them is about
+    silence, so widen the quiet window out of the way. `silent` has its own
+    coverage in test_tracker_status.py and test_tracker_summary.py."""
+    real = routes.load_settings
+
+    def wide():
+        settings = real()
+        settings.quiet_after_days = 10**6
+        return settings
+
+    monkeypatch.setattr(routes, "load_settings", wide)
 
 
 @pytest.fixture

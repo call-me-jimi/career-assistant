@@ -33,6 +33,7 @@ from backend.storage.journeys import (
     delete_journey,
     derive_status,
     get_journey,
+    last_contact_at,
     list_journeys,
     update_journey,
 )
@@ -117,28 +118,81 @@ async def interview_types() -> dict:
     }
 
 
-async def _with_tracker_fields(j: dict) -> dict:
+async def _with_tracker_fields(j: dict, *, quiet_after_days: int | None = None) -> dict:
     """A journey as the tracker needs it: its rounds, its events, and the status
-    those dates imply. ``status`` is read-only — PATCH rejects it."""
+    those dates imply. ``status`` is read-only — PATCH rejects it.
+
+    Pass ``quiet_after_days`` when rendering a list, so the whole page shares one
+    settings read; single-journey callers can let it default.
+    """
+    if quiet_after_days is None:
+        quiet_after_days = load_settings().quiet_after_days
+
     # type_label comes from the backend taxonomy so the UI never has to keep its
     # own copy of the round slugs.
+    journey_id = j["journey_id"]
     interviews = [
         {**i, "type_label": type_label(i["interview_type"])}
-        for i in await list_interviews(j["journey_id"])
+        for i in await list_interviews(journey_id)
     ]
+    feedback = await list_feedback(journey_id)
+    contact = last_contact_at(j, interviews, feedback)
     return {
         **j,
-        "status": derive_status(j, interviews),
+        "status": derive_status(
+            j, interviews, feedback=feedback, quiet_after_days=quiet_after_days
+        ),
+        "last_contact_at": contact,
+        # Days since anyone last said anything — what the table sorts and groups by.
+        "waiting_days": None if contact is None else int((time.time() - contact) // 86_400),
         "interviews": interviews,
-        "events": await list_events(j["journey_id"]),
+        "events": await list_events(journey_id),
+        # Already fetched for the status above, and it makes what an employer said
+        # searchable from the list.
+        "feedback": feedback,
     }
 
 
 @router.get("/journeys")
 async def journeys() -> dict:
     # limit=None: the tracker is the main overview, not a page of recent jobs.
+    quiet_after_days = load_settings().quiet_after_days
     rows = await list_journeys(profile_id=None, limit=None)
-    return {"journeys": [await _with_tracker_fields(j) for j in rows]}
+    return {
+        "journeys": [
+            await _with_tracker_fields(j, quiet_after_days=quiet_after_days) for j in rows
+        ]
+    }
+
+
+# Declared before /journeys/{journey_id} — FastAPI matches in order, and
+# "summary" would otherwise be read as a journey id.
+@router.get("/journeys/summary")
+async def journeys_summary() -> dict:
+    """The six numbers on the landing page. Pooled across profiles: the search is
+    one search, and which CV an application used is a detail of the application."""
+    quiet_after_days = load_settings().quiet_after_days
+    rows = await list_journeys(profile_id=None, limit=None)
+
+    buckets = {
+        "in_progress": "in_progress",
+        "silent": "quiet",
+        "on_hold": "on_hold",
+        "rejected": "rejected",
+        "dropped": "withdrawn",
+    }
+    counts = {"total": len(rows), **{name: 0 for name in buckets.values()}}
+    for j in rows:
+        journey_id = j["journey_id"]
+        status = derive_status(
+            j,
+            await list_interviews(journey_id),
+            feedback=await list_feedback(journey_id),
+            quiet_after_days=quiet_after_days,
+        )
+        if status in buckets:
+            counts[buckets[status]] += 1
+    return counts
 
 
 @router.get("/journeys/{journey_id}")
@@ -148,7 +202,6 @@ async def journey_detail(journey_id: str) -> dict:
         raise HTTPException(404, "journey not found")
     return {
         **await _with_tracker_fields(j),
-        "feedback": await list_feedback(journey_id),
         "calibration": await list_evaluator_calibration(
             j["profile_id"], journey_id=journey_id
         ),

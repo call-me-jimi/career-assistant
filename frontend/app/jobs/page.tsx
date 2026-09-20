@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Brand from "../../components/Brand";
 
 type Interview = {
@@ -19,6 +19,15 @@ type JobEvent = {
   kind: string;
   occurred_at: number;
   text: string;
+};
+
+type Feedback = {
+  feedback_id: string;
+  stage: string;
+  outcome: string;
+  source: string;
+  feedback_text: string;
+  created_at: number;
 };
 
 type Journey = {
@@ -41,23 +50,48 @@ type Journey = {
   next_step_at: number | null;
   updated_at: number;
   status: string;
+  last_contact_at: number | null;
+  waiting_days: number | null;
   interviews: Interview[];
   events: JobEvent[];
+  feedback: Feedback[];
 };
 
 type InterviewType = { slug: string; label: string; hint: string };
 
 /* Status is derived server-side by derive_status(); the UI only renders it. */
 const STATUS_META: Record<string, { label: string; pill: string }> = {
-  draft: { label: "Not sent", pill: "text-subtle border-border" },
-  applied: { label: "Applied", pill: "text-accent border-accent/40 bg-accent/10" },
   in_progress: { label: "In Progress", pill: "text-warn border-warn/40 bg-warn/10" },
-  on_hold: { label: "On hold", pill: "text-hold border-hold/40 bg-hold/10" },
   offer: { label: "Offer", pill: "text-ok border-ok/40 bg-ok/10" },
+  applied: { label: "Applied", pill: "text-accent border-accent/40 bg-accent/10" },
+  silent: { label: "No reply yet", pill: "text-subtle border-border" },
+  on_hold: { label: "On hold", pill: "text-hold border-hold/40 bg-hold/10" },
+  draft: { label: "Not sent", pill: "text-subtle border-border" },
   rejected: { label: "Rejected", pill: "text-err border-err/35 bg-err/10" },
-  dropped: { label: "Dropped out", pill: "text-subtle border-border line-through" },
+  dropped: { label: "Withdrawn", pill: "text-subtle border-border line-through" },
 };
+
+/* Group headings carry the status, so the table has no status column — it would
+   otherwise repeat itself once per row. Order is most-alive first. */
 const STATUS_ORDER = Object.keys(STATUS_META);
+
+const GROUP_LABELS: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(STATUS_META).map(([k, v]) => [k, v.label])),
+  applied: "Applied, no reply yet",
+  silent: "Quiet for a while",
+};
+
+/* The long tail starts folded away: at 100+ applications these are the groups
+   that would otherwise bury the handful you are actually working on. */
+const COLLAPSED_BY_DEFAULT = ["silent", "rejected", "dropped"];
+const COLLAPSE_KEY = "tracker:collapsed-groups";
+
+const SORTS: [string, string, (a: Journey, b: Journey) => number][] = [
+  ["contact", "Last contact", (a, b) => (b.last_contact_at ?? 0) - (a.last_contact_at ?? 0)],
+  ["waiting", "Waiting longest", (a, b) => (b.waiting_days ?? -1) - (a.waiting_days ?? -1)],
+  ["applied", "Applied", (a, b) => (b.applied_at ?? 0) - (a.applied_at ?? 0)],
+  ["company", "Company", (a, b) => a.company_name.localeCompare(b.company_name)],
+];
 
 /* The four outcome dates, in the order the status ladder consults them. */
 const OUTCOME_FIELDS: [keyof Journey, string][] = [
@@ -182,6 +216,11 @@ function explain(j: Journey): string {
       );
     case "applied":
       return `Submission date ${formatDate(j.applied_at)} is set and nothing else.`;
+    case "silent":
+      return (
+        `Applied ${formatDate(j.applied_at)} and nobody has said anything since. ` +
+        "Still open — withdraw it if you've given up."
+      );
     default:
       return "No submission date yet.";
   }
@@ -195,8 +234,40 @@ export default function JobsPage() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+  const [sort, setSort] = useState("contact");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSED_BY_DEFAULT));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  /* Read once on mount rather than during render: the server pass has neither
+     localStorage nor a query string, and reading them inline would hydrate to
+     different markup. */
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(COLLAPSE_KEY);
+      if (saved) setCollapsed(new Set(JSON.parse(saved) as string[]));
+    } catch {
+      /* corrupt or unavailable — the defaults are fine */
+    }
+
+    // The landing counters link here already filtered.
+    const wanted = new URLSearchParams(window.location.search).get("status");
+    if (wanted === "all" || (wanted && STATUS_META[wanted])) setStatus(wanted);
+  }, []);
+
+  const toggleGroup = useCallback((key: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...next]));
+      } catch {
+        /* not persisting is survivable; collapsing still works this session */
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -324,14 +395,34 @@ export default function JobsPage() {
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return journeys.filter((j) => {
+    const compare = SORTS.find(([key]) => key === sort)?.[2];
+    const rows = journeys.filter((j) => {
       if (status !== "all" && j.status !== status) return false;
       if (!q) return true;
-      return `${j.job_title} ${j.company_name} ${j.location} ${j.notes}`
-        .toLowerCase()
-        .includes(q);
+      const haystack = [
+        j.job_title,
+        j.company_name,
+        j.location,
+        j.notes,
+        ...j.events.map((e) => e.text),
+        ...j.feedback.map((f) => f.feedback_text),
+      ].join(" ");
+      return haystack.toLowerCase().includes(q);
     });
-  }, [journeys, query, status]);
+    return compare ? [...rows].sort(compare) : rows;
+  }, [journeys, query, status, sort]);
+
+  /* One entry per status that actually has rows, in STATUS_ORDER. */
+  const groups = useMemo(() => {
+    const by = new Map<string, Journey[]>();
+    for (const j of shown) {
+      const key = STATUS_META[j.status] ? j.status : "draft";
+      (by.get(key) ?? by.set(key, []).get(key)!).push(j);
+    }
+    return STATUS_ORDER.filter((key) => by.has(key)).map(
+      (key) => [key, by.get(key)!] as const
+    );
+  }, [shown]);
 
   const stats = useMemo(() => {
     const dated = (j: Journey) => j.interviews.filter((iv) => iv.scheduled_at);
@@ -397,6 +488,20 @@ export default function JobsPage() {
               </button>
             ))}
           </div>
+          <label className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-widest text-subtle">Sort</span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="bg-panel2 border border-border rounded px-2 py-1 text-xs"
+            >
+              {SORTS.map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             onClick={addApplication}
             className="text-xs px-3 py-1.5 rounded border border-accent text-accent bg-accent/10 hover:bg-accent/20"
@@ -426,9 +531,9 @@ export default function JobsPage() {
                     "Title",
                     "Company",
                     "Location",
-                    "Status",
                     "Progress",
                     "Submission",
+                    "Waiting",
                     "Outcome",
                     "Next step",
                     "Artifacts",
@@ -440,19 +545,26 @@ export default function JobsPage() {
                         i === 0 ? "sticky left-0 bg-panel z-20" : ""
                       }`}
                     >
-                      {h === "Status" ? (
-                        <>
-                          Status <span className="text-accent tracking-normal">ƒ(dates)</span>
-                        </>
-                      ) : (
-                        h
-                      )}
+                      {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {shown.map((j) => (
+                {groups.map(([groupKey, rows]) => {
+                  /* Filtering to one status always shows it: arriving from a
+                     landing counter onto a collapsed heading would look empty. */
+                  const isCollapsed = status === "all" && collapsed.has(groupKey);
+                  return (
+                  <Fragment key={groupKey}>
+                    <GroupRow
+                      status={groupKey}
+                      count={rows.length}
+                      collapsed={isCollapsed}
+                      onToggle={() => toggleGroup(groupKey)}
+                    />
+                    {!isCollapsed &&
+                      rows.map((j) => (
                   <Row
                     key={j.journey_id}
                     journey={j}
@@ -465,7 +577,10 @@ export default function JobsPage() {
                     onOutcome={(body) => logOutcome(j.journey_id, body)}
                     onSchedule={(body) => scheduleRound(j.journey_id, body)}
                   />
-                ))}
+                      ))}
+                  </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -583,19 +698,24 @@ function Row({
           </div>
         </td>
         <td className={cellPad}>
-          <span
-            title={explain(journey)}
-            className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border cursor-help whitespace-nowrap ${meta.pill}`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-current" />
-            {meta.label}
-          </span>
-        </td>
-        <td className={cellPad}>
           <Strip journey={journey} />
         </td>
         <td className={cellPad}>
           <DateCell value={journey.applied_at} onSave={(v) => onPatch({ applied_at: v })} />
+        </td>
+        <td className={cellPad}>
+          {journey.waiting_days === null ? (
+            <span className="text-xs text-subtle">—</span>
+          ) : (
+            <span
+              title={`Last contact ${formatDate(journey.last_contact_at)} — ${explain(journey)}`}
+              className={`text-xs tabular-nums whitespace-nowrap cursor-help ${
+                journey.status === "silent" ? "text-subtle" : ""
+              }`}
+            >
+              {journey.waiting_days}d
+            </span>
+          )}
         </td>
         <td className={cellPad}>
           {outcome ? (
@@ -693,6 +813,57 @@ function Row({
         </tr>
       )}
     </>
+  );
+}
+
+/* ---------- group heading ---------- */
+
+/* The heading is the status, which is why the table has no status column. A
+   collapsed group stays one line however many rows it holds — that is what keeps
+   the page the same length at 51 applications and at 200. */
+function GroupRow({
+  status,
+  count,
+  collapsed,
+  onToggle,
+}: {
+  status: string;
+  count: number;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const meta = STATUS_META[status] ?? STATUS_META.draft;
+  return (
+    <tr className="bg-panel">
+      <td colSpan={10} className="px-3 py-1.5 border-y border-border">
+        <button
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          className="flex items-center gap-2.5 w-full text-left group/g"
+        >
+          <span
+            className={`text-[9px] text-subtle transition-transform ${
+              collapsed ? "" : "rotate-90"
+            }`}
+          >
+            ▶
+          </span>
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${meta.pill.split(" ")[0]} bg-current`}
+            aria-hidden
+          />
+          <span className="text-[10px] uppercase tracking-widest text-subtle font-semibold">
+            {GROUP_LABELS[status] ?? meta.label}
+          </span>
+          <span className="text-[10px] tabular-nums text-subtle/70">{count}</span>
+          {collapsed && (
+            <span className="ml-auto text-xs text-accent opacity-0 group-hover/g:opacity-100">
+              show
+            </span>
+          )}
+        </button>
+      </td>
+    </tr>
   );
 }
 

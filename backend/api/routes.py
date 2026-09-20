@@ -512,6 +512,42 @@ async def remove_journey_feedback(journey_id: str, feedback_id: str) -> dict:
     return {"deleted": True}
 
 
+# What a re-application inherits: the posting and what you wrote about it. Dates,
+# artifacts, rounds and feedback belong to the attempt that earned them.
+_DUPLICATE_FIELDS = (
+    "job_url",
+    "job_title",
+    "company_name",
+    "location",
+    "job_description",
+    "company_description",
+    "job_ad_language",
+    "job_screenshot_path",
+    "job_source_type",
+    "notes",
+)
+
+
+@router.post("/journeys/{journey_id}/duplicate")
+async def duplicate_journey(journey_id: str) -> dict:
+    """Applying again to a company you have approached before.
+
+    The strategies are deliberately not carried over — they were an argument for
+    a different attempt. What the company told you last time still reaches the new
+    cover letter anyway: `list_recent_feedback()` always includes same-company
+    entries and sorts them first.
+    """
+    original = await get_journey(journey_id)
+    if not original:
+        raise HTTPException(404, "journey not found")
+
+    new_id = await create_journey(
+        profile_id=original["profile_id"],
+        **{f: original[f] for f in _DUPLICATE_FIELDS if original.get(f)},
+    )
+    return await _with_tracker_fields(await get_journey(new_id))
+
+
 @router.delete("/journeys/{journey_id}")
 async def remove_journey(journey_id: str) -> dict:
     deleted = await delete_journey(journey_id)

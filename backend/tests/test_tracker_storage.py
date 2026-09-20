@@ -1,11 +1,14 @@
 """Tracker persistence: the event log, the journey date columns, and the
 migration that gives existing journeys dates to be derived from."""
 
+import time
+import uuid
+
 import pytest
 
 import backend.storage.db as db_module
+from backend.storage.db import connect
 from backend.storage.events import add_event, delete_event, list_events, update_event
-from backend.storage.feedback import add_feedback
 from backend.storage.interviews import create_interview, get_interview, list_interviews
 from backend.storage.journeys import (
     create_journey,
@@ -17,6 +20,20 @@ from backend.storage.journeys import (
 )
 
 DAY = 86_400.0
+
+
+async def _legacy_feedback(journey_id: str, outcome: str) -> None:
+    """A feedback row as versions before v0.13.0 wrote it, with a caller-chosen
+    outcome. The backfill migration exists for exactly these rows — `add_feedback`
+    derives the outcome now, so it can no longer produce one."""
+    async with connect() as db:
+        await db.execute(
+            "INSERT INTO job_feedback (feedback_id, journey_id, profile_id, interview_ids,"
+            " stage, outcome, source, feedback_text, created_at)"
+            " VALUES (?, ?, 'p1', '[]', 'final', ?, 'recruiter', '…', ?)",
+            (uuid.uuid4().hex, journey_id, outcome, time.time()),
+        )
+        await db.commit()
 
 
 # --- dates on the journey ---------------------------------------------------
@@ -196,10 +213,7 @@ async def test_backfill_maps_feedback_outcomes_onto_dates(test_db):
         (withdrew, "withdrawn"),
         (ghosted, "ghosted"),
     ):
-        await add_feedback(
-            journey_id=jid, profile_id="p1", interview_ids=[], stage="final",
-            outcome=outcome, source="recruiter", feedback_text="…",
-        )
+        await _legacy_feedback(jid, outcome)
 
     await db_module.init_db()
 
@@ -216,10 +230,7 @@ async def test_backfill_maps_feedback_outcomes_onto_dates(test_db):
 
 async def test_backfill_is_idempotent_and_never_overwrites_a_correction(test_db):
     jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
-    await add_feedback(
-        journey_id=jid, profile_id="p1", interview_ids=[], stage="final",
-        outcome="rejected", source="recruiter", feedback_text="…",
-    )
+    await _legacy_feedback(jid, "rejected")
     await db_module.init_db()
 
     await update_journey(jid, rejected_at=12345.0, applied_at=999.0)

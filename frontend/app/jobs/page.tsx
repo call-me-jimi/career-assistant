@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Brand from "../../components/Brand";
 
 type Interview = {
@@ -66,6 +66,52 @@ const OUTCOME_FIELDS: [keyof Journey, string][] = [
   ["dropped_at", "Dropped out"],
   ["offer_at", "Offer"],
 ];
+
+/* What the row menu can log. `kind` goes straight to POST /outcome, which picks
+   the date column — the UI never names a column, so the two can't disagree. */
+type OutcomeKind = "rejected" | "offer" | "on_hold" | "withdrawn";
+
+const OUTCOME_META: Record<
+  OutcomeKind,
+  { menu: string; dateLabel: string; ask: string; asksWho: boolean }
+> = {
+  rejected: {
+    menu: "Log a rejection",
+    dateLabel: "Rejected on",
+    ask: "Did they say why?",
+    asksWho: true,
+  },
+  offer: {
+    menu: "Log an offer",
+    dateLabel: "Offer made on",
+    ask: "Anything they said worth keeping?",
+    asksWho: true,
+  },
+  on_hold: {
+    menu: "Put on hold",
+    dateLabel: "On hold since",
+    ask: "Did they say why?",
+    asksWho: true,
+  },
+  withdrawn: {
+    menu: "Withdraw",
+    dateLabel: "Withdrew on",
+    ask: "Why did you withdraw?",
+    asksWho: false,
+  },
+};
+
+const OUTCOME_ORDER: OutcomeKind[] = ["rejected", "offer", "on_hold", "withdrawn"];
+
+const SOURCES: [string, string][] = [
+  ["", "Not sure who"],
+  ["recruiter", "Recruiter"],
+  ["hiring_manager", "Hiring manager"],
+  ["ats", "Automated reply"],
+  ["other", "Someone else"],
+];
+
+type RowPanel = { kind: "outcome"; outcome: OutcomeKind } | { kind: "schedule" } | null;
 
 /* Progress strip: ten interview columns collapse into six aligned slots. */
 const SLOT_LABELS = ["Applied", "Screening", "Manager", "Deep dive", "Final", "Decision"];
@@ -180,17 +226,17 @@ export default function JobsPage() {
     [splice]
   );
 
-  const call = useCallback(
-    async (fn: () => Promise<void>) => {
-      setError(null);
-      try {
-        await fn();
-      } catch {
-        setError("Could not save that change.");
-      }
-    },
-    []
-  );
+  /* Returns whether it worked, so a panel knows whether to close itself. */
+  const call = useCallback(async (fn: () => Promise<void>) => {
+    setError(null);
+    try {
+      await fn();
+      return true;
+    } catch {
+      setError("Could not save that change.");
+      return false;
+    }
+  }, []);
 
   const patchJourney = useCallback(
     (journeyId: string, body: Record<string, unknown>) =>
@@ -204,6 +250,36 @@ export default function JobsPage() {
         splice(await r.json());
       }),
     [call, splice]
+  );
+
+  /* The date and what they said in one call — see POST /journeys/{id}/outcome.
+     The response is the journey with its status already recomputed. */
+  const logOutcome = useCallback(
+    (journeyId: string, body: Record<string, unknown>) =>
+      call(async () => {
+        const r = await fetch(`/api/journeys/${journeyId}/outcome`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        splice(await r.json());
+      }),
+    [call, splice]
+  );
+
+  const scheduleRound = useCallback(
+    (journeyId: string, body: Record<string, unknown>) =>
+      call(async () => {
+        const r = await fetch(`/api/journeys/${journeyId}/interviews`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        await refresh(journeyId);
+      }),
+    [call, refresh]
   );
 
   async function addApplication() {
@@ -386,6 +462,8 @@ export default function JobsPage() {
                     onPatch={(body) => patchJourney(j.journey_id, body)}
                     onRefresh={() => call(() => refresh(j.journey_id))}
                     onDelete={() => deleteJourney(j.journey_id)}
+                    onOutcome={(body) => logOutcome(j.journey_id, body)}
+                    onSchedule={(body) => scheduleRound(j.journey_id, body)}
                   />
                 ))}
               </tbody>
@@ -444,6 +522,8 @@ function Row({
   onPatch,
   onRefresh,
   onDelete,
+  onOutcome,
+  onSchedule,
 }: {
   journey: Journey;
   types: InterviewType[];
@@ -452,10 +532,13 @@ function Row({
   onPatch: (body: Record<string, unknown>) => void;
   onRefresh: () => void;
   onDelete: () => void;
+  onOutcome: (body: Record<string, unknown>) => Promise<boolean>;
+  onSchedule: (body: Record<string, unknown>) => Promise<boolean>;
 }) {
   const meta = STATUS_META[journey.status] ?? STATUS_META.draft;
   const outcome = OUTCOME_FIELDS.find(([field]) => journey[field]);
   const cellPad = "px-3 py-2 border-b border-border align-middle";
+  const [panel, setPanel] = useState<RowPanel>(null);
 
   return (
     <>
@@ -566,15 +649,36 @@ function Row({
           </div>
         </td>
         <td className={cellPad}>
-          <button
-            onClick={onDelete}
-            className="text-xs text-subtle hover:text-err opacity-0 group-hover:opacity-100"
-            title="Remove this application"
-          >
-            ✕
-          </button>
+          <RowMenu
+            journey={journey}
+            onPick={setPanel}
+            onOpenDetail={onToggle}
+            onDelete={onDelete}
+          />
         </td>
       </tr>
+
+      {panel && (
+        <tr>
+          <td colSpan={10} className="bg-panel border-b border-border p-0">
+            {panel.kind === "outcome" ? (
+              <OutcomePanel
+                journey={journey}
+                outcome={panel.outcome}
+                onSave={onOutcome}
+                onClose={() => setPanel(null)}
+              />
+            ) : (
+              <SchedulePanel
+                journey={journey}
+                types={types}
+                onSave={onSchedule}
+                onClose={() => setPanel(null)}
+              />
+            )}
+          </td>
+        </tr>
+      )}
 
       {isOpen && (
         <tr>
@@ -589,6 +693,339 @@ function Row({
         </tr>
       )}
     </>
+  );
+}
+
+/* ---------- row menu ---------- */
+
+/* Fixed-positioned rather than absolute: the table scrolls horizontally, and an
+   absolutely-positioned menu is clipped by that overflow container. */
+function RowMenu({
+  journey,
+  onPick,
+  onOpenDetail,
+  onDelete,
+}: {
+  journey: Journey;
+  onPick: (panel: RowPanel) => void;
+  onOpenDetail: () => void;
+  onDelete: () => void;
+}) {
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!at) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAt(null);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setAt(null);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [at]);
+
+  function open(e: React.MouseEvent<HTMLButtonElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    setAt({ top: r.bottom + 4, right: window.innerWidth - r.right });
+  }
+
+  function pick(panel: RowPanel) {
+    setAt(null);
+    onPick(panel);
+  }
+
+  return (
+    <>
+      <button
+        onClick={open}
+        aria-haspopup="menu"
+        aria-expanded={!!at}
+        aria-label="Actions"
+        className={`text-xs px-1.5 rounded text-subtle hover:text-accent ${
+          at ? "text-accent" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+        }`}
+      >
+        ⋯
+      </button>
+
+      {at && (
+        <div
+          ref={ref}
+          role="menu"
+          style={{ position: "fixed", top: at.top, right: at.right }}
+          className="z-50 w-56 rounded-lg border border-border bg-panel2 p-1 shadow-xl"
+        >
+          <div className="px-2.5 pt-2 pb-1 text-[9px] uppercase tracking-widest text-subtle">
+            Just for the record
+          </div>
+          <MenuItem onClick={() => pick({ kind: "schedule" })}>
+            Schedule an interview
+          </MenuItem>
+          {OUTCOME_ORDER.map((kind) => (
+            <MenuItem key={kind} onClick={() => pick({ kind: "outcome", outcome: kind })}>
+              {OUTCOME_META[kind].menu}
+            </MenuItem>
+          ))}
+
+          <div className="my-1 h-px bg-border" />
+          <MenuItem onClick={onOpenDetail}>Dates &amp; notes</MenuItem>
+          <MenuItem href={`/jobs/${journey.journey_id}`}>Open full detail</MenuItem>
+          <MenuItem danger onClick={onDelete}>
+            Delete from record
+          </MenuItem>
+        </div>
+      )}
+    </>
+  );
+}
+
+function MenuItem({
+  children,
+  onClick,
+  href,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  href?: string;
+  danger?: boolean;
+}) {
+  const cls = `block w-full text-left px-2.5 py-1.5 rounded text-sm ${
+    danger ? "text-err hover:bg-err/10" : "hover:bg-accent/15 hover:text-accent"
+  }`;
+  return href ? (
+    <a role="menuitem" href={href} className={cls}>
+      {children}
+    </a>
+  ) : (
+    <button role="menuitem" onClick={onClick} className={cls}>
+      {children}
+    </button>
+  );
+}
+
+/* ---------- capture panels ---------- */
+
+/* The date and the reason in one panel. They are one call on the server too —
+   the feedback row reads its outcome from the date this same request writes, so
+   capturing half of it would record a rejection as an open application. */
+function OutcomePanel({
+  journey,
+  outcome,
+  onSave,
+  onClose,
+}: {
+  journey: Journey;
+  outcome: OutcomeKind;
+  onSave: (body: Record<string, unknown>) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const meta = OUTCOME_META[outcome];
+  const [date, setDate] = useState(toDateInput(Date.now() / 1000));
+  const [source, setSource] = useState("");
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save(withText: boolean) {
+    setSaving(true);
+    const ok = await onSave({
+      kind: outcome,
+      date: fromDateInput(date),
+      feedback_text: withText ? text : "",
+      source: withText && meta.asksWho ? source : "",
+    });
+    setSaving(false);
+    if (ok) onClose();
+  }
+
+  return (
+    <div className="p-4 space-y-3 border-l-2 border-accent">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm font-semibold">
+          {journey.company_name || "This application"}{" "}
+          <span className="font-normal text-subtle">— {meta.menu.toLowerCase()}</span>
+        </span>
+        <span className="text-[10px] uppercase tracking-widest text-subtle">
+          {journey.interviews.length} round{journey.interviews.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] uppercase tracking-widest text-subtle">
+            {meta.dateLabel}
+          </span>
+          <input
+            type="date"
+            autoFocus
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="bg-bg border border-accent rounded px-2 py-1 text-xs"
+          />
+        </label>
+
+        {meta.asksWho && (
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-widest text-subtle">
+              Who told you
+            </span>
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="bg-bg border border-border rounded px-2 py-1 text-xs"
+            >
+              {SOURCES.map(([v, label]) => (
+                <option key={v} value={v}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
+      <label className="block space-y-1">
+        <span className="text-[10px] uppercase tracking-widest text-subtle">{meta.ask}</span>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={3}
+          placeholder="Paste their words — don't paraphrase. This is what later applications learn from."
+          className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 resize-y leading-relaxed"
+        />
+      </label>
+
+      {!journey.profile_id && text.trim() && (
+        <p className="text-xs text-subtle">
+          This job is not linked to a profile, so what they said will be kept here but will not
+          inform future applications.
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => save(true)}
+          disabled={saving || !date}
+          className="text-xs px-3 py-1.5 rounded border border-accent text-accent bg-accent/10 hover:bg-accent/20 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={() => save(false)}
+          disabled={saving || !date}
+          className="text-xs px-3 py-1.5 rounded border border-border text-subtle hover:text-text disabled:opacity-50"
+        >
+          {outcome === "withdrawn" ? "No reason" : "They gave no reason"}
+        </button>
+        <button
+          onClick={onClose}
+          disabled={saving}
+          className="text-xs px-3 py-1.5 rounded border border-border text-subtle hover:text-err disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SchedulePanel({
+  journey,
+  types,
+  onSave,
+  onClose,
+}: {
+  journey: Journey;
+  types: InterviewType[];
+  onSave: (body: Record<string, unknown>) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const [type, setType] = useState("screening");
+  const [date, setDate] = useState(toDateInput(Date.now() / 1000));
+  const [label, setLabel] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    const ok = await onSave({
+      interview_type: type,
+      scheduled_at: fromDateInput(date),
+      label: label.trim(),
+    });
+    setSaving(false);
+    if (ok) onClose();
+  }
+
+  return (
+    <div className="p-4 space-y-3 border-l-2 border-accent">
+      <div className="text-sm font-semibold">
+        {journey.company_name || "This application"}{" "}
+        <span className="font-normal text-subtle">— schedule an interview</span>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] uppercase tracking-widest text-subtle">Round</span>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="bg-bg border border-border rounded px-2 py-1 text-xs max-w-[190px]"
+          >
+            {types.map((t) => (
+              <option key={t.slug} value={t.slug}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] uppercase tracking-widest text-subtle">Date</span>
+          <input
+            type="date"
+            autoFocus
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="bg-bg border border-accent rounded px-2 py-1 text-xs"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 flex-1 min-w-[160px]">
+          <span className="text-[10px] uppercase tracking-widest text-subtle">
+            Label — optional
+          </span>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="With Tobias, VP Eng"
+            className="bg-bg border border-border rounded px-2 py-1 text-xs"
+          />
+        </label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={save}
+          disabled={saving || !date}
+          className="text-xs px-3 py-1.5 rounded border border-accent text-accent bg-accent/10 hover:bg-accent/20 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={onClose}
+          disabled={saving}
+          className="text-xs px-3 py-1.5 rounded border border-border text-subtle hover:text-err disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

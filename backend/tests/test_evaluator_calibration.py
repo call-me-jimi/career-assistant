@@ -151,7 +151,6 @@ async def test_pairs_carry_the_verdict_and_never_the_outcome(test_db):
     await add_feedback(
         journey_id=jid,
         profile_id="p1",
-        outcome="rejected",
         stage="final",
         source="hiring_manager",
         feedback_text="Wanted sharper ownership stories.",

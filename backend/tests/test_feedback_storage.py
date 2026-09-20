@@ -24,7 +24,6 @@ async def test_add_and_list_roundtrip(test_db):
         profile_id="p1",
         interview_ids=["r1", "r2"],
         stage="final",
-        outcome="rejected",
         source="recruiter",
         feedback_text="  Strong technically, unsure on stakeholder management.  ",
     )
@@ -36,7 +35,8 @@ async def test_add_and_list_roundtrip(test_db):
     assert entry["journey_id"] == jid
     assert entry["interview_ids"] == ["r1", "r2"]
     assert entry["stage"] == "final"
-    assert entry["outcome"] == "rejected"
+    # Derived from the job's dates, not the caller: this job has no outcome date.
+    assert entry["outcome"] == ""
     assert entry["source"] == "recruiter"
     assert entry["feedback_text"] == "Strong technically, unsure on stakeholder management."
 
@@ -49,7 +49,7 @@ async def test_defaults_cover_the_whole_process(test_db):
     entry = (await list_feedback(jid))[0]
     assert entry["interview_ids"] == []
     assert entry["stage"] == "unknown"
-    assert entry["outcome"] == "rejected"
+    assert entry["outcome"] == ""
 
 
 @pytest.mark.asyncio
@@ -57,7 +57,6 @@ async def test_defaults_cover_the_whole_process(test_db):
     "kwargs",
     [
         {"stage": "phone_screen"},
-        {"outcome": "declined"},
         {"source": "linkedin"},
     ],
 )

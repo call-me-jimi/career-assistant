@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -14,6 +15,7 @@ from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, 
 from backend.storage.feedback import (
     add_feedback,
     delete_feedback,
+    infer_stage,
     list_evaluator_calibration,
     list_feedback,
 )
@@ -329,15 +331,19 @@ async def remove_journey_event(journey_id: str, event_id: str) -> dict:
 
 
 class FeedbackPayload(BaseModel):
+    # No `outcome`: it is derived from the job's dates when the row is written.
+    model_config = {"extra": "forbid"}
+
     feedback_text: str = ""
     stage: str = "unknown"
-    outcome: str = "rejected"
     source: str = ""
     interview_ids: list[str] = []
 
 
 @router.post("/journeys/{journey_id}/feedback")
 async def add_journey_feedback(journey_id: str, payload: FeedbackPayload) -> dict:
+    """Feedback that arrives mid-process, with no outcome attached — a recruiter's
+    aside after a round. An outcome and its reason go through /outcome instead."""
     journey = await get_journey(journey_id)
     if not journey:
         raise HTTPException(404, "journey not found")
@@ -354,13 +360,65 @@ async def add_journey_feedback(journey_id: str, payload: FeedbackPayload) -> dic
             profile_id=journey["profile_id"],
             interview_ids=payload.interview_ids,
             stage=payload.stage,
-            outcome=payload.outcome,
             source=payload.source,
             feedback_text=payload.feedback_text,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return {"feedback_id": feedback_id}
+
+
+# Which date each outcome writes. `withdrawn` lands on dropped_at: giving up on a
+# silent application and pulling out of a live one are the same exit.
+_OUTCOME_DATES = {
+    "rejected": "rejected_at",
+    "offer": "offer_at",
+    "on_hold": "on_hold_at",
+    "withdrawn": "dropped_at",
+}
+
+
+class OutcomePayload(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    kind: str
+    date: float | None = None
+    feedback_text: str = ""
+    source: str = ""
+
+
+@router.post("/journeys/{journey_id}/outcome")
+async def log_journey_outcome(journey_id: str, payload: OutcomePayload) -> dict:
+    """The date and what they said, written together.
+
+    Splitting them is what let `job_feedback.outcome` drift from the dates: the
+    outcome is snapshotted from `derive_status()` when the feedback row is written,
+    so the date has to be there first. One call writes both, in that order.
+    """
+    journey = await get_journey(journey_id)
+    if not journey:
+        raise HTTPException(404, "journey not found")
+
+    column = _OUTCOME_DATES.get(payload.kind)
+    if not column:
+        raise HTTPException(400, f"unknown outcome: {payload.kind!r}")
+
+    await update_journey(journey_id, **{column: payload.date or time.time()})
+
+    text = payload.feedback_text.strip()
+    if text:
+        try:
+            await add_feedback(
+                journey_id=journey_id,
+                profile_id=journey["profile_id"],
+                stage=infer_stage(await list_interviews(journey_id)),
+                source=payload.source,
+                feedback_text=text,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    return await _with_tracker_fields(await get_journey(journey_id))
 
 
 @router.delete("/journeys/{journey_id}/feedback/{feedback_id}")

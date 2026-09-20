@@ -62,6 +62,8 @@ frontend/             # Next.js; use npm (not uv) inside this directory
 
 - **An application's status is derived, never stored.** There is no `status` column. `derive_status()` in `backend/storage/journeys.py` reads five dates on `job_journeys` (`applied_at`, `on_hold_at`, `rejected_at`, `dropped_at`, `offer_at`) plus `job_interviews.scheduled_at`, first match wins. The API returns `status` read-only; `PATCH /api/journeys/{id}` accepts dates only. Adding a status column would let it drift from the dates that define it.
 
+- **`job_feedback.outcome` is derived too, and never a parameter.** `add_feedback()` snapshots it from `derive_status()` as the row is written — there is no `outcome` argument and `FeedbackPayload` forbids extras, so a client that sends one gets a 422 rather than silently setting nothing. An outcome and its reason are captured together by `POST /api/journeys/{id}/outcome`, which writes the date first so the snapshot can see it. Splitting those two writes is what let the column drift from the dates before v0.13.0; `"ghosted"` survives in `OUTCOMES` only so older rows still load.
+
 - **`PATCH /api/sessions/{id}/state` requires the runner to be paused at an interrupt.** It returns 409 if the graph is currently running. Only patch state from the details page, not mid-stream.
 
 - **Always flag unmerged worktree changes.** When work is done in a git worktree, end the session with an explicit note if changes haven't been merged to main yet. The dev server runs from the main working copy, so unmerged changes have no effect on the running app.

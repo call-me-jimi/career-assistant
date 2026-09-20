@@ -35,7 +35,6 @@ async def test_post_creates_feedback(client):
         json={
             "feedback_text": "Wanted sharper ownership stories.",
             "stage": "final",
-            "outcome": "rejected",
             "source": "hiring_manager",
         },
     )
@@ -60,11 +59,15 @@ async def test_post_defaults_to_the_whole_process(client):
 async def test_post_takes_profile_from_the_job_not_the_client(client):
     jid = await _job(profile_id="owner")
 
-    await client.post(
+    # The payload forbids extras, so a smuggled profile_id is refused outright
+    # rather than silently ignored.
+    smuggled = await client.post(
         f"/api/journeys/{jid}/feedback",
         json={"feedback_text": "text", "profile_id": "attacker"},
     )
+    assert smuggled.status_code == 422
 
+    await client.post(f"/api/journeys/{jid}/feedback", json={"feedback_text": "text"})
     assert (await list_feedback(jid))[0]["profile_id"] == "owner"
 
 
@@ -103,7 +106,6 @@ async def test_post_rejects_rounds_from_another_job(client):
     "payload",
     [
         {"stage": "phone_screen"},
-        {"outcome": "declined"},
         {"source": "linkedin"},
     ],
 )

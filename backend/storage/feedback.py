@@ -7,6 +7,10 @@ list and an empty list means "the whole process".
 `outcome` is recorded for the job timeline only. It is never a learning signal: a rejection
 is not evidence about how the candidate performed, and the candidate has no way to know
 whether it was. Only `feedback_text` ever teaches anything.
+
+`outcome` is also never supplied by a caller. It is snapshotted from `derive_status()` when
+the row is written, so it can never disagree with the dates on `job_journeys` — the dates own
+the outcome, and this column is a copy taken at the moment the feedback arrived.
 """
 
 from __future__ import annotations
@@ -17,11 +21,30 @@ from typing import Any
 import uuid
 
 from backend.storage.db import connect
-from backend.storage.interviews import describe_type
+from backend.storage.interviews import describe_type, list_interviews
+from backend.storage.journeys import derive_status, get_journey
 
 STAGES = ("application", "screening", "interview", "final", "offer", "unknown")
-OUTCOMES = ("rejected", "ghosted", "withdrawn", "offer")
+# "" is what a job that has not ended yet snapshots to — feedback can arrive
+# mid-process, long before there is any outcome to record. "ghosted" is kept so
+# rows written before v0.13.0 still load; nothing writes it any more.
+OUTCOMES = ("rejected", "ghosted", "withdrawn", "offer", "")
 SOURCES = ("recruiter", "hiring_manager", "ats", "other", "")
+
+_STATUS_TO_OUTCOME = {
+    "rejected": "rejected",
+    "offer": "offer",
+    "dropped": "withdrawn",
+}
+
+# Which stage a round implies, when feedback doesn't say. Anything not listed is
+# a middle round.
+_TYPE_TO_STAGE = {
+    "recruiter": "screening",
+    "screening": "screening",
+    "final": "final",
+    "leadership": "final",
+}
 
 _COLUMNS = (
     "feedback_id",
@@ -57,23 +80,45 @@ def _row_to_feedback(r: Any) -> dict[str, Any]:
     return entry
 
 
+def infer_stage(interviews: list[dict[str, Any]]) -> str:
+    """Where in the process feedback landed, read from the rounds that happened.
+
+    ``unknown`` when there are none — a caller who knows better should say so
+    rather than have a guess written into the record.
+    """
+    dated = [i for i in interviews if i.get("scheduled_at")]
+    if not dated:
+        return "unknown"
+    latest = max(dated, key=lambda i: i["scheduled_at"])
+    return _TYPE_TO_STAGE.get(latest.get("interview_type", ""), "interview")
+
+
+async def _snapshot_outcome(journey_id: str) -> str:
+    """What the job's dates say has happened, right now. Empty while it is still open."""
+    journey = await get_journey(journey_id)
+    if not journey:
+        return ""
+    interviews = await list_interviews(journey_id)
+    return _STATUS_TO_OUTCOME.get(derive_status(journey, interviews), "")
+
+
 async def add_feedback(
     *,
     journey_id: str,
     profile_id: str | None,
     interview_ids: list[str] | None = None,
     stage: str = "unknown",
-    outcome: str = "rejected",
     source: str = "",
     feedback_text: str = "",
 ) -> str:
+    """Record what an employer said. ``outcome`` is not a parameter — see the
+    module docstring; it is read from the job's dates as they stand now."""
     if stage not in STAGES:
         raise ValueError(f"Unknown feedback stage: {stage!r}")
-    if outcome not in OUTCOMES:
-        raise ValueError(f"Unknown feedback outcome: {outcome!r}")
     if source not in SOURCES:
         raise ValueError(f"Unknown feedback source: {source!r}")
 
+    outcome = await _snapshot_outcome(journey_id)
     feedback_id = uuid.uuid4().hex
     placeholders = ", ".join("?" for _ in _COLUMNS)
     async with connect() as db:

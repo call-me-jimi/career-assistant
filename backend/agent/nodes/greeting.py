@@ -8,7 +8,7 @@ from langgraph.types import interrupt
 
 from backend.agent.interrupts import emit_message
 from backend.agent.state import ApplicationState
-from backend.storage.profiles import list_profiles
+from backend.storage.profiles import get_profile, list_profiles
 
 
 def _format_saved_at(ts: float | int | None) -> str:
@@ -44,6 +44,23 @@ async def greeting_node(state: ApplicationState) -> dict:
     sid = state.session_id
     details_url = f"/session/details?id={sid}"
     intro = _INTRO_BY_ASSISTANT.get(state.assistant_type, _INTRO_BY_ASSISTANT["cover_letter"])
+
+    # Launched from an application row, so the profile came with the session —
+    # offering a picker would ask for something already chosen.
+    if state.profile_id:
+        profile = await get_profile(state.profile_id)
+        applicant_name = (
+            (profile or {}).get("applicant_name") or (profile or {}).get("name") or "Applicant"
+        )
+        emit_message(
+            sid,
+            f"{intro}\n\n"
+            f"Using your **{(profile or {}).get('name', 'saved')}** profile. "
+            f"You can review what we gather on the [Details page]({details_url}).",
+            key="greeting:seeded",
+        )
+        return {"applicant_name": applicant_name, "phase": "cv_intake"}
+
     profiles = (await list_profiles())[:10]
     if profiles:
         lines = []

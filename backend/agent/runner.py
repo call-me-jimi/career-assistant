@@ -18,8 +18,10 @@ from backend.agent.graph import build_graph
 from backend.agent.graph_advisor import build_advisor_graph
 from backend.agent.graph_evaluator import build_evaluator_graph
 from backend.agent.graph_interview import build_interview_graph
+from backend.agent.nodes.select_journey import SEED_FIELDS
 from backend.agent.state import ApplicationState
 from backend.observability.event_bus import bus
+from backend.storage.journeys import get_journey
 from backend.storage.sessions import get_session, touch_session
 
 GRAPH_BUILDERS = {
@@ -30,6 +32,31 @@ GRAPH_BUILDERS = {
 }
 
 log = logging.getLogger("assistant.runner")
+
+
+async def _seed_from_session(session_row: dict[str, Any]) -> dict[str, Any]:
+    """What a session launched from an application row already knows.
+
+    The greeting, journey and round pickers each check their own id and return
+    early, so seeding these is what turns "pick a job from this numbered list"
+    back into the job the user clicked.
+    """
+    seed: dict[str, Any] = {}
+    for key in ("profile_id", "interview_id"):
+        if session_row.get(key):
+            seed[key] = session_row[key]
+
+    journey_id = session_row.get("journey_id")
+    if journey_id:
+        journey = await get_journey(journey_id)
+        if journey:
+            seed.update({f: journey[f] for f in SEED_FIELDS if journey.get(f)})
+            seed["journey_id"] = journey_id
+            # The job's owner wins: a session cannot be about one profile's job
+            # while learning against another's playbook.
+            if journey.get("profile_id"):
+                seed["profile_id"] = journey["profile_id"]
+    return seed
 
 
 class SessionRunner:
@@ -93,6 +120,7 @@ class SessionRunner:
                     session_id=self.session_id,
                     assistant_type=assistant_type,  # type: ignore[arg-type]
                     language=language,
+                    **await _seed_from_session(session_row or {}),
                 ).model_dump()
 
                 next_input: Any = initial

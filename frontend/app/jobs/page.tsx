@@ -37,6 +37,10 @@ type Journey = {
   job_title: string;
   company_name: string;
   location: string;
+  // Read by coverLetterLabel() to name the step the assistant would resume at.
+  company_description: string;
+  alignment_strategy: string;
+  positioning_strategy: string;
   cover_letter: string;
   interview_briefing: string;
   evaluation_summary: string;
@@ -146,6 +150,16 @@ const SOURCES: [string, string][] = [
 ];
 
 type RowPanel = { kind: "outcome"; outcome: OutcomeKind } | { kind: "schedule" } | null;
+
+/* Mirrors continue_phase() in backend/agent/nodes/select_journey.py, which already
+   knows which step is missing — the menu just says it out loud instead of offering
+   a vague "continue". */
+function coverLetterLabel(j: Journey): string {
+  if (!j.company_description) return "Research the company";
+  if (!j.positioning_strategy && !j.alignment_strategy) return "Work out the angle";
+  if (!j.cover_letter) return "Write the cover letter";
+  return "Revise the cover letter";
+}
 
 /* Progress strip: ten interview columns collapse into six aligned slots. */
 const SLOT_LABELS = ["Applied", "Screening", "Manager", "Deep dive", "Final", "Decision"];
@@ -351,6 +365,35 @@ export default function JobsPage() {
         await refresh(journeyId);
       }),
     [call, refresh]
+  );
+
+  /* Start an assistant already knowing the job — and the round, when one was
+     picked. The graph's pickers see these and skip themselves. */
+  const launch = useCallback(
+    async (
+      assistantType: string,
+      journeyId: string,
+      interviewId?: string
+    ) => {
+      setError(null);
+      try {
+        const r = await fetch("/api/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assistant_type: assistantType,
+            journey_id: journeyId,
+            ...(interviewId ? { interview_id: interviewId } : {}),
+          }),
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        window.location.href = `/session?id=${data.session_id}`;
+      } catch {
+        setError("Could not start that assistant.");
+      }
+    },
+    []
   );
 
   async function addApplication() {
@@ -576,6 +619,9 @@ export default function JobsPage() {
                     onDelete={() => deleteJourney(j.journey_id)}
                     onOutcome={(body) => logOutcome(j.journey_id, body)}
                     onSchedule={(body) => scheduleRound(j.journey_id, body)}
+                    onLaunch={(assistant, interviewId) =>
+                      launch(assistant, j.journey_id, interviewId)
+                    }
                   />
                       ))}
                   </Fragment>
@@ -639,6 +685,7 @@ function Row({
   onDelete,
   onOutcome,
   onSchedule,
+  onLaunch,
 }: {
   journey: Journey;
   types: InterviewType[];
@@ -649,6 +696,7 @@ function Row({
   onDelete: () => void;
   onOutcome: (body: Record<string, unknown>) => Promise<boolean>;
   onSchedule: (body: Record<string, unknown>) => Promise<boolean>;
+  onLaunch: (assistantType: string, interviewId?: string) => void;
 }) {
   const meta = STATUS_META[journey.status] ?? STATUS_META.draft;
   const outcome = OUTCOME_FIELDS.find(([field]) => journey[field]);
@@ -774,6 +822,7 @@ function Row({
             onPick={setPanel}
             onOpenDetail={onToggle}
             onDelete={onDelete}
+            onLaunch={onLaunch}
           />
         </td>
       </tr>
@@ -876,13 +925,16 @@ function RowMenu({
   onPick,
   onOpenDetail,
   onDelete,
+  onLaunch,
 }: {
   journey: Journey;
   onPick: (panel: RowPanel) => void;
   onOpenDetail: () => void;
   onDelete: () => void;
+  onLaunch: (assistantType: string, interviewId?: string) => void;
 }) {
   const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const [rounds, setRounds] = useState<"prep" | "evaluate" | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -903,12 +955,18 @@ function RowMenu({
 
   function open(e: React.MouseEvent<HTMLButtonElement>) {
     const r = e.currentTarget.getBoundingClientRect();
+    setRounds(null);
     setAt({ top: r.bottom + 4, right: window.innerWidth - r.right });
   }
 
   function pick(panel: RowPanel) {
     setAt(null);
     onPick(panel);
+  }
+
+  function start(assistantType: string, interviewId?: string) {
+    setAt(null);
+    onLaunch(assistantType, interviewId);
   }
 
   return (
@@ -933,6 +991,52 @@ function RowMenu({
           className="z-50 w-56 rounded-lg border border-border bg-panel2 p-1 shadow-xl"
         >
           <div className="px-2.5 pt-2 pb-1 text-[9px] uppercase tracking-widest text-subtle">
+            Work on it
+          </div>
+          <MenuItem onClick={() => start("cover_letter")}>
+            {coverLetterLabel(journey)}
+          </MenuItem>
+          {(["prep", "evaluate"] as const).map((mode) => {
+            const assistant = mode === "prep" ? "interview_prep" : "interview_evaluator";
+            const label = mode === "prep" ? "Prep for a round" : "Evaluate a round";
+            return (
+              <div key={mode}>
+                <MenuItem onClick={() => setRounds(rounds === mode ? null : mode)}>
+                  <span className="flex w-full items-center justify-between gap-2">
+                    {label}
+                    <span className="text-[10px] text-subtle">
+                      {journey.interviews.length ? (rounds === mode ? "▾" : "▸") : ""}
+                    </span>
+                  </span>
+                </MenuItem>
+                {rounds === mode && (
+                  <div className="ml-3 border-l border-border pl-1.5">
+                    {journey.interviews.map((iv) => (
+                      <MenuItem
+                        key={iv.interview_id}
+                        onClick={() => start(assistant, iv.interview_id)}
+                      >
+                        <span className="text-[13px]">
+                          {iv.label ? `${iv.type_label} — ${iv.label}` : iv.type_label}
+                          {iv.scheduled_at && (
+                            <span className="text-subtle"> · {formatDate(iv.scheduled_at)}</span>
+                          )}
+                        </span>
+                      </MenuItem>
+                    ))}
+                    <MenuItem onClick={() => start(assistant)}>
+                      <span className="text-subtle">
+                        {journey.interviews.length ? "A round not listed…" : "Pick a round…"}
+                      </span>
+                    </MenuItem>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="my-1 h-px bg-border" />
+          <div className="px-2.5 pt-1 pb-1 text-[9px] uppercase tracking-widest text-subtle">
             Just for the record
           </div>
           <MenuItem onClick={() => pick({ kind: "schedule" })}>

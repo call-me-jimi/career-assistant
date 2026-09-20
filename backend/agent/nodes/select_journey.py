@@ -16,7 +16,7 @@ from backend.agent.interrupts import emit_message
 from backend.agent.state import ApplicationState
 from backend.storage.journeys import get_journey, list_journeys
 
-_SEED_FIELDS = (
+SEED_FIELDS = (
     "job_url",
     "job_title",
     "company_name",
@@ -50,8 +50,13 @@ def _artifact_badges(journey: dict) -> str:
     return ", ".join(labels) if labels else "no artifacts yet"
 
 
-def _continue_phase(assistant_type: str, journey: dict) -> str:
-    """Route to the earliest step whose data is missing; downstream static edges do the rest."""
+def continue_phase(assistant_type: str, journey: dict) -> str:
+    """Route to the earliest step whose data is missing; downstream static edges do the rest.
+
+    Public because a session launched from an application row lands here without
+    ever reaching the picker below — the runner seeds the journey, and this says
+    which node the graph should resume at.
+    """
     if assistant_type == "interview_prep":
         return "research_company" if not journey["company_description"] else "interview_context"
     if assistant_type == "interview_evaluator":
@@ -68,6 +73,14 @@ def _continue_phase(assistant_type: str, journey: dict) -> str:
 
 async def select_journey_node(state: ApplicationState) -> dict:
     sid = state.session_id
+
+    # Launched from an application row: the runner already seeded the journey, so
+    # asking which job would be asking for the thing the user just clicked.
+    if state.journey_id:
+        journey = await get_journey(state.journey_id)
+        if journey:
+            return {"phase": continue_phase(state.assistant_type, journey)}
+
     journeys = await list_journeys(state.profile_id, query=state.journey_query, limit=10)
 
     if not journeys and not state.journey_query:
@@ -120,11 +133,11 @@ async def _handle_reply(state: ApplicationState, journeys: list[dict], reply) ->
             return {"phase": "collect_job", "journey_query": ""}
 
         update: dict = {
-            field: journey[field] for field in _SEED_FIELDS if journey.get(field)
+            field: journey[field] for field in SEED_FIELDS if journey.get(field)
         }
         update["journey_id"] = journey["journey_id"]
         update["journey_query"] = ""
-        update["phase"] = _continue_phase(state.assistant_type, journey)
+        update["phase"] = continue_phase(state.assistant_type, journey)
 
         emit_message(
             sid,

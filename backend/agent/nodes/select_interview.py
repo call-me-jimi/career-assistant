@@ -60,6 +60,17 @@ async def select_interview_node(state: ApplicationState) -> dict:
     is_prep = state.assistant_type == "interview_prep"
     interviews = await list_interviews(state.journey_id) if state.journey_id else []
 
+    # Launched from a specific round in the application menu — that round is the
+    # answer to the question below, so don't ask it.
+    if state.interview_id and any(iv["interview_id"] == state.interview_id for iv in interviews):
+        chosen = next(iv for iv in interviews if iv["interview_id"] == state.interview_id)
+        emit_message(
+            sid,
+            f"Working on **{_describe(chosen)}** ({_badges(chosen)}).",
+            key=f"select_interview:seeded:{state.interview_id}",
+        )
+        return {"phase": _next_phase(state)}
+
     question = (
         "Which interview is this briefing for?"
         if is_prep

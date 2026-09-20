@@ -26,8 +26,8 @@ async def list_profiles() -> list[dict[str, Any]]:
 async def get_profile(profile_id: str) -> dict[str, Any] | None:
     async with connect() as db:
         cur = await db.execute(
-            "SELECT profile_id, name, cv_text, candidate_profile, created_at, updated_at "
-            "FROM profiles WHERE profile_id = ?",
+            "SELECT profile_id, name, cv_text, candidate_profile, applicant_name, "
+            "created_at, updated_at FROM profiles WHERE profile_id = ?",
             (profile_id,),
         )
         row = await cur.fetchone()
@@ -46,8 +46,11 @@ async def get_profile(profile_id: str) -> dict[str, Any] | None:
         "name": row[1],
         "cv_text": row[2],
         "candidate_profile": candidate_profile,
-        "created_at": row[4],
-        "updated_at": row[5],
+        # The candidate's real name. `name` is the profile's label, which the user
+        # may have set to a role ("Head of Data") — never greet anyone with it.
+        "applicant_name": row[4],
+        "created_at": row[5],
+        "updated_at": row[6],
     }
 
 

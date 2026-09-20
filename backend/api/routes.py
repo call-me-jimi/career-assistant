@@ -62,6 +62,11 @@ def _cost_for(model: str | None, input_tokens: int, output_tokens: int, pricing:
 class StartSessionPayload(BaseModel):
     assistant_type: str = "cover_letter"
     language: str = "English"
+    # What the session is about, when it is launched from an application row.
+    # The graph skips the pickers for whichever of these it is given.
+    profile_id: str | None = None
+    journey_id: str | None = None
+    interview_id: str | None = None
 
 
 @router.post("/sessions")
@@ -70,7 +75,31 @@ async def start_session(payload: StartSessionPayload | None = None) -> dict:
     language = (payload.language if payload else "English") or "English"
     if assistant_type not in ASSISTANT_TYPES:
         raise HTTPException(400, f"unknown assistant_type: {assistant_type}")
-    session_id = await create_session(assistant_type, language)
+
+    journey_id = payload.journey_id if payload else None
+    interview_id = payload.interview_id if payload else None
+    profile_id = payload.profile_id if payload else None
+
+    if journey_id:
+        journey = await get_journey(journey_id)
+        if not journey:
+            raise HTTPException(404, "journey not found")
+        # The job's owner wins over anything the client sent.
+        profile_id = journey["profile_id"] or profile_id
+        if interview_id:
+            rounds = {i["interview_id"] for i in await list_interviews(journey_id)}
+            if interview_id not in rounds:
+                raise HTTPException(400, "interview round is not on this job")
+    elif interview_id:
+        raise HTTPException(400, "interview_id needs a journey_id")
+
+    session_id = await create_session(
+        assistant_type,
+        language,
+        profile_id=profile_id,
+        journey_id=journey_id,
+        interview_id=interview_id,
+    )
     registry.get_or_start(session_id)
     return {"session_id": session_id, "assistant_type": assistant_type, "language": language}
 

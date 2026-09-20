@@ -135,43 +135,43 @@ async def test_handle_reply_continue_missing_journey_row_falls_back(monkeypatch)
     assert update == {"phase": "collect_job", "journey_query": ""}
 
 
-# ---- _continue_phase per assistant type -------------------------------------
+# ---- continue_phase per assistant type -------------------------------------
 
 
 def test_continue_phase_interview_prep_missing_research():
     j = {**JOURNEY, "company_description": ""}
-    assert sj._continue_phase("interview_prep", j) == "research_company"
+    assert sj.continue_phase("interview_prep", j) == "research_company"
 
 
 def test_continue_phase_interview_prep_has_research():
     j = {**JOURNEY, "company_description": "Makes widgets"}
-    assert sj._continue_phase("interview_prep", j) == "interview_context"
+    assert sj.continue_phase("interview_prep", j) == "interview_context"
 
 
 def test_continue_phase_interview_evaluator_always_select_interview():
-    assert sj._continue_phase("interview_evaluator", JOURNEY) == "select_interview"
+    assert sj.continue_phase("interview_evaluator", JOURNEY) == "select_interview"
 
 
 def test_continue_phase_cover_letter_missing_research():
     j = {**JOURNEY, "company_description": ""}
-    assert sj._continue_phase("cover_letter", j) == "research_company"
+    assert sj.continue_phase("cover_letter", j) == "research_company"
 
 
 def test_continue_phase_cover_letter_missing_source_type():
     j = {**JOURNEY, "company_description": "x", "job_source_type": ""}
-    assert sj._continue_phase("cover_letter", j) == "classify_flow"
+    assert sj.continue_phase("cover_letter", j) == "classify_flow"
 
 
 def test_continue_phase_cover_letter_missing_strategy():
     j = {**JOURNEY, "company_description": "x", "job_source_type": "direct",
          "positioning_strategy": "", "alignment_strategy": ""}
-    assert sj._continue_phase("cover_letter", j) == "strategy"
+    assert sj.continue_phase("cover_letter", j) == "strategy"
 
 
 def test_continue_phase_cover_letter_complete_goes_to_cl_loop():
     j = {**JOURNEY, "company_description": "x", "job_source_type": "direct",
          "positioning_strategy": "Lead with impact", "alignment_strategy": ""}
-    assert sj._continue_phase("cover_letter", j) == "cl_loop"
+    assert sj.continue_phase("cover_letter", j) == "cl_loop"
 
 
 # ---- _handle_reply: other branches ------------------------------------------

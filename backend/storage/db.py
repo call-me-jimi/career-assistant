@@ -19,12 +19,19 @@ CREATE TABLE IF NOT EXISTS profiles (
     updated_at      REAL NOT NULL
 );
 
+-- profile_id / journey_id / interview_id are what a session was launched *about*,
+-- set when it is started from an application row. The runner seeds them into the
+-- initial state so the graph can skip the pickers that would otherwise ask for
+-- what the user already chose.
 CREATE TABLE IF NOT EXISTS sessions (
     session_id     TEXT PRIMARY KEY,
     applicant_name TEXT,
     phase          TEXT,
     assistant_type TEXT NOT NULL DEFAULT 'cover_letter',
     language       TEXT NOT NULL DEFAULT 'English',
+    profile_id     TEXT,
+    journey_id     TEXT,
+    interview_id   TEXT,
     created_at     REAL NOT NULL,
     last_activity  REAL NOT NULL
 );
@@ -297,6 +304,13 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     interview_cols = {row[1] for row in await cur.fetchall()}
     if "scheduled_at" not in interview_cols:
         await db.execute("ALTER TABLE job_interviews ADD COLUMN scheduled_at REAL")
+
+    # What a session was launched about, when it was started from an application row.
+    cur = await db.execute("PRAGMA table_info(sessions)")
+    session_cols = {row[1] for row in await cur.fetchall()}
+    for col in ("profile_id", "journey_id", "interview_id"):
+        if col not in session_cols:
+            await db.execute(f"ALTER TABLE sessions ADD COLUMN {col} TEXT")
 
     # Backfill job_journeys from the latest application_records row per
     # (profile, company, title). Idempotent — NOT EXISTS makes reruns no-ops.

@@ -21,8 +21,9 @@ const LANGUAGES = [
 ];
 
 const NAV_LINKS = [
+  { href: "/jobs", label: "Applications" },
+  { href: "/learned", label: "Learned" },
   { href: "/profiles", label: "Profiles" },
-  { href: "/jobs", label: "Jobs" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/settings", label: "Settings" },
 ];

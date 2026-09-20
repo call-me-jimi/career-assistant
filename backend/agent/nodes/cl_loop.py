@@ -14,7 +14,11 @@ from backend.config import load_settings
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm, parse_hm_feedback
 from backend.llm.translate import with_language_directive
-from backend.storage.playbook import get_playbook, render_playbook_for_prompt
+from backend.storage.playbook import (
+    get_playbook,
+    list_shared_items,
+    render_playbook_for_prompt,
+)
 
 
 def _cl_prompt_stem(source: str) -> str:
@@ -42,7 +46,9 @@ async def cl_loop_node(state: ApplicationState) -> dict:
     profile_playbook_text = ""
     if settings.learning_enabled and state.profile_id:
         playbook = await get_playbook(state.profile_id)
-        profile_playbook_text = render_playbook_for_prompt(playbook)
+        # Plus whatever another CV learned and the candidate promoted to all of them.
+        shared = await list_shared_items(state.profile_id)
+        profile_playbook_text = render_playbook_for_prompt(playbook, shared=shared)
 
     for iteration in range(1, max_iters + 1):
         # Generate

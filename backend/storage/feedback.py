@@ -348,6 +348,11 @@ async def list_evaluator_calibration(
         for verdict in verdicts:
             pairs.append(
                 {
+                    # For the UI only: the calibration page reads the job's dates to
+                    # split verdicts by what actually happened. It is not rendered into
+                    # the evaluator prompt — render_calibration_for_prompt() whitelists
+                    # its fields, and an outcome must never reach the evaluator.
+                    "journey_id": journey_id,
                     "company_name": company or "",
                     "job_title": job_title or "",
                     "interview_id": verdict["interview_id"],

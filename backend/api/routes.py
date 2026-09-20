@@ -37,7 +37,13 @@ from backend.storage.journeys import (
     list_journeys,
     update_journey,
 )
-from backend.storage.playbook import get_playbook, remove_playbook_item, upsert_playbook
+from backend.storage.playbook import (
+    get_playbook,
+    list_shared_items,
+    remove_playbook_item,
+    set_item_shared,
+    upsert_playbook,
+)
 from backend.storage.profiles import delete_profile, get_profile, list_profiles
 from backend.storage.sessions import ASSISTANT_TYPES, create_session, get_session
 from backend.storage.stats import get_global_stats
@@ -816,7 +822,61 @@ async def update_settings(payload: SettingsPayload) -> dict:
 async def profile_playbook(profile_id: str) -> dict:
     if not await get_profile(profile_id):
         raise HTTPException(404, "profile not found")
-    return await get_playbook(profile_id)
+    return {**await get_playbook(profile_id), "shared": await list_shared_items(profile_id)}
+
+
+class SharePayload(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    shared: bool = True
+
+
+@router.post("/profiles/{profile_id}/playbook/{category}/{index}/share")
+async def share_playbook_item(
+    profile_id: str, category: str, index: int, payload: SharePayload
+) -> dict:
+    """Promote a learning to every CV, or stop it spreading.
+
+    Setting it takes effect on the next generation, for free. Clearing it stops
+    future injection but cannot un-write an item another profile's synthesis has
+    already absorbed — see /playbook/resynthesize.
+    """
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+    if not await set_item_shared(profile_id, category, index, payload.shared):
+        raise HTTPException(404, "playbook item not found")
+    return {"ok": True, "shared": payload.shared}
+
+
+@router.get("/profiles/{profile_id}/calibration")
+async def profile_calibration(profile_id: str) -> dict:
+    """Is the evaluator honest? Its mean score on rounds that advanced against
+    rounds that were rejected.
+
+    A pair only exists where a round has both an evaluation and covering employer
+    feedback, so this stays empty until a few applications have run their course.
+    """
+    if not await get_profile(profile_id):
+        raise HTTPException(404, "profile not found")
+
+    advanced: list[float] = []
+    rejected: list[float] = []
+    for pair in await list_evaluator_calibration(profile_id):
+        score = (pair.get("assistant_said") or {}).get("overall_score")
+        if score is None:
+            continue
+        journey = await get_journey(pair.get("journey_id") or "")
+        if not journey:
+            continue
+        (rejected if journey.get("rejected_at") else advanced).append(float(score))
+
+    def mean(xs: list[float]) -> float | None:
+        return round(sum(xs) / len(xs), 1) if xs else None
+
+    return {
+        "advanced": {"n": len(advanced), "mean": mean(advanced)},
+        "rejected": {"n": len(rejected), "mean": mean(rejected)},
+    }
 
 
 @router.patch("/profiles/{profile_id}/playbook")

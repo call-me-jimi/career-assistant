@@ -305,13 +305,14 @@ POST /api/journeys/{id}/duplicate → the new journey
 
 Copies posting, company description, location, profile and notes. Leaves dates, artifacts and
 feedback behind. The new journey's cover-letter generation then sees the old rejection —
-**already implemented**: `list_recent_feedback()` (`backend/storage/feedback.py:110`) always
-includes same-company entries regardless of the window and sorts them first. No caller passes
-`company_name`. Fixing that is three one-line changes:
+**already implemented end to end**: `list_recent_feedback()` (`backend/storage/feedback.py:110`)
+always includes same-company entries regardless of the window and sorts them first, and
+`strategy.py:23` and `interview_briefing.py:24` both already pass `company_name`.
 
-- `backend/agent/nodes/cl_loop.py` — currently passes no employer feedback at all
-- `backend/agent/nodes/interview_briefing.py:21`
-- `backend/agent/nodes/synthesize_learning.py:138`
+> **Correction (implementation).** An earlier draft of this section claimed no caller passed
+> `company_name` and proposed three one-line fixes. That was wrong: two of the three already
+> did. The third, `synthesize_learning.py:138`, deliberately does not — synthesis is about
+> themes *across* applications, so narrowing it to one company would be a bug. No change needed.
 
 Simon Kucher and Jupus each appear twice in the current data.
 
@@ -336,10 +337,21 @@ Two distinct mechanisms, and conflating them is the easy mistake:
 
 1. **`shared: true`** — the item is rendered into every profile's prompt from now on. Immediate,
    free, and reversible: unsetting it stops the injection.
-2. **The optional re-run** — `POST /api/profiles/{id}/playbook/resynthesize` re-runs
-   `synthesize_learning` for the *other* profiles so they can reconcile the new input with their
-   own themes, in their own words. Costs LLM calls; the confirm names the price using the existing
-   per-model pricing table.
+2. **The optional re-run** — the other profiles reconcile the new input with their own themes, in
+   their own words. Costs LLM calls; the confirm names the price using the existing per-model
+   pricing table.
+
+> **Correction (implementation).** This was specified as "re-run `synthesize_learning` for the
+> other profiles". It cannot be: that node synthesises *from a just-finished application* — it
+> needs `this_session_signals` (the cover letter that was written, the hiring-manager
+> iterations, the revision feedback) and the `app_id` it just inserted. A profile that has not
+> just finished an application has none of that, and feeding the prompt empty signals would
+> produce noise.
+>
+> The re-run needs its own LLM task — *reconcile this shared learning into this playbook* — with
+> its own prompt pair, a `KNOWN_TASKS` entry and a pricing row. **Not implemented.** Mechanism
+> (1) works without it: a shared item reaches every profile's prompt immediately and for free.
+> What is missing is only the rewording into each playbook's own voice.
 
 **Sharing is one-way** in exactly this sense: (1) can be undone, (2) cannot. Once another
 profile's synthesis has absorbed the item, the text is written there. Un-sharing stops it

@@ -8,6 +8,28 @@ from typing import Any
 
 from backend.storage.db import connect
 
+# The list-valued categories. Each item may carry `shared: true`, meaning the
+# candidate promoted it to every CV — see list_shared_items().
+LIST_CATEGORIES = (
+    "never_say",
+    "prefer_phrasing",
+    "recurring_hm_weaknesses",
+    "employer_feedback_themes",
+)
+
+# Which key holds an item's text, per category. Used to dedupe own items against
+# shared ones from another profile.
+_LABEL_KEY = {
+    "never_say": "phrase",
+    "prefer_phrasing": "phrase",
+    "recurring_hm_weaknesses": "weakness",
+    "employer_feedback_themes": "theme",
+}
+
+
+def _shared_flag(item: Any) -> bool:
+    return bool(item.get("shared")) if isinstance(item, dict) else False
+
 
 def _empty() -> dict[str, Any]:
     return {
@@ -58,7 +80,7 @@ def _normalize_phrase_items(raw: Any) -> list[dict[str, str]]:
         else:
             continue
         if phrase:
-            items.append({"phrase": phrase, "reason": reason})
+            items.append({"phrase": phrase, "reason": reason, "shared": _shared_flag(item)})
     return items
 
 
@@ -73,7 +95,7 @@ def _normalize_weakness_items(raw: Any) -> list[dict[str, str]]:
         else:
             continue
         if weakness:
-            items.append({"weakness": weakness})
+            items.append({"weakness": weakness, "shared": _shared_flag(item)})
     return items
 
 
@@ -92,7 +114,7 @@ def _normalize_theme_items(raw: Any) -> list[dict[str, str]]:
         else:
             continue
         if theme:
-            items.append({"theme": theme, "evidence": evidence})
+            items.append({"theme": theme, "evidence": evidence, "shared": _shared_flag(item)})
     return items
 
 
@@ -150,12 +172,90 @@ async def remove_playbook_item(profile_id: str, category: str, index: int) -> bo
     return True
 
 
-def render_playbook_for_prompt(playbook: dict[str, Any]) -> str:
+async def set_item_shared(
+    profile_id: str, category: str, index: int, shared: bool
+) -> bool:
+    """Promote one learned item to every CV, or stop it spreading.
+
+    Nothing crosses profiles on its own: a lesson is learned for the profile that
+    earned it, and only this makes it readable elsewhere. Clearing the flag stops
+    future injection — it cannot reach back into a playbook whose synthesis has
+    already absorbed the item, which is why sharing is described as one-way.
+    """
+    if category not in LIST_CATEGORIES:
+        return False
+    playbook = await get_playbook(profile_id)
+    items = playbook.get(category) or []
+    if not (0 <= index < len(items)) or not isinstance(items[index], dict):
+        return False
+    items[index]["shared"] = bool(shared)
+    playbook[category] = items
+    await upsert_playbook(profile_id, playbook)
+    return True
+
+
+async def list_shared_items(exclude_profile_id: str) -> dict[str, list[dict[str, Any]]]:
+    """Items other profiles have promoted to every CV, by category.
+
+    Each carries `profile_id` so the UI can say where a lesson came from; that key
+    is added on read and never stored.
+    """
+    async with connect() as db:
+        cur = await db.execute(
+            f"SELECT profile_id, {', '.join(LIST_CATEGORIES)} "
+            "FROM profile_playbook WHERE profile_id != ?",
+            (exclude_profile_id,),
+        )
+        rows = await cur.fetchall()
+
+    out: dict[str, list[dict[str, Any]]] = {c: [] for c in LIST_CATEGORIES}
+    for row in rows:
+        for offset, category in enumerate(LIST_CATEGORIES, start=1):
+            for item in json.loads(row[offset] or "[]"):
+                if isinstance(item, dict) and item.get("shared"):
+                    out[category].append({**item, "profile_id": row[0]})
+    return out
+
+
+def _label(category: str, item: Any) -> str:
+    key = _LABEL_KEY.get(category, "")
+    if isinstance(item, str):
+        return item
+    if isinstance(item, dict):
+        return str(item.get(key, ""))
+    return ""
+
+
+def merge_shared(
+    playbook: dict[str, Any], shared: dict[str, list[dict[str, Any]]] | None
+) -> dict[str, Any]:
+    """The playbook a prompt should actually see: this profile's items, plus what
+    other profiles have promoted. Own items win — a profile that already learned
+    something keeps its own wording for it."""
+    if not shared:
+        return playbook
+    merged = dict(playbook)
+    for category in LIST_CATEGORIES:
+        own = list(playbook.get(category) or [])
+        seen = {_label(category, i) for i in own}
+        for item in shared.get(category) or []:
+            label = _label(category, item)
+            if label and label not in seen:
+                own.append(item)
+                seen.add(label)
+        merged[category] = own
+    return merged
+
+
+def render_playbook_for_prompt(
+    playbook: dict[str, Any], shared: dict[str, list[dict[str, Any]]] | None = None
+) -> str:
     """Render the playbook as a plain-text block to inject into the generation prompt.
 
     Returns empty string when the playbook has no content — callers should treat an
     empty string as "no guidance, behave exactly like the prior version".
     """
+    playbook = merge_shared(playbook, shared)
     never_say = playbook.get("never_say") or []
     prefer = playbook.get("prefer_phrasing") or []
     weaknesses = playbook.get("recurring_hm_weaknesses") or []

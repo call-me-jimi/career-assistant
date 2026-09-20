@@ -25,7 +25,8 @@ async def test_themes_roundtrip(test_db):
         "p1",
         {
             "employer_feedback_themes": [
-                {"theme": "unclear industry motivation", "evidence": "said by 2 companies"}
+                {"theme": "unclear industry motivation", "evidence": "said by 2 companies",
+         "shared": False}
             ]
         },
     )
@@ -33,7 +34,8 @@ async def test_themes_roundtrip(test_db):
     themes = (await get_playbook("p1"))["employer_feedback_themes"]
 
     assert themes == [
-        {"theme": "unclear industry motivation", "evidence": "said by 2 companies"}
+        {"theme": "unclear industry motivation", "evidence": "said by 2 companies",
+         "shared": False}
     ]
 
 
@@ -44,7 +46,7 @@ async def test_bare_strings_and_junk_are_normalised(test_db):
     )
 
     assert (await get_playbook("p1"))["employer_feedback_themes"] == [
-        {"theme": "bare string", "evidence": ""}
+        {"theme": "bare string", "evidence": "", "shared": False}
     ]
 
 
@@ -61,10 +63,12 @@ async def test_themes_do_not_disturb_the_other_categories(test_db):
 
     playbook = await get_playbook("p1")
 
-    assert playbook["never_say"] == [{"phrase": "synergy", "reason": ""}]
-    assert playbook["recurring_hm_weaknesses"] == [{"weakness": "vague on scope"}]
+    assert playbook["never_say"] == [{"phrase": "synergy", "reason": "", "shared": False}]
+    assert playbook["recurring_hm_weaknesses"] == [
+        {"weakness": "vague on scope", "shared": False}
+    ]
     assert playbook["employer_feedback_themes"] == [
-        {"theme": "needs sharper ownership stories", "evidence": ""}
+        {"theme": "needs sharper ownership stories", "evidence": "", "shared": False}
     ]
     assert playbook["tone_notes"] == "direct"
 
@@ -78,7 +82,7 @@ async def test_a_theme_can_be_removed(test_db):
     assert await remove_playbook_item("p1", "employer_feedback_themes", 0) is True
 
     assert (await get_playbook("p1"))["employer_feedback_themes"] == [
-        {"theme": "second", "evidence": ""}
+        {"theme": "second", "evidence": "", "shared": False}
     ]
 
 

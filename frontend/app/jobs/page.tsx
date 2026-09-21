@@ -1,6 +1,14 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Brand from "../../components/Brand";
 
 type Interview = {
@@ -152,13 +160,14 @@ const SOURCES: [string, string][] = [
 type RowPanel = { kind: "outcome"; outcome: OutcomeKind } | { kind: "schedule" } | null;
 
 /* Mirrors continue_phase() in backend/agent/nodes/select_journey.py, which already
-   knows which step is missing — the menu just says it out loud instead of offering
-   a vague "continue". */
-function coverLetterLabel(j: Journey): string {
-  if (!j.company_description) return "Research the company";
-  if (!j.positioning_strategy && !j.alignment_strategy) return "Work out the angle";
-  if (!j.cover_letter) return "Write the cover letter";
-  return "Revise the cover letter";
+   knows which step is missing. The item names the artifact so the destination is
+   obvious; the hint says which step the assistant resumes at, which is the bit
+   continue_phase actually decides. */
+function coverLetterStep(j: Journey): string {
+  if (!j.company_description) return "from research";
+  if (!j.positioning_strategy && !j.alignment_strategy) return "from the angle";
+  if (!j.cover_letter) return "from the draft";
+  return "";
 }
 
 /* Progress strip: ten interview columns collapse into six aligned slots. */
@@ -260,7 +269,7 @@ export default function JobsPage() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [sort, setSort] = useState("contact");
+  const [sort, setSort] = useState("applied");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSED_BY_DEFAULT));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -945,9 +954,20 @@ function RowMenu({
   onDelete: () => void;
   onLaunch: (assistantType: string, interviewId?: string) => void;
 }) {
-  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const [at, setAt] = useState<{ below: number; above: number; right: number } | null>(null);
+  const [top, setTop] = useState(0);
   const [rounds, setRounds] = useState<"prep" | "evaluate" | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  /* Fixed positioning frees the menu from the table's overflow clip but not from
+     the viewport: a row near the bottom would open half off-screen. Measure once
+     it is up — and again when a submenu grows it — and flip it above the button
+     when it no longer fits below. */
+  useLayoutEffect(() => {
+    if (!at || !ref.current) return;
+    const h = ref.current.offsetHeight;
+    setTop(at.below + h <= window.innerHeight - 8 ? at.below : Math.max(8, at.above - h));
+  }, [at, rounds]);
 
   useEffect(() => {
     if (!at) return;
@@ -968,7 +988,8 @@ function RowMenu({
   function open(e: React.MouseEvent<HTMLButtonElement>) {
     const r = e.currentTarget.getBoundingClientRect();
     setRounds(null);
-    setAt({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    setTop(r.bottom + 4);
+    setAt({ below: r.bottom + 4, above: r.top - 4, right: window.innerWidth - r.right });
   }
 
   function pick(panel: RowPanel) {
@@ -999,18 +1020,21 @@ function RowMenu({
         <div
           ref={ref}
           role="menu"
-          style={{ position: "fixed", top: at.top, right: at.right }}
-          className="z-50 w-56 rounded-lg border border-border bg-panel2 p-1 shadow-xl"
+          style={{ position: "fixed", top, right: at.right, maxHeight: "calc(100vh - 16px)" }}
+          className="z-50 w-64 overflow-y-auto rounded-lg border border-border bg-panel2 p-1 shadow-xl"
         >
           <div className="px-2.5 pt-2 pb-1 text-[9px] uppercase tracking-widest text-subtle">
             Work on it
           </div>
           <MenuItem onClick={() => start("cover_letter")}>
-            {coverLetterLabel(journey)}
+            <span className="flex w-full items-center justify-between gap-2 whitespace-nowrap">
+              {journey.cover_letter ? "Revise the cover letter" : "Create a cover letter"}
+              <span className="text-[10px] text-subtle">{coverLetterStep(journey)}</span>
+            </span>
           </MenuItem>
           {(["prep", "evaluate"] as const).map((mode) => {
             const assistant = mode === "prep" ? "interview_prep" : "interview_evaluator";
-            const label = mode === "prep" ? "Prep for a round" : "Evaluate a round";
+            const label = mode === "prep" ? "Prep for an interview" : "Evaluate an interview";
             return (
               <div key={mode}>
                 <MenuItem onClick={() => setRounds(rounds === mode ? null : mode)}>
@@ -1434,7 +1458,27 @@ function Drawer({
   }
 
   return (
-    <div className="grid gap-px bg-border md:grid-cols-[minmax(280px,1.05fr)_minmax(190px,0.7fr)_minmax(300px,1.4fr)]">
+    <div>
+      {/* The columns truncate title, company and location to stay aligned; here
+          they wrap in full, so opening a row is how you read a long one. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border px-4 py-3">
+        <span className="text-sm font-semibold">{journey.job_title || "Untitled role"}</span>
+        <span className="text-xs text-subtle">
+          {[journey.company_name, journey.location].filter(Boolean).join(" · ")}
+        </span>
+        {journey.job_url && (
+          <a
+            href={journey.job_url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] tracking-wider text-accent hover:underline"
+          >
+            JOB AD →
+          </a>
+        )}
+      </div>
+
+      <div className="grid gap-px bg-border md:grid-cols-[minmax(280px,1.05fr)_minmax(190px,0.7fr)_minmax(300px,1.4fr)]">
       {/* every date that drives the status, in the order it happens */}
       <section className="bg-panel p-4 space-y-2.5 min-w-0">
         <Heading>Dates</Heading>
@@ -1576,6 +1620,7 @@ function Drawer({
           </button>
         </div>
       </section>
+      </div>
     </div>
   );
 }
@@ -1720,7 +1765,9 @@ function EditableText({
   return (
     <button
       onClick={() => setEditing(true)}
-      title="Click to edit"
+      /* The cell truncates; the tooltip is the cheapest way to read the rest
+         without opening the row. */
+      title={value ? `${value} — click to edit` : "Click to edit"}
       className={`block w-full text-left truncate hover:text-accent ${className} ${
         value ? "" : "text-subtle italic"
       }`}

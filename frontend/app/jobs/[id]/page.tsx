@@ -383,10 +383,10 @@ export default function JobDetailPage() {
 
             <div className="flex gap-1.5 flex-wrap shrink-0">
               <Action onClick={() => launch("interview_prep")} disabled={busy}>
-                Prep a round
+                Prep for an interview
               </Action>
               <Action onClick={() => launch("interview_evaluator")} disabled={busy}>
-                Evaluate a round
+                Evaluate an interview
               </Action>
               {!journey.on_hold_at && (
                 <Action onClick={() => logOutcome("on_hold")} disabled={busy}>

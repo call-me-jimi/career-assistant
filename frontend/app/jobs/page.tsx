@@ -176,15 +176,15 @@ const SLOT_OF: Record<string, number> = {
   leadership: 4,
   final: 4,
 };
-/* One muted step per stage, walking blue → violet, so how far an application got
-   reads at a glance without the strip shouting across 51 rows. Desaturated on
-   purpose: the status pill and the decision segment are the loud parts. */
+/* One step per stage, walking teal → blue → violet → rose. The hue does the
+   work: ~30° between neighbours, so adjacent segments stay apart at 8px wide,
+   while saturation stays near 30% to keep the strip quiet across 51 rows. */
 const SLOT_FILL = [
-  "bg-[#4f6f9f] border-[#4f6f9f]", // Applied
-  "bg-[#5f73ac] border-[#5f73ac]", // Screening
-  "bg-[#7176b4] border-[#7176b4]", // Manager
-  "bg-[#847aba] border-[#847aba]", // Deep dive
-  "bg-[#967dbe] border-[#967dbe]", // Final
+  "bg-[#5c92ad] border-[#5c92ad]", // Applied    — muted teal-blue
+  "bg-[#7182b7] border-[#7182b7]", // Screening  — muted blue
+  "bg-[#9081bb] border-[#9081bb]", // Manager    — muted indigo
+  "bg-[#a77cb6] border-[#a77cb6]", // Deep dive  — muted purple
+  "bg-[#b67294] border-[#b67294]", // Final      — muted rose
 ];
 
 /* The last segment stays semantic — it says how it ended, not how far it got. */

@@ -176,6 +176,18 @@ const SLOT_OF: Record<string, number> = {
   leadership: 4,
   final: 4,
 };
+/* One muted step per stage, walking blue → violet, so how far an application got
+   reads at a glance without the strip shouting across 51 rows. Desaturated on
+   purpose: the status pill and the decision segment are the loud parts. */
+const SLOT_FILL = [
+  "bg-[#4f6f9f] border-[#4f6f9f]", // Applied
+  "bg-[#5f73ac] border-[#5f73ac]", // Screening
+  "bg-[#7176b4] border-[#7176b4]", // Manager
+  "bg-[#847aba] border-[#847aba]", // Deep dive
+  "bg-[#967dbe] border-[#967dbe]", // Final
+];
+
+/* The last segment stays semantic — it says how it ended, not how far it got. */
 const SEG_END: Record<string, string> = {
   rejected: "bg-err border-err",
   offer: "bg-ok border-ok",
@@ -1335,13 +1347,13 @@ function Strip({ journey }: { journey: Journey }) {
         let tip = `${slotLabel} · not reached`;
 
         if (i === 0 && journey.applied_at) {
-          cls = "bg-accent border-accent";
+          cls = SLOT_FILL[0];
           tip = `Applied · ${formatDate(journey.applied_at)}`;
         } else if (i === 5 && outcome) {
-          cls = SEG_END[journey.status] ?? "bg-accent border-accent";
+          cls = SEG_END[journey.status] ?? SLOT_FILL[4];
           tip = `Decision · ${outcome[1]} ${formatDate(journey[outcome[0]] as number)}`;
         } else if (i > 0 && i < 5 && bySlot[i].length) {
-          cls = "bg-accent border-accent";
+          cls = SLOT_FILL[i];
           tip = `${slotLabel} · ${bySlot[i]
             .map(
               (iv) =>

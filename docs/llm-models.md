@@ -28,6 +28,7 @@ Sources: [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pr
 | `gpt-5.5-pro` | 30.00 | 180.00 |
 | `gpt-5.4` | 2.50 | 15.00 |
 | `gpt-5.4-mini` | 0.75 | 4.50 |
+| `claude-opus-5-5` | 4.00 | 20.00 |
 | `claude-opus-4-8` | 5.00 | 25.00 |
 | `claude-opus-4-7` | 5.00 | 25.00 |
 | `claude-opus-4-6` | 5.00 | 25.00 |
@@ -61,7 +62,7 @@ if not cfg.model_name.lower().startswith(("gpt-5", "o1", "o3")):
 
 Extend this tuple if adding a new model family that doesn't accept temperature (e.g. a future `o4` series).
 
-For Anthropic models, a separate guard covers `claude-opus-4` (which uses default temperature). Update similarly if a new Anthropic model rejects temperature.
+For Anthropic models, a separate guard covers `claude-opus-4`, `claude-opus-5` and `claude-sonnet-5` (which reject a custom temperature; the service uses default temperature). Update similarly if a new Anthropic model rejects temperature.
 
 ## Using the model
 

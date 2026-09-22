@@ -362,14 +362,22 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     # --- Tracker backfill. Every statement is WHERE ... IS NULL, so reruns are
     # no-ops and a date the user corrected by hand is never overwritten.
 
-    # A journey exists because an assistant was run on that job, so treat it as
-    # applied. The cover letter's timestamp is the closest thing to a send date.
-    await db.execute(
-        """
-        UPDATE job_journeys SET applied_at = COALESCE(cover_letter_at, created_at)
-        WHERE applied_at IS NULL
-        """
-    )
+    # A journey that predates the tracker exists because an assistant was run on
+    # that job, so treat it as applied; the cover letter's timestamp is the
+    # closest thing to a send date. Unlike its neighbours this one runs ONCE,
+    # guarded by user_version: the Cover Letter assistant now asks whether you
+    # actually submitted, so a NULL applied_at is a deliberate "not sent yet"
+    # (status draft) and a rerun would quietly promote it to applied.
+    cur = await db.execute("PRAGMA user_version")
+    (user_version,) = await cur.fetchone()
+    if user_version < 1:
+        await db.execute(
+            """
+            UPDATE job_journeys SET applied_at = COALESCE(cover_letter_at, created_at)
+            WHERE applied_at IS NULL
+            """
+        )
+        await db.execute("PRAGMA user_version = 1")
 
     await db.execute(
         "UPDATE job_interviews SET scheduled_at = created_at WHERE scheduled_at IS NULL"

@@ -116,6 +116,13 @@ class ApplicationState(BaseModel):
     advisor_transcript: list[ChatTurn] = Field(default_factory=list)
     advisor_swot: str = ""
 
+    # Tracker hand-off (Cover Letter). Collected by log_application before the
+    # export writes, because the journey row and the spreadsheet row both need
+    # them. `applied_at` is None until the user says they submitted.
+    application_notes: str = ""
+    applied_at: float | None = None
+    application_logged: bool = False
+
     # Export
     export_selection: list[str] = Field(default_factory=list)
     export_results: list[ExportResult] = Field(default_factory=list)

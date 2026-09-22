@@ -66,6 +66,7 @@ const INTERRUPT_NODES = new Set([
   "classify_flow",
   "cl_review",
   "qa_menu",
+  "log_application",
   "export",
 ]);
 
@@ -84,6 +85,7 @@ const PHASE_TO_NODE: Record<string, string> = {
   cl_review: "cl_review",
   qa_menu: "qa_menu",
   qa_answer: "qa_answer",
+  log_application: "log_application",
   export: "export",
   done: "__done__",
 };
@@ -105,6 +107,7 @@ const NODE_LABELS: Record<string, string> = {
   cl_review: "Cover Letter Review",
   qa_menu: "Q&A Menu",
   qa_answer: "Q&A Answer",
+  log_application: "Log Application",
   export: "Export",
 };
 

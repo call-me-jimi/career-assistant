@@ -180,17 +180,40 @@ async def test_deleting_a_journey_takes_its_events(test_db):
 # --- migration backfill -----------------------------------------------------
 
 
-async def test_backfill_gives_existing_journeys_a_submission_date(test_db):
+async def test_backfill_gives_pre_tracker_journeys_a_submission_date(test_db):
     jid = await create_journey(
         profile_id="p1", company_name="ACME", job_title="Engineer", cover_letter="Dear ACME"
     )
     await update_journey(jid, applied_at=None)
+    # The fixture already migrated this DB. Rewind the marker so the backfill
+    # sees it as a database that predates the tracker.
+    async with connect() as db:
+        await db.execute("PRAGMA user_version = 0")
+        await db.commit()
 
     await db_module.init_db()
 
     journey = await get_journey(jid)
     assert journey["applied_at"] == journey["cover_letter_at"]
     assert _status(journey, []) == "applied"
+
+
+async def test_backfill_never_reruns_over_a_deliberate_blank(test_db):
+    """Once is once.
+
+    A journey with no applied_at now means "not submitted yet" — the Cover
+    Letter assistant asks — so a second migration pass must leave it a draft
+    instead of dating it from the cover letter.
+    """
+    jid = await create_journey(
+        profile_id="p1", company_name="ACME", job_title="Engineer", cover_letter="Dear ACME"
+    )
+
+    await db_module.init_db()
+
+    journey = await get_journey(jid)
+    assert journey["applied_at"] is None
+    assert _status(journey, []) == "draft"
 
 
 async def test_backfill_dates_existing_rounds(test_db):
@@ -212,7 +235,10 @@ async def test_backfill_maps_feedback_outcomes_onto_dates(test_db):
     rejected = await create_journey(profile_id="p1", company_name="A", job_title="R")
     offered = await create_journey(profile_id="p1", company_name="B", job_title="O")
     withdrew = await create_journey(profile_id="p1", company_name="C", job_title="W")
-    ghosted = await create_journey(profile_id="p1", company_name="D", job_title="G")
+    # Ghosted means it was sent and nothing came back, so it carries a date.
+    ghosted = await create_journey(
+        profile_id="p1", company_name="D", job_title="G", applied_at=DAY
+    )
 
     for jid, outcome in (
         (rejected, "rejected"),

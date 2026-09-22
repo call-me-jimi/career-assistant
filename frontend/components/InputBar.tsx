@@ -85,6 +85,13 @@ function quickRepliesFor(pending?: InterruptPayload | null): QuickReply[] {
     case "select_interview":
       // Options vary per assistant / per job, so the node ships them with the interrupt.
       return Array.isArray(pending?.options) ? pending.options : [];
+    case "application_notes":
+      return [{ label: "Nothing to note", value: "skip" }];
+    case "application_submitted":
+      return [
+        { label: "Yes, submitted", value: "yes" },
+        { label: "Not yet", value: "no" },
+      ];
     case "export_sheets":
       return [
         { label: "Yes, add a row", value: "yes" },

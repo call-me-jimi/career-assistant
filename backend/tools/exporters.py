@@ -456,6 +456,60 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
     return str(path)
 
 
+def _sheet_row(state: dict[str, Any], header: list[str]) -> tuple[list[str], int]:
+    """The row to append, laid out to match the sheet's own header.
+
+    Split out of export_google_sheets so the column mapping can be exercised
+    without a live spreadsheet. Returns the row plus the Title column index,
+    which the caller also needs to find the first free line.
+    """
+
+    def find_col(name: str) -> int | None:
+        lname = name.strip().lower()
+        for i, val in enumerate(header):
+            if str(val).strip().lower() == lname:
+                return i
+        return None
+
+    title_col = find_col("title") if find_col("title") is not None else 0
+    company_col = find_col("company")
+    location_col = find_col("location")
+    status_col = find_col("status")
+    submission_col = find_col("submission")
+    notes_col = find_col("notes")
+
+    job_title = (state.get("job_title") or "").replace('"', "'")
+    job_url = (state.get("job_url") or "").strip()
+    if job_title and job_url:
+        title_cell = f'=HYPERLINK("{job_url}","{job_title}")'
+    else:
+        title_cell = job_title
+
+    # None until the user confirms they sent it (log_application node), so the
+    # sheet says what the tracker says instead of assuming every export was sent.
+    applied_at = state.get("applied_at")
+
+    width = max(len(header), 1)
+    row = [""] * width
+
+    if 0 <= title_col < width:
+        row[title_col] = title_cell
+    if company_col is not None and 0 <= company_col < width:
+        row[company_col] = state.get("company_name") or ""
+    if location_col is not None and 0 <= location_col < width:
+        row[location_col] = state.get("location") or ""
+    if status_col is not None and 0 <= status_col < width:
+        row[status_col] = "Submitted" if applied_at else "Draft"
+    if submission_col is not None and 0 <= submission_col < width:
+        row[submission_col] = (
+            time.strftime("%d/%m/%Y", time.localtime(applied_at)) if applied_at else ""
+        )
+    if notes_col is not None and 0 <= notes_col < width:
+        row[notes_col] = state.get("application_notes") or ""
+
+    return row, title_col
+
+
 def export_google_sheets(state: dict[str, Any]) -> str:
     from backend.config import load_settings
     settings = load_settings()
@@ -473,13 +527,8 @@ def export_google_sheets(state: dict[str, Any]) -> str:
 
     values = ws.get_all_values()
     header = values[0] if values else []
-
-    def find_col(name: str) -> int | None:
-        lname = name.strip().lower()
-        for i, val in enumerate(header):
-            if str(val).strip().lower() == lname:
-                return i
-        return None
+    row, title_col = _sheet_row(state, header)
+    width = len(row)
 
     def col_letter(idx: int) -> str:
         result = ""
@@ -488,36 +537,6 @@ def export_google_sheets(state: dict[str, Any]) -> str:
             idx, rem = divmod(idx - 1, 26)
             result = chr(65 + rem) + result
         return result
-
-    title_col = find_col("title") if find_col("title") is not None else 0
-    company_col = find_col("company")
-    location_col = find_col("location")
-    status_col = find_col("status")
-    submission_col = find_col("submission")
-    notes_col = find_col("notes")
-
-    job_title = (state.get("job_title") or "").replace('"', "'")
-    job_url = (state.get("job_url") or "").strip()
-    if job_title and job_url:
-        title_cell = f'=HYPERLINK("{job_url}","{job_title}")'
-    else:
-        title_cell = job_title
-
-    width = max(len(header), 1)
-    row = [""] * width
-
-    if 0 <= title_col < width:
-        row[title_col] = title_cell
-    if company_col is not None and 0 <= company_col < width:
-        row[company_col] = state.get("company_name") or ""
-    if location_col is not None and 0 <= location_col < width:
-        row[location_col] = state.get("location") or ""
-    if status_col is not None and 0 <= status_col < width:
-        row[status_col] = "Submitted"
-    if submission_col is not None and 0 <= submission_col < width:
-        row[submission_col] = time.strftime("%d/%m/%Y")
-    if notes_col is not None and 0 <= notes_col < width:
-        row[notes_col] = ""
 
     # Find first empty row in Title column (skip header)
     target_row = None

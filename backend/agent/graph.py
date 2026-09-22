@@ -22,6 +22,7 @@ from backend.agent.nodes.export_node import (
 from backend.agent.nodes.extract_info import extract_info_node
 from backend.agent.nodes.fill_missing_info import fill_missing_info_node
 from backend.agent.nodes.language_switch import language_switch_node
+from backend.agent.nodes.log_application import log_application_node
 from backend.agent.nodes.greeting import greeting_node
 from backend.agent.nodes.qa_nodes import qa_answer_node, qa_menu_node
 from backend.agent.nodes.research_company import research_company_node
@@ -52,6 +53,7 @@ def build_graph(checkpointer):
     g.add_node("cl_review", cl_review_node)
     g.add_node("qa_menu", qa_menu_node)
     g.add_node("qa_answer", qa_answer_node)
+    g.add_node("log_application", log_application_node)
     g.add_node("export", export_node)
     g.add_node("export_sheets", export_sheets_node)
     g.add_node("post_export", post_export_node)
@@ -88,14 +90,18 @@ def build_graph(checkpointer):
         "cl_review", cl_review_router, {"cl_review": "cl_review", "qa_menu": "qa_menu"}
     )
 
-    # Q&A loop: qa_menu routes either to qa_answer (question pending) or export (done)
+    # Q&A loop: qa_menu routes either to qa_answer (question pending) or on to
+    # the export run (done), which starts by logging the application.
     def qa_menu_router(state: ApplicationState) -> str:
-        return "qa_answer" if state.phase == "qa_answer" else "export"
+        return "qa_answer" if state.phase == "qa_answer" else "log_application"
 
     g.add_conditional_edges(
-        "qa_menu", qa_menu_router, {"qa_answer": "qa_answer", "export": "export"}
+        "qa_menu",
+        qa_menu_router,
+        {"qa_answer": "qa_answer", "log_application": "log_application"},
     )
     g.add_edge("qa_answer", "qa_menu")
+    g.add_edge("log_application", "export")
 
     def export_router(state: ApplicationState) -> str:
         return "export_sheets" if state.phase == "export_sheets" else "post_export"

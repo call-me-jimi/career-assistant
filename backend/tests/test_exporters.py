@@ -258,3 +258,30 @@ def test_export_zip_skips_paths_that_vanished(tmp_path):
     )
     with zipfile.ZipFile(archive) as zf:
         assert zf.namelist() == ["one.md"]
+
+
+# --- the spreadsheet row ----------------------------------------------------
+
+HEADER = ["Title", "Company", "Location", "Status", "Submission", "Notes"]
+
+
+def test_sheet_row_carries_the_notes_and_the_submission_date():
+    applied_at = time.time()
+    state = {**_state(), "application_notes": "EasyApply on LinkedIn.", "applied_at": applied_at}
+
+    row, title_col = exporters._sheet_row(state, HEADER)
+
+    assert title_col == 0
+    assert row[HEADER.index("Notes")] == "EasyApply on LinkedIn."
+    assert row[HEADER.index("Status")] == "Submitted"
+    assert row[HEADER.index("Submission")] == time.strftime("%d/%m/%Y", time.localtime(applied_at))
+
+
+def test_sheet_row_says_draft_until_the_application_is_submitted():
+    """The row is appended while the letter is still in hand, so 'Submitted'
+    has to come from the user's answer, not from the export happening."""
+    row, _ = exporters._sheet_row({**_state(), "applied_at": None}, HEADER)
+
+    assert row[HEADER.index("Status")] == "Draft"
+    assert row[HEADER.index("Submission")] == ""
+    assert row[HEADER.index("Notes")] == ""

@@ -35,8 +35,13 @@ backend/
   main.py             # FastAPI app entry point
 frontend/             # Next.js; use npm (not uv) inside this directory
   app/
-    page.tsx          # landing — pick assistant, create session
-    session/          # main chat + LLM cards
+    page.tsx          # landing — status strip, pick assistant, create session
+    session/          # main chat + LLM cards; details, graph, usage subroutes
+    jobs/             # labelled "Applications" in the nav — the tracker table;
+                      #   [id] = one job's timeline, rounds, feedback, outcome
+    learned/          # playbook per CV + "is the evaluator honest?" calibration
+    profiles/         # CV profiles; [id] = one profile
+    dashboard/        # usage across all sessions: calls, tokens, cost
     settings/         # LLM defaults + per-task overrides + model pricing
 ```
 

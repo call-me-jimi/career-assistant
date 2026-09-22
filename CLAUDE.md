@@ -68,6 +68,8 @@ frontend/             # Next.js; use npm (not uv) inside this directory
 
 - **`PATCH /api/sessions/{id}/state` requires the runner to be paused at an interrupt.** It returns 409 if the graph is currently running. Only patch state from the details page, not mid-stream.
 
+- **Substantially change the landing page, renew its screenshot.** `README.md` opens with `docs/screenshots/landing-page.png`, so a redesign that isn't reshot leaves the project's first impression showing a UI that no longer exists. The shot is generated, not taken: `uv run python docs/screenshots/seed_demo.py`, with the frontend dev server up (the backend is not needed). **Never reshoot against your own database** — this repo is public, and the landing page puts the real state of a real job search on screen. The seeder invents journeys, lets `journeys_summary()` derive the counters from their dates, and asserts the tiles still partition the total before writing the file, so a strip that stops adding up fails the run instead of shipping to the README.
+
 - **Always flag unmerged worktree changes.** When work is done in a git worktree, end the session with an explicit note if changes haven't been merged to main yet. The dev server runs from the main working copy, so unmerged changes have no effect on the running app.
 
 - **Tag releases with semantic versioning.** Not every commit needs a tag — tag when a meaningful feature or fix is complete and merged to `main`. Use `vMAJOR.MINOR.PATCH`: bump `MINOR` for new features, `PATCH` for bug fixes, `MAJOR` for breaking changes. Current version: `v0.14.1`. After tagging, push with `git push origin <tag>`. At the end of any session that ships a feature or fix, remind the user to tag if appropriate.

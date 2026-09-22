@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     applicant_name  TEXT,
     cv_text         TEXT NOT NULL,
     candidate_profile TEXT NOT NULL,
+    cv_filename     TEXT,
     created_at      REAL NOT NULL,
     updated_at      REAL NOT NULL
 );
@@ -249,6 +250,9 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     profile_cols = {row[1] for row in await cur.fetchall()}
     if "applicant_name" not in profile_cols:
         await db.execute("ALTER TABLE profiles ADD COLUMN applicant_name TEXT")
+    # The original upload's name; the file itself lives in DATA_DIR/cvs (storage/cv_files.py).
+    if "cv_filename" not in profile_cols:
+        await db.execute("ALTER TABLE profiles ADD COLUMN cv_filename TEXT")
 
     # Themes distilled from what employers actually said, kept apart from the
     # simulator's recurring_hm_weaknesses so real and simulated signal stay distinct.

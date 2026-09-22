@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -19,6 +19,7 @@ from backend.storage.feedback import (
     list_evaluator_calibration,
     list_feedback,
 )
+from backend.storage.cv_files import attach_cv, cv_path
 from backend.storage.events import add_event, delete_event, list_events, update_event
 from backend.storage.interviews import (
     INTERVIEW_TYPES,
@@ -132,6 +133,29 @@ async def profile_detail(profile_id: str) -> dict:
     if not p:
         raise HTTPException(404, "profile not found")
     return p
+
+
+@router.get("/profiles/{profile_id}/cv")
+async def profile_cv(profile_id: str) -> FileResponse:
+    p = await get_profile(profile_id)
+    if not p:
+        raise HTTPException(404, "profile not found")
+    path = cv_path(profile_id, p["cv_filename"]) if p["cv_filename"] else None
+    if path is None or not path.is_file():
+        raise HTTPException(404, "no CV file attached to this profile")
+    # inline: the point is to look at it next to the parsed text, not to download it.
+    return FileResponse(path, filename=p["cv_filename"], content_disposition_type="inline")
+
+
+@router.post("/profiles/{profile_id}/cv")
+async def upload_profile_cv(profile_id: str, file: UploadFile = File(...)) -> dict:
+    """Attach the original file to a profile that has none, or replace it. The
+    parsed CV text is left alone — a different CV is a different profile."""
+    try:
+        name = await attach_cv(profile_id, await file.read(), file.filename)
+    except LookupError:
+        raise HTTPException(404, "profile not found")
+    return {"cv_filename": name}
 
 
 @router.delete("/profiles/{profile_id}")

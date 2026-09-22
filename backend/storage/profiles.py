@@ -7,6 +7,7 @@ import time
 import uuid
 from typing import Any
 
+from backend.storage.cv_files import remove_cv
 from backend.storage.db import connect
 
 
@@ -27,7 +28,7 @@ async def get_profile(profile_id: str) -> dict[str, Any] | None:
     async with connect() as db:
         cur = await db.execute(
             "SELECT profile_id, name, cv_text, candidate_profile, applicant_name, "
-            "created_at, updated_at FROM profiles WHERE profile_id = ?",
+            "created_at, updated_at, cv_filename FROM profiles WHERE profile_id = ?",
             (profile_id,),
         )
         row = await cur.fetchone()
@@ -51,13 +52,20 @@ async def get_profile(profile_id: str) -> dict[str, Any] | None:
         "applicant_name": row[4],
         "created_at": row[5],
         "updated_at": row[6],
+        "cv_filename": row[7],
     }
 
 
 async def delete_profile(profile_id: str) -> bool:
     async with connect() as db:
+        cur = await db.execute(
+            "SELECT cv_filename FROM profiles WHERE profile_id = ?", (profile_id,)
+        )
+        row = await cur.fetchone()
         cur = await db.execute("DELETE FROM profiles WHERE profile_id = ?", (profile_id,))
         await db.commit()
+    if row:
+        remove_cv(profile_id, row[0])
     return (cur.rowcount or 0) > 0
 
 

@@ -171,7 +171,7 @@ export default function InputBar({
       });
       const data = await res.json();
       onUserMessage(`Uploaded ${file.name} (${data.chars} chars).`);
-      onSend({ cv_text: data.cv_text });
+      onSend({ cv_text: data.cv_text, upload_id: data.upload_id });
     } finally {
       setUploading(false);
     }

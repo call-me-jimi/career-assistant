@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from backend.config import DATA_DIR, load_settings
+from backend.storage.cv_files import stage_upload
 from backend.storage.sessions import get_session
 from backend.tools.cv_parser import extract_cv_text
 from backend.tools.transcribe import get_cached_provider, language_to_iso
@@ -25,14 +26,17 @@ ALLOWED_AUDIO_EXT = {".m4a", ".mp3", ".wav", ".webm", ".ogg", ".flac", ".mp4"}
 @router.post("/cv")
 async def upload_cv(file: UploadFile = File(...)) -> dict:
     suffix = Path(file.filename or "cv.pdf").suffix or ".pdf"
+    data = await file.read()
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
+        tmp.write(data)
         tmp_path = tmp.name
     try:
         text = await asyncio.to_thread(extract_cv_text, tmp_path)
     finally:
         Path(tmp_path).unlink(missing_ok=True)
-    return {"cv_text": text, "chars": len(text)}
+    # Kept so the profile cv_intake saves can hold the original, not just its text.
+    upload_id = stage_upload(data, file.filename)
+    return {"cv_text": text, "chars": len(text), "upload_id": upload_id}
 
 
 @router.post("/interview-audio")

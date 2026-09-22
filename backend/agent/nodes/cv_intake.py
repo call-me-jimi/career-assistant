@@ -8,6 +8,7 @@ from backend.agent.interrupts import action_finish, action_start, emit_message
 from backend.agent.state import ApplicationState
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
+from backend.storage.cv_files import claim_upload
 from backend.storage.profiles import get_profile, save_profile
 
 
@@ -32,6 +33,7 @@ async def cv_intake_node(state: ApplicationState) -> dict:
     )
     payload = interrupt({"kind": "upload_cv"})
     cv_text = (payload or {}).get("cv_text", "") if isinstance(payload, dict) else ""
+    upload_id = (payload or {}).get("upload_id") if isinstance(payload, dict) else None
     if not cv_text:
         emit_message(sid, "No CV received — I'll continue without one, but the cover letter may be less targeted.")
         return {"phase": "collect_job"}
@@ -73,6 +75,8 @@ async def cv_intake_node(state: ApplicationState) -> dict:
         cv_text=cv_text,
         candidate_profile=result.text,
     )
+    if upload_id:
+        await claim_upload(pid, upload_id)
     emit_message(sid, f"Saved profile as **{profile_name}**.")
     return {
         "profile_id": pid,

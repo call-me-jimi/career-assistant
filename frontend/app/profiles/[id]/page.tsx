@@ -7,6 +7,7 @@ type ProfileDetail = {
   profile_id: string;
   name: string;
   cv_text: string;
+  cv_filename: string | null;
   candidate_profile: any;
   created_at: number;
   updated_at: number;
@@ -227,7 +228,12 @@ export default function ProfileDetailPage() {
         </TabButton>
       </nav>
 
-      {tab === "overview" && <OverviewTab profile={profile} />}
+      {tab === "overview" && (
+        <OverviewTab
+          profile={profile}
+          onCvAttached={(name) => setProfile({ ...profile, cv_filename: name })}
+        />
+      )}
       {tab === "playbook" && (
         <PlaybookTab
           profileId={profileId}
@@ -273,7 +279,13 @@ function TabButton({
   );
 }
 
-function OverviewTab({ profile }: { profile: ProfileDetail }) {
+function OverviewTab({
+  profile,
+  onCvAttached,
+}: {
+  profile: ProfileDetail;
+  onCvAttached: (name: string) => void;
+}) {
   const cp =
     typeof profile.candidate_profile === "string"
       ? profile.candidate_profile
@@ -285,11 +297,83 @@ function OverviewTab({ profile }: { profile: ProfileDetail }) {
           {cp || "—"}
         </pre>
       </Section>
+      <Section title="Original CV">
+        <CvFile profile={profile} onAttached={onCvAttached} />
+      </Section>
       <Section title="CV Text">
         <pre className="text-sm whitespace-pre-wrap leading-relaxed rounded bg-panel/60 p-3 border border-subtle/20 max-h-96 overflow-y-auto">
           {profile.cv_text || "—"}
         </pre>
       </Section>
+    </div>
+  );
+}
+
+function CvFile({
+  profile,
+  onAttached,
+}: {
+  profile: ProfileDetail;
+  onAttached: (name: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch(`/api/profiles/${profile.profile_id}/cv`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      onAttached((await r.json()).cv_filename);
+    } catch (e: any) {
+      setUploadError(e.message || "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3 text-sm">
+        {profile.cv_filename ? (
+          <a
+            href={`/api/profiles/${profile.profile_id}/cv`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-accent hover:underline"
+          >
+            {profile.cv_filename}
+          </a>
+        ) : (
+          <span className="text-subtle">No file attached — only the extracted text below.</span>
+        )}
+        <label className="text-xs px-3 py-1 rounded border border-subtle/40 hover:text-accent cursor-pointer">
+          {uploading ? "Uploading…" : profile.cv_filename ? "Replace file" : "Attach PDF"}
+          <input
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            disabled={uploading}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) upload(f);
+            }}
+          />
+        </label>
+      </div>
+      {profile.cv_filename && (
+        <p className="text-xs text-subtle">
+          Replacing the file doesn&apos;t re-read it — the text below stays as it is.
+        </p>
+      )}
+      {uploadError && <p className="text-sm text-err">{uploadError}</p>}
     </div>
   );
 }

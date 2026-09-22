@@ -127,6 +127,11 @@ is skipped.
 - **Tells you where the evaluator was wrong** — when a round has both an AI evaluation and real
   feedback from the company, the job page shows them side by side, and the Interview Evaluator uses
   those pairs to calibrate its next read against how you were actually perceived.
+- **A page for everything it has learned** — the Learned page collects the playbook each CV has
+  built up, grouped by theme, where you can edit or drop an item. A lesson belongs to the profile
+  that earned it; promote one and every profile reads it from the next draft onward. The same page
+  asks whether the evaluator is honest — it scores the rounds that advanced against the rounds that
+  were rejected, and if it barely separates the two, says so rather than letting you trust it.
 - **Optional company research** — Tavily web search enriches thin company descriptions and salary
   answers; skipped gracefully when no key is set.
 - **Per-assistant export** — each assistant offers exactly the artifacts it can produce (cover

@@ -38,7 +38,7 @@ def _days_ago(n: float) -> float:
     return NOW - n * DAY
 
 
-# --- the six counters -------------------------------------------------------
+# --- the status counters ----------------------------------------------------
 
 
 async def test_summary_counts_each_bucket(client):
@@ -59,12 +59,21 @@ async def test_summary_counts_each_bucket(client):
 
     assert body == {
         "total": 7,
+        "applied": 1,  # "Fresh" — inside the quiet window, so not yet silent
         "in_progress": 1,
         "quiet": 2,
         "on_hold": 1,
+        "offer": 0,
         "rejected": 1,
         "withdrawn": 1,
+        "draft": 0,
+        "quiet_after_days": 30,
     }
+
+    # The buckets partition the total. A status `derive_status()` grows without
+    # a bucket in journeys_summary() shows up here as a shortfall, rather than
+    # as rows quietly missing from the landing page.
+    assert sum(v for k, v in body.items() if k not in {"total", "quiet_after_days"}) == body["total"]
 
 
 async def test_summary_is_pooled_across_profiles(client):

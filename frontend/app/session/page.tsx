@@ -35,6 +35,7 @@ function SessionView() {
   const [pending, setPending] = useState<InterruptPayload | null>(null);
   const [done, setDone] = useState(false);
   const [assistantType, setAssistantType] = useState<string>("");
+  const [language, setLanguage] = useState<string>("");
   const [evaluationEntry, setEvaluationEntry] = useState<{
     timestamp: number;
     data: InterviewEvaluation;
@@ -47,7 +48,13 @@ function SessionView() {
     sendRef.current = conn.send;
     fetch(`/api/sessions/${sessionId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => data && setAssistantType(data.assistant_type || ""))
+      .then((data) => {
+        if (!data) return;
+        setAssistantType(data.assistant_type || "");
+        // Creation value. The graph can move off it later (language_switch, or a
+        // Details edit), and both broadcast state.update so this stays current.
+        setLanguage(data.language || "");
+      })
       .catch(() => {});
     return () => conn.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,6 +135,9 @@ function SessionView() {
         setPending(ev.payload);
         break;
       case "state.update":
+        if (ev.patch && typeof ev.patch.language === "string" && ev.patch.language) {
+          setLanguage(ev.patch.language);
+        }
         if (ev.patch && "interview_evaluation" in ev.patch && ev.patch.interview_evaluation) {
           setEvaluationEntry((prev) => ({
             timestamp: prev?.timestamp ?? Date.now() / 1000,
@@ -178,6 +188,14 @@ function SessionView() {
               </span>
             </>
           )}
+          {language && (
+            <span
+              className="text-xs text-subtle"
+              title="Output language for this session. To change it, open Details while the assistant is waiting for your input."
+            >
+              {language}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4 text-xs">
           <a
@@ -207,7 +225,7 @@ function SessionView() {
         </div>
       </header>
     ),
-    [sessionId, done, assistantType],
+    [sessionId, done, assistantType, language],
   );
 
   return (

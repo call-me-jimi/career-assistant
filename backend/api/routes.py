@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from backend.agent.interrupts import emit_message
+from backend.agent.interrupts import emit_message, emit_state
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
 from backend.storage.feedback import (
@@ -204,17 +204,24 @@ async def journeys() -> dict:
 # "summary" would otherwise be read as a journey id.
 @router.get("/journeys/summary")
 async def journeys_summary() -> dict:
-    """The six numbers on the landing page. Pooled across profiles: the search is
-    one search, and which CV an application used is a detail of the application."""
+    """The landing page's status strip. Pooled across profiles: the search is
+    one search, and which CV an application used is a detail of the application.
+
+    Every status `derive_status()` can return needs a bucket here, or the row
+    lands in `total` and nowhere else — which is how three freshly-sent
+    applications once stayed invisible until they aged into `silent`."""
     quiet_after_days = load_settings().quiet_after_days
     rows = await list_journeys(profile_id=None, limit=None)
 
     buckets = {
+        "applied": "applied",
         "in_progress": "in_progress",
         "silent": "quiet",
         "on_hold": "on_hold",
+        "offer": "offer",
         "rejected": "rejected",
         "dropped": "withdrawn",
+        "draft": "draft",
     }
     counts = {"total": len(rows), **{name: 0 for name in buckets.values()}}
     for j in rows:
@@ -227,7 +234,9 @@ async def journeys_summary() -> dict:
         )
         if status in buckets:
             counts[buckets[status]] += 1
-    return counts
+    # The client labels the quiet tile with the threshold, so it has to travel
+    # with the numbers rather than being assumed to be the default 30.
+    return {**counts, "quiet_after_days": quiet_after_days}
 
 
 @router.get("/journeys/{journey_id}")
@@ -680,6 +689,8 @@ async def patch_session_state(session_id: str, patch: dict) -> dict:
     }
     labels = [_FIELD_LABELS.get(k, k.replace("_", " ")) for k in clean]
     emit_message(session_id, f"I updated the {', '.join(labels)}.", role="user")
+    if "language" in clean:
+        emit_state(session_id, {"language": clean["language"]})
     return {"ok": True, "updated": list(clean.keys())}
 
 

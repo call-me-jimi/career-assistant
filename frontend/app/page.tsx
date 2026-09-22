@@ -124,18 +124,27 @@ const CARD_BASE =
    table, already filtered — the number is both the summary and the door. */
 type Summary = {
   total: number;
+  applied: number;
   in_progress: number;
   quiet: number;
   on_hold: number;
+  offer: number;
   rejected: number;
   withdrawn: number;
+  draft: number;
+  quiet_after_days: number;
 };
 
+/* Every status a journey can be in, so the row reads as a breakdown rather than
+   a sample. Labels and tones track STATUS_META on the jobs page — the tile and
+   the table it opens should not disagree about what a status is called.
+   `{d}` is the configured quiet threshold, not a hardcoded 30. */
 const COUNTERS: [keyof Summary, string, string, string][] = [
-  ["total", "Applications", "all", ""],
+  ["applied", "Applied", "applied", "text-accent"],
   ["in_progress", "In progress", "in_progress", "text-warn"],
-  ["quiet", "No reply yet", "silent", "text-subtle"],
+  ["quiet", "No reply {d}d+", "silent", "text-subtle"],
   ["on_hold", "On hold", "on_hold", "text-hold"],
+  ["offer", "Offer", "offer", "text-ok"],
   ["rejected", "Rejected", "rejected", "text-err"],
   ["withdrawn", "Withdrawn", "dropped", "text-subtle"],
 ];
@@ -210,27 +219,6 @@ export default function LandingPage() {
               )}
             </a>
           ))}
-          <span className="flex items-center gap-2 border-l border-subtle/30 pl-5">
-            <label
-              htmlFor="language"
-              className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-subtle"
-            >
-              Language
-            </label>
-            <select
-              id="language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              disabled={loading !== null}
-              className="rounded-lg border border-subtle/30 bg-panel2 px-2.5 py-1.5 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </span>
         </nav>
       </header>
 
@@ -245,12 +233,71 @@ export default function LandingPage() {
             </p>
           </div>
 
+          {summary && summary.total > 0 && (
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-3.5">
+                <p className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.14em] text-subtle">
+                  Application overview
+                </p>
+                <span className="h-px flex-1 bg-subtle/30" />
+                <a
+                  href="/jobs"
+                  className="whitespace-nowrap rounded text-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                >
+                  All {summary.total} applications →
+                </a>
+              </div>
+
+              <div className="grid grid-cols-2 gap-px sm:grid-cols-4 lg:grid-cols-7">
+                {COUNTERS.map(([key, label, filter, tone]) => (
+                  <a
+                    key={key}
+                    href={`/jobs?status=${filter}`}
+                    className="rounded-lg border border-subtle/25 bg-panel px-3.5 py-2.5 transition hover:border-accent hover:bg-panel2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                  >
+                    <div
+                      className={`text-[22px] font-semibold leading-none tabular-nums ${tone}`}
+                    >
+                      {summary[key]}
+                    </div>
+                    <div className="mt-1 text-xs text-subtle">
+                      {label.replace("{d}", String(summary.quiet_after_days))}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-3.5">
             <div className="flex items-center gap-3.5">
               <p className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.14em] text-subtle">
                 Three stages of one application — start at any of them
               </p>
               <span className="h-px flex-1 bg-subtle/30" />
+              {/* A parameter of the session you're about to start, not an app
+                  preference — so it lives with the Start buttons. */}
+              <span className="flex items-center gap-2">
+                <label
+                  htmlFor="language"
+                  className="whitespace-nowrap font-mono text-[10.5px] uppercase tracking-[0.12em] text-subtle"
+                >
+                  Language
+                </label>
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  disabled={loading !== null}
+                  className="rounded-lg border border-subtle/30 bg-panel2 px-2.5 py-1.5 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </span>
             </div>
 
             <div className="relative grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -307,7 +354,7 @@ export default function LandingPage() {
           <button
             onClick={() => startSession("career_advisor")}
             disabled={loading !== null}
-            className={`${CARD_BASE} group grid w-full grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5 border-dashed p-5 hover:border-solid hover:bg-panel/60 sm:grid-cols-[auto_1fr_auto]`}
+            className={`${CARD_BASE} group grid w-full grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5 bg-panel/50 p-5 hover:bg-panel sm:grid-cols-[auto_1fr_auto]`}
           >
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent/10 text-accent transition group-hover:bg-accent/20">
               <CompassIcon />
@@ -327,38 +374,6 @@ export default function LandingPage() {
                 : "Talk to your Career Advisor →"}
             </span>
           </button>
-
-          {summary && summary.total > 0 && (
-            <div className="space-y-3 border-t border-subtle/25 pt-7">
-              <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-6">
-                {COUNTERS.map(([key, label, filter, tone]) => (
-                  <a
-                    key={key}
-                    href={`/jobs?status=${filter}`}
-                    className="rounded-lg border border-subtle/25 bg-panel px-3.5 py-2.5 transition hover:border-accent hover:bg-panel2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-                  >
-                    <div
-                      className={`text-[22px] font-semibold leading-none tabular-nums ${tone}`}
-                    >
-                      {summary[key]}
-                    </div>
-                    <div className="mt-1 text-xs text-subtle">{label}</div>
-                  </a>
-                ))}
-              </div>
-              <div className="flex items-baseline justify-between gap-4">
-                <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-subtle">
-                  Every application, across every profile
-                </p>
-                <a
-                  href="/jobs"
-                  className="rounded text-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-                >
-                  All applications →
-                </a>
-              </div>
-            </div>
-          )}
 
           {error && (
             <p className="text-center text-sm text-err whitespace-pre-wrap">

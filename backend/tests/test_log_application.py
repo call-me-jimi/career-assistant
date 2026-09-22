@@ -1,5 +1,5 @@
-"""The tracker questions the Cover Letter assistant asks before exporting:
-free-text notes, and whether the application was actually submitted."""
+"""The tracker questions the Cover Letter assistant asks once the assets are
+exported: whether the application was actually submitted, then free-text notes."""
 
 import pytest
 
@@ -26,7 +26,7 @@ async def _journey() -> str:
 async def test_notes_and_submission_reach_the_journey(test_db, replies):
     jid = await _journey()
     state = ApplicationState(session_id="s", journey_id=jid)
-    replies.extend(["applied on their job page. salary expectation: 120k", "yes"])
+    replies.extend(["yes", "applied on their job page. salary expectation: 120k"])
 
     update = await mod.log_application_node(state)
 
@@ -41,7 +41,7 @@ async def test_notes_and_submission_reach_the_journey(test_db, replies):
 async def test_not_submitted_leaves_the_journey_a_draft(test_db, replies):
     jid = await _journey()
     state = ApplicationState(session_id="s", journey_id=jid)
-    replies.extend(["applied via EasyApply on LinkedIn. no additional information.", "no"])
+    replies.extend(["no", "applied via EasyApply on LinkedIn. no additional information."])
 
     update = await mod.log_application_node(state)
 
@@ -55,7 +55,7 @@ async def test_not_submitted_leaves_the_journey_a_draft(test_db, replies):
 async def test_skipping_the_notes_writes_nothing(test_db, replies):
     jid = await _journey()
     state = ApplicationState(session_id="s", journey_id=jid)
-    replies.extend(["skip", "no"])
+    replies.extend(["no", "skip"])
 
     update = await mod.log_application_node(state)
 

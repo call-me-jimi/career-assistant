@@ -91,26 +91,27 @@ def build_graph(checkpointer):
     )
 
     # Q&A loop: qa_menu routes either to qa_answer (question pending) or on to
-    # the export run (done), which starts by logging the application.
+    # the export run (done), which hands the assets over first and only then
+    # asks what the tracker should record.
     def qa_menu_router(state: ApplicationState) -> str:
-        return "qa_answer" if state.phase == "qa_answer" else "log_application"
+        return "qa_answer" if state.phase == "qa_answer" else "export"
 
     g.add_conditional_edges(
         "qa_menu",
         qa_menu_router,
-        {"qa_answer": "qa_answer", "log_application": "log_application"},
+        {"qa_answer": "qa_answer", "export": "export"},
     )
     g.add_edge("qa_answer", "qa_menu")
-    g.add_edge("log_application", "export")
 
     def export_router(state: ApplicationState) -> str:
-        return "export_sheets" if state.phase == "export_sheets" else "post_export"
+        return "log_application" if state.phase == "log_application" else "post_export"
 
     g.add_conditional_edges(
         "export",
         export_router,
-        {"export_sheets": "export_sheets", "post_export": "post_export"},
+        {"log_application": "log_application", "post_export": "post_export"},
     )
+    g.add_edge("log_application", "export_sheets")
     g.add_edge("export_sheets", "post_export")
 
     def post_export_router(state: ApplicationState) -> str:

@@ -94,8 +94,8 @@ and an end-of-session learning tail:
 START → greeting → cv_intake → select_journey → collect_job → extract_info
       → language_switch → fill_missing_info → confirm_info → research_company
       → classify_flow → strategy → cl_loop → cl_review → qa_menu ⇄ qa_answer
-      → export → post_export → (qa_menu | synthesize_learning
-      → review_learned_suggestion → END)
+      → export → log_application → export_sheets → post_export
+      → (qa_menu | synthesize_learning → review_learned_suggestion → END)
 ```
 
 - **`select_journey`** offers to continue a previously started job — see
@@ -110,8 +110,11 @@ START → greeting → cv_intake → select_journey → collect_job → extract_
   moving on.
 - **`qa_menu` / `qa_answer`** form a loop so you can ask multiple predefined or custom questions
   before exporting.
-- **`export_node`** asks which artifacts to take away and in what form, then writes them; for the
-  Cover Letter it also offers to append a row to Google Sheets. See [Export](#export).
+- **`export_node`** asks which artifacts to take away and in what form, then writes them. See
+  [Export](#export).
+- **`log_application`** then asks whether the application was actually submitted and for any notes,
+  and writes both to the journey — the assets come first because you need the cover letter in hand
+  to answer. **`export_sheets`** offers the Google Sheets row, built from those two answers.
 - **`post_export`** asks whether to return to the Q&A menu or wrap up; on wrap-up
   **`synthesize_learning`** and **`review_learned_suggestion`** run the learning tail — see
   [Per-profile learning](#per-profile-learning).
@@ -216,7 +219,9 @@ tables in `backend/agent/nodes/export_node.py`:
 
 The node interrupts twice — `export_items` (multi-select; the UI renders toggle chips from the
 payload, and a typed `cover_letter job_ad` / `all` / `none` also works) and `export_delivery`. Cover
-Letter interrupts a third time (`export_sheets`) to offer the spreadsheet row.
+Letter then runs `log_application` (submitted? notes?) and `export_sheets` (the spreadsheet row) as
+separate nodes, so their interrupts cannot replay the file writes. `none` skips the files but still
+reaches the tracker questions.
 
 **Application folder reuse.** Cover Letter creates a fresh `<Company> - <date>` folder and stores
 its path on the journey as `export_folder`. Interview Prep and Interview Evaluator read that path

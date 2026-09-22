@@ -90,6 +90,15 @@ DELIVERY_OPTIONS: dict[str, list[tuple[str, str]]] = {
 _PDF_ITEMS = {"cover_letter", "evaluation", "briefing", "swot"}
 
 
+def _next_phase(state: ApplicationState) -> str:
+    """Cover Letter goes on to the tracker questions, whatever was exported.
+
+    What the journey records — submitted or not, and any notes — is asked after
+    the hand-over, so declining the files does not skip the tracker.
+    """
+    return "log_application" if state.assistant_type == "cover_letter" else "post_export"
+
+
 def _temp_export_dir(session_id: str) -> Path:
     return (
         Path(tempfile.gettempdir())
@@ -167,7 +176,7 @@ async def export_node(state: ApplicationState) -> dict:
     items = [i for i in EXPORT_ITEMS.get(state.assistant_type, []) if i.available(state)]
     if not items:
         emit_message(sid, "There's nothing to export from this session yet.")
-        return {"phase": "post_export"}
+        return {"phase": _next_phase(state)}
 
     # 1. Which artifacts?
     listed = "\n".join(f"- `{i.key}` — {i.label}" for i in items)
@@ -186,7 +195,7 @@ async def export_node(state: ApplicationState) -> dict:
     selected = _parse_selection(reply, items)
     if not selected:
         emit_message(sid, "Skipped export — you can always come back to this.")
-        return {"phase": "post_export"}
+        return {"phase": _next_phase(state)}
 
     # 2. In what form?
     options = DELIVERY_OPTIONS.get(state.assistant_type) or [("links", "Download links")]
@@ -267,7 +276,7 @@ async def export_node(state: ApplicationState) -> dict:
     # happened, and LangGraph replays the node body from the top on resume.
     return {
         "export_results": results,
-        "phase": "export_sheets" if state.assistant_type == "cover_letter" else "post_export",
+        "phase": _next_phase(state),
         "export_delivery": delivery,
     }
 

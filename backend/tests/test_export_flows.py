@@ -200,7 +200,8 @@ async def test_none_skips_everything(replies, written):
     update = await mod.export_node(state)
 
     assert written == []
-    assert update["phase"] == "post_export"
+    # Declining the files still leads to the tracker questions.
+    assert update["phase"] == "log_application"
 
 
 @pytest.mark.asyncio
@@ -215,7 +216,7 @@ async def test_typed_selection_is_accepted_alongside_the_ui_list(replies, writte
 
 @pytest.mark.asyncio
 async def test_export_node_never_interrupts_after_writing(replies, written):
-    """The sheets question lives in its own node.
+    """The tracker and sheets questions live in their own nodes.
 
     An interrupt after the writes makes LangGraph replay the whole node on
     resume, producing a second copy of every file. Only two interrupts are
@@ -227,7 +228,7 @@ async def test_export_node_never_interrupts_after_writing(replies, written):
     update = await mod.export_node(state)
 
     assert [k for k, _ in written] == ["cover_letter"]
-    assert update["phase"] == "export_sheets"
+    assert update["phase"] == "log_application"
 
 
 @pytest.mark.asyncio
@@ -269,6 +270,22 @@ async def test_other_assistants_go_straight_to_post_export(replies, written):
     update = await mod.export_node(state)
 
     assert update["phase"] == "post_export"
+
+
+def test_cover_letter_tail_runs_export_then_tracker_then_sheets():
+    """The order is the point: you need the letter in hand before you can say
+    whether you sent it, and the sheet row is built from that answer."""
+    from langgraph.checkpoint.memory import MemorySaver
+
+    from backend.agent.graph import build_graph
+
+    edges = {
+        (e.source, e.target) for e in build_graph(MemorySaver()).get_graph().edges
+    }
+    assert ("qa_menu", "export") in edges
+    assert ("export", "log_application") in edges
+    assert ("log_application", "export_sheets") in edges
+    assert ("export_sheets", "post_export") in edges
 
 
 def _noop_update():

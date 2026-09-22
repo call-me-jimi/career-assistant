@@ -48,7 +48,7 @@ public internet as-is**; it has no auth layer and isn't hardened for multi-user 
 
 ## Screenshots
 
-**Landing page** — pick an assistant and start a conversation.
+**Landing page** — where the whole search stands, then pick an assistant and start a conversation.
 
 ![Landing page](docs/screenshots/landing-page.png)
 
@@ -105,8 +105,13 @@ is skipped.
   version so you can pick the winner.
 - **Job journeys — pick up where you left off** — every job you work on is saved with its artifacts
   (strategy, cover letter, interview briefing, evaluation). A new session offers to continue a saved
-  job instead of starting over, and the Jobs page lists them all with search, sort, and per-artifact
-  dates.
+  job instead of starting over, and the Applications page lists them all with search, sort, and
+  per-artifact dates.
+- **The whole search at a glance** — the landing page opens on a breakdown of every application by
+  status (applied, in progress, no reply, on hold, offer, rejected, withdrawn), pooled across
+  profiles, and each count is a link into that filtered list. Status is derived from the dates on
+  the application rather than a field you maintain, so a job you applied to moves itself into "no
+  reply" once it has been quiet past your threshold.
 - **Interview rounds** — one job usually means several interviews (recruiter, screening, hiring
   manager, technical, panel, final). Each round is tracked separately, so the briefing Interview
   Prep wrote for a round is matched to the recording the Evaluator scores afterwards, and exported

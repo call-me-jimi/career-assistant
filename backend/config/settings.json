@@ -111,6 +111,13 @@
       "base_url": null,
       "api_key": null,
       "max_tokens": 8192
+    },
+    "detect_language": {
+      "provider": "anthropic",
+      "model_name": "claude-haiku-4-5-20251001",
+      "base_url": null,
+      "api_key": null,
+      "max_tokens": null
     }
   },
   "model_pricing": {

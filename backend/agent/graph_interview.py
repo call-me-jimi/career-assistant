@@ -16,7 +16,7 @@ from backend.agent.nodes.cv_intake import cv_intake_node
 from backend.agent.nodes.export_node import export_node, post_export_node
 from backend.agent.nodes.extract_info import extract_info_node
 from backend.agent.nodes.fill_missing_info import fill_missing_info_node
-from backend.agent.nodes.language_switch import language_switch_node
+from backend.agent.nodes.language_switch import interview_language_switch_node, language_switch_node
 from backend.agent.nodes.greeting import greeting_node
 from backend.agent.nodes.load_coaching_history import load_coaching_history_node
 from backend.agent.nodes.interview_briefing import interview_briefing_node
@@ -50,6 +50,7 @@ def build_interview_graph(checkpointer):
     g.add_node("confirm_info", confirm_info_node)
     g.add_node("research_company", research_company_node)
     g.add_node("interview_context", interview_context_node)
+    g.add_node("interview_language_switch", interview_language_switch_node)
     g.add_node("select_interview", select_interview_node)
     g.add_node("interview_briefing", interview_briefing_node)
     g.add_node("interview_review", interview_review_node)
@@ -82,7 +83,8 @@ def build_interview_graph(checkpointer):
     g.add_edge("fill_missing_info", "confirm_info")
     g.add_edge("confirm_info", "research_company")
     g.add_edge("research_company", "interview_context")
-    g.add_edge("interview_context", "select_interview")
+    g.add_edge("interview_context", "interview_language_switch")
+    g.add_edge("interview_language_switch", "select_interview")
 
     def select_interview_router(state: ApplicationState) -> str:
         return (

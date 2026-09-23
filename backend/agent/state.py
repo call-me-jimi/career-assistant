@@ -42,6 +42,9 @@ class ApplicationState(BaseModel):
 
     # Output language for deliverables and assistant chat (e.g. "English", "German")
     language: str = "English"
+    # Language we have already offered to switch to this session (job ad or interview
+    # details), so a declined offer is not repeated for the same language.
+    language_offered: str = ""
 
     # Applicant / profile
     applicant_name: str = ""
@@ -94,6 +97,7 @@ class ApplicationState(BaseModel):
     interview_type: str = ""  # taxonomy slug, e.g. "hiring_manager"
     interview_label: str = ""  # optional free-text label, e.g. "2nd round w/ Anna"
     interview_context: str = ""
+    interview_context_language: str = ""  # language detected in the pasted interview details
     interview_briefing: str = ""
     interview_briefing_versions: list[dict[str, Any]] = Field(default_factory=list)
     interview_revision_feedback: list[dict[str, Any]] = Field(default_factory=list)

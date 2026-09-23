@@ -1,0 +1,11 @@
+Identify the language the text below is written in.
+
+Rules:
+- Answer with the English name of the language and nothing else — e.g. `German`, `French`, `Dutch`.
+- Judge the text as a whole: a few English loanwords or job titles do not make it English.
+- If the text is too short, too mixed, or otherwise impossible to place, answer `unknown`.
+
+Text:
+"""
+{{ text }}
+"""

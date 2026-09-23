@@ -597,9 +597,8 @@ export default function JobsPage() {
                     "Location",
                     "Progress",
                     "Submission",
-                    "Waiting",
+                    "Next",
                     "Outcome",
-                    "Next step",
                     "Artifacts",
                     "",
                   ].map((h, i) => (
@@ -773,18 +772,7 @@ function Row({
           <DateCell value={journey.applied_at} onSave={(v) => onPatch({ applied_at: v })} />
         </td>
         <td className={cellPad}>
-          {journey.waiting_days === null ? (
-            <span className="text-xs text-subtle">—</span>
-          ) : (
-            <span
-              title={`Last contact ${formatDate(journey.last_contact_at)} — ${explain(journey)}`}
-              className={`text-xs tabular-nums whitespace-nowrap cursor-help ${
-                journey.status === "silent" ? "text-subtle" : ""
-              }`}
-            >
-              {journey.waiting_days}d
-            </span>
-          )}
+          <NextCell journey={journey} onPatch={onPatch} />
         </td>
         <td className={cellPad}>
           {outcome ? (
@@ -799,23 +787,6 @@ function Row({
               — open —
             </button>
           )}
-        </td>
-        <td className={cellPad}>
-          <div className="flex flex-col">
-            {journey.next_step_at && (
-              <EditableText
-                value={journey.next_step}
-                placeholder="What's next"
-                empty="Follow up"
-                className="text-[9px] uppercase tracking-widest text-subtle"
-                onSave={(v) => onPatch({ next_step: v })}
-              />
-            )}
-            <DateCell
-              value={journey.next_step_at}
-              onSave={(v) => onPatch({ next_step_at: v })}
-            />
-          </div>
         </td>
         <td className={cellPad}>
           <div className="flex gap-1">
@@ -850,7 +821,7 @@ function Row({
 
       {panel && (
         <tr>
-          <td colSpan={10} className="bg-panel border-b border-border p-0">
+          <td colSpan={9} className="bg-panel border-b border-border p-0">
             {panel.kind === "outcome" ? (
               <OutcomePanel
                 journey={journey}
@@ -872,7 +843,7 @@ function Row({
 
       {isOpen && (
         <tr>
-          <td colSpan={10} className="bg-panel border-b border-border p-0">
+          <td colSpan={9} className="bg-panel border-b border-border p-0">
             <Drawer
               journey={journey}
               types={types}
@@ -905,7 +876,7 @@ function GroupRow({
   const meta = STATUS_META[status] ?? STATUS_META.draft;
   return (
     <tr className="bg-panel">
-      <td colSpan={10} className="px-3 py-1.5 border-y border-border">
+      <td colSpan={9} className="px-3 py-1.5 border-y border-border">
         <button
           onClick={onToggle}
           aria-expanded={!collapsed}
@@ -1394,6 +1365,113 @@ function Strip({ journey }: { journey: Journey }) {
   );
 }
 
+/* One column answers "what happens next here?", because two could not: the old
+   Waiting number went *negative* once a round was booked ahead of today, since
+   last_contact_at() takes the max over scheduled_at. Soonest dated thing wins —
+   an upcoming round beats a follow-up you noted — and with nothing coming the
+   cell falls back to how long the employer has been quiet. That number is the
+   click target for setting the follow-up it was implicitly asking for; this
+   cell is the only place next_step lives. */
+const NEXT_CLOSED = new Set(["rejected", "offer", "dropped"]);
+
+/* Days until, in the tense that reads fastest. Dates are stored at noon, so
+   rounding lands on the day the user picked whatever time it is now. */
+function untilLabel(at: number, now: number) {
+  const days = Math.round((at - now) / 86_400);
+  if (days <= 0) return "today";
+  if (days === 1) return "tomorrow";
+  return `in ${days}d`;
+}
+
+/* Names the date the tooltip quotes — "Last contact 16 Sept 26" never said what
+   happened that day. Same stamps last_contact_at() maxes over server-side
+   (events excluded there and here: a follow-up you sent is not a reply), minus
+   the ones in the future, so a booked round cannot be reported as contact that
+   already happened. */
+function lastContact(journey: Journey, now: number) {
+  const stamps = [
+    { at: journey.applied_at, what: "you applied" },
+    ...journey.interviews.map((iv) => ({
+      at: iv.scheduled_at,
+      what: `${iv.type_label} interview${iv.label ? ` (${iv.label})` : ""}`,
+    })),
+    ...journey.feedback.map((f) => ({
+      at: f.created_at,
+      what: f.source ? `their feedback (${f.source})` : "their feedback",
+    })),
+  ];
+  const last = stamps
+    .filter((s) => s.at && s.at <= now)
+    .sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0];
+
+  return last ? `Last contact ${formatDate(last.at)} · ${last.what}` : "Nothing has happened yet";
+}
+
+function NextCell({
+  journey,
+  onPatch,
+}: {
+  journey: Journey;
+  onPatch: (body: Record<string, unknown>) => void;
+}) {
+  const now = Date.now() / 1000;
+  const midnight = new Date().setHours(0, 0, 0, 0) / 1000;
+  const waitingTip = `${lastContact(journey, now)} — ${explain(journey)}`;
+
+  /* Closed: the outcome column already says what happened, and a next step on
+     an application that is over is noise. */
+  if (NEXT_CLOSED.has(journey.status)) return <span className="text-xs text-subtle">—</span>;
+
+  // A round earlier today still counts as upcoming — it is the day of.
+  const round = journey.interviews
+    .filter((iv) => iv.scheduled_at && iv.scheduled_at >= midnight)
+    .sort((a, b) => (a.scheduled_at ?? 0) - (b.scheduled_at ?? 0))[0];
+  const step = journey.next_step_at;
+
+  if (round?.scheduled_at && (!step || round.scheduled_at <= step)) {
+    return (
+      <span
+        title={`${round.label ? `${round.type_label} (${round.label})` : round.type_label} ${formatDate(
+          round.scheduled_at
+        )} · ${waitingTip}`}
+        className="text-xs whitespace-nowrap cursor-help"
+      >
+        <span className="block text-[9px] uppercase tracking-widest text-subtle">
+          {round.type_label}
+        </span>
+        {untilLabel(round.scheduled_at, now)}
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-start" title={step ? undefined : waitingTip}>
+      {step ? (
+        <EditableText
+          value={journey.next_step}
+          placeholder="What's next"
+          empty="Follow up"
+          className="text-[9px] uppercase tracking-widest text-subtle"
+          onSave={(v) => onPatch({ next_step: v })}
+        />
+      ) : (
+        journey.waiting_days !== null && (
+          <span className="block text-[9px] uppercase tracking-widest text-subtle">Waiting</span>
+        )
+      )}
+      <DateCell
+        value={step}
+        /* Overdue is not a state the tracker stores — it is just a date that has
+           passed, and the colour is the whole reminder. */
+        className={step && step < midnight ? "text-err" : ""}
+        empty={journey.waiting_days === null ? "— set —" : `${journey.waiting_days}d`}
+        emptyClassName={journey.status === "silent" ? "text-subtle" : ""}
+        onSave={(v) => onPatch({ next_step_at: v })}
+      />
+    </div>
+  );
+}
+
 /* ---------- drawer ---------- */
 
 function Drawer({
@@ -1704,9 +1782,17 @@ function DateRow({
 function DateCell({
   value,
   onSave,
+  className = "",
+  empty = "— set —",
+  emptyClassName = "text-subtle italic",
 }: {
   value: number | null | undefined;
   onSave: (v: number | null) => void;
+  className?: string;
+  /* What stands in for a date nobody set. The merged Next column puts the
+     waiting count here, so the fallback text is itself the click target. */
+  empty?: string;
+  emptyClassName?: string;
 }) {
   const [editing, setEditing] = useState(false);
 
@@ -1734,10 +1820,10 @@ function DateCell({
     <button
       onClick={() => setEditing(true)}
       className={`text-xs tabular-nums whitespace-nowrap hover:text-accent ${
-        value ? "" : "text-subtle italic"
+        value ? className : emptyClassName
       }`}
     >
-      {value ? formatDate(value) : "— set —"}
+      {value ? formatDate(value) : empty}
     </button>
   );
 }

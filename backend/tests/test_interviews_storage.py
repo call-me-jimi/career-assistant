@@ -6,6 +6,7 @@ import pytest
 from backend.storage.db import SCHEMA, _migrate
 from backend.storage.interviews import (
     create_interview,
+    delete_interview,
     describe_type,
     get_interview,
     list_interviews,
@@ -56,6 +57,22 @@ async def test_list_is_scoped_to_journey_and_ordered(test_db):
 
     rounds = await list_interviews(j1)
     assert [r["interview_id"] for r in rounds] == [first, second]
+
+
+@pytest.mark.asyncio
+async def test_delete_removes_one_round_only(test_db):
+    jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
+    kept = await create_interview(journey_id=jid, profile_id="p1", interview_type="recruiter")
+    doomed = await create_interview(journey_id=jid, profile_id="p1", interview_type="screening")
+
+    assert await delete_interview(doomed) is True
+    assert await get_interview(doomed) is None
+    assert [r["interview_id"] for r in await list_interviews(jid)] == [kept]
+
+
+@pytest.mark.asyncio
+async def test_delete_of_an_unknown_round_is_false(test_db):
+    assert await delete_interview("no-such-round") is False
 
 
 @pytest.mark.asyncio

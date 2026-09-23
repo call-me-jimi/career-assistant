@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 import backend.api.routes as routes
 from backend.api.routes import router
 from backend.storage.events import list_events
-from backend.storage.interviews import create_interview, get_interview
+from backend.storage.interviews import create_interview, get_interview, list_interviews
 from backend.storage.journeys import create_journey, get_journey
 
 DAY = 86_400.0
@@ -214,6 +214,31 @@ async def test_patch_round_of_another_job_404s(client):
         f"/api/journeys/{mine}/interviews/{iid}", json={"scheduled_at": DAY}
     )
     assert r.status_code == 404
+
+
+async def test_delete_round_drops_it_and_the_status_it_carried(client):
+    jid = await _job(applied_at=DAY)
+    iid = await create_interview(
+        journey_id=jid, profile_id="p1", interview_type="screening", scheduled_at=2 * DAY
+    )
+    assert (await client.get(f"/api/journeys/{jid}")).json()["status"] == "in_progress"
+
+    r = await client.delete(f"/api/journeys/{jid}/interviews/{iid}")
+
+    assert r.status_code == 200
+    assert await list_interviews(jid) == []
+    assert (await client.get(f"/api/journeys/{jid}")).json()["status"] == "applied"
+
+
+async def test_delete_round_of_another_job_404s(client):
+    mine = await _job()
+    theirs = await create_journey(profile_id="p1", company_name="Other", job_title="Role")
+    iid = await create_interview(
+        journey_id=theirs, profile_id="p1", interview_type="screening"
+    )
+
+    assert (await client.delete(f"/api/journeys/{mine}/interviews/{iid}")).status_code == 404
+    assert await get_interview(iid) is not None
 
 
 # --- events -----------------------------------------------------------------

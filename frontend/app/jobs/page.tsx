@@ -1440,6 +1440,13 @@ function Drawer({
     });
   }
 
+  async function removeRound(interviewId: string) {
+    if (!confirm("Remove this interview round? Its briefing and evaluation go with it.")) return;
+    await mutate(`/api/journeys/${journey.journey_id}/interviews/${interviewId}`, {
+      method: "DELETE",
+    });
+  }
+
   async function addEvent() {
     const occurred = fromDateInput(eventDate);
     if (!eventText.trim() || !occurred) return;
@@ -1496,7 +1503,7 @@ function Drawer({
           </p>
         )}
         {journey.interviews.map((iv) => (
-          <div key={iv.interview_id} className="flex items-center gap-2">
+          <div key={iv.interview_id} className="flex items-center gap-2 group/iv">
             <select
               value={iv.interview_type}
               onChange={(e) => patchRound(iv.interview_id, { interview_type: e.target.value })}
@@ -1513,6 +1520,13 @@ function Drawer({
               onSave={(v) => patchRound(iv.interview_id, { scheduled_at: v })}
             />
             {iv.label && <span className="text-xs text-subtle truncate">{iv.label}</span>}
+            <button
+              onClick={() => removeRound(iv.interview_id)}
+              className="ml-auto text-subtle hover:text-err text-xs opacity-0 group-hover/iv:opacity-100"
+              aria-label="Remove interview round"
+            >
+              ✕
+            </button>
           </div>
         ))}
         <button

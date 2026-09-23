@@ -24,6 +24,7 @@ from backend.storage.events import add_event, delete_event, list_events, update_
 from backend.storage.interviews import (
     INTERVIEW_TYPES,
     create_interview,
+    delete_interview,
     list_interviews,
     resolve_type,
     type_label,
@@ -407,6 +408,15 @@ async def patch_journey_interview(
     if fields:
         await update_interview(interview_id, **fields)
     return await _with_tracker_fields(await get_journey(journey_id))
+
+
+@router.delete("/journeys/{journey_id}/interviews/{interview_id}")
+async def remove_journey_interview(journey_id: str, interview_id: str) -> dict:
+    owned = {i["interview_id"] for i in await list_interviews(journey_id)}
+    if interview_id not in owned:
+        raise HTTPException(404, "interview round not found")
+    await delete_interview(interview_id)
+    return {"deleted": True}
 
 
 class EventCreatePayload(BaseModel):

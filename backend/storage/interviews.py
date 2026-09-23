@@ -174,6 +174,21 @@ async def update_interview(interview_id: str, **fields: Any) -> None:
         await db.commit()
 
 
+async def delete_interview(interview_id: str) -> bool:
+    """Drop one round, with the briefing and evaluation it carries.
+
+    A round added in error is otherwise undeletable, and its date keeps the job
+    'in_progress'. Feedback pinned to it degrades gracefully — a pinned id that
+    no longer resolves is skipped, not an error.
+    """
+    async with connect() as db:
+        cur = await db.execute(
+            "DELETE FROM job_interviews WHERE interview_id = ?", (interview_id,)
+        )
+        await db.commit()
+        return cur.rowcount > 0
+
+
 async def get_interview(interview_id: str) -> dict[str, Any] | None:
     async with connect() as db:
         cur = await db.execute(

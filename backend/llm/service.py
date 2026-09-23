@@ -87,7 +87,32 @@ def build_chat_model(task: str | None = None):
     raise ValueError(f"Unsupported provider: {cfg.provider}")
 
 
-def _messages(system: str | None, user: str, history: list[dict] | None = None):
+# A template puts this line between the inputs a session repeats on every call
+# (CV, job description, strategy) and the part that changes (the draft under
+# review, last round's feedback). Anthropic caches the prompt up to it; the
+# other providers just get the marker removed.
+CACHE_BREAK = "<<<cache-break>>>\n"
+
+
+def _user_content(user: str, provider: str) -> str | list[dict]:
+    if CACHE_BREAK not in user:
+        return user
+    head, tail = user.split(CACHE_BREAK, 1)
+    if provider != "anthropic":
+        return head + tail
+    blocks: list[dict] = [{"type": "text", "text": head, "cache_control": {"type": "ephemeral"}}]
+    # The API rejects blank text blocks; a first draft has no feedback to append.
+    if tail.strip():
+        blocks.append({"type": "text", "text": tail})
+    return blocks
+
+
+def _messages(
+    system: str | None,
+    user: str,
+    history: list[dict] | None = None,
+    provider: str = "",
+):
     msgs: list = []
     if system:
         msgs.append(SystemMessage(content=system))
@@ -100,7 +125,7 @@ def _messages(system: str | None, user: str, history: list[dict] | None = None):
             msgs.append(AIMessage(content=content))
         elif role == "system":
             msgs.append(SystemMessage(content=content))
-    msgs.append(HumanMessage(content=user))
+    msgs.append(HumanMessage(content=_user_content(user, provider.lower())))
     return msgs
 
 
@@ -141,7 +166,7 @@ async def call_llm(
     from backend.observability.callbacks import event_bus_callback
 
     chat, cfg = build_chat_model(task)
-    messages = _messages(system, user, history)
+    messages = _messages(system, user, history, cfg.provider)
     config: RunnableConfig = {
         "tags": [f"task:{task}"] + ([f"session:{session_id}"] if session_id else []),
         "metadata": {

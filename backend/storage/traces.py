@@ -18,6 +18,8 @@ async def record_trace(
     input_tokens: int,
     output_tokens: int,
     duration_ms: int,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
     system_prompt: str,
     user_prompt: str,
     response_text: str,
@@ -27,9 +29,9 @@ async def record_trace(
             """
             INSERT INTO traces (
                 session_id, card_id, task, provider, model,
-                input_tokens, output_tokens, duration_ms,
-                system_prompt, user_prompt, response_text, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
+                duration_ms, system_prompt, user_prompt, response_text, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session_id,
@@ -39,6 +41,8 @@ async def record_trace(
                 model,
                 input_tokens,
                 output_tokens,
+                cache_read_tokens,
+                cache_write_tokens,
                 duration_ms,
                 system_prompt,
                 user_prompt,
@@ -62,6 +66,8 @@ def _row_to_dict(r: Any) -> dict[str, Any]:
         "user_prompt": r[8] or "",
         "response_text": r[9] or "",
         "created_at": r[10],
+        "cache_read_tokens": r[11] or 0,
+        "cache_write_tokens": r[12] or 0,
     }
 
 
@@ -70,7 +76,8 @@ async def list_traces(session_id: str) -> list[dict[str, Any]]:
         cur = await db.execute(
             """
             SELECT card_id, task, provider, model, input_tokens, output_tokens,
-                   duration_ms, system_prompt, user_prompt, response_text, created_at
+                   duration_ms, system_prompt, user_prompt, response_text, created_at,
+                   cache_read_tokens, cache_write_tokens
             FROM traces WHERE session_id=? ORDER BY created_at ASC
             """,
             (session_id,),
@@ -84,7 +91,8 @@ async def get_trace(session_id: str, card_id: str) -> dict[str, Any] | None:
         cur = await db.execute(
             """
             SELECT card_id, task, provider, model, input_tokens, output_tokens,
-                   duration_ms, system_prompt, user_prompt, response_text, created_at
+                   duration_ms, system_prompt, user_prompt, response_text, created_at,
+                   cache_read_tokens, cache_write_tokens
             FROM traces WHERE session_id=? AND card_id=?
             """,
             (session_id, card_id),

@@ -59,11 +59,29 @@ from backend.storage.traces import get_trace, list_traces
 router = APIRouter(prefix="/api")
 
 
-def _cost_for(model: str | None, input_tokens: int, output_tokens: int, pricing: dict[str, ModelPricing]) -> float:
+# Prompt-cache pricing relative to the base input rate (Anthropic, 5-minute TTL).
+_CACHE_WRITE_MULT = 1.25
+_CACHE_READ_MULT = 0.1
+
+
+def _cost_for(
+    model: str | None,
+    input_tokens: int,
+    output_tokens: int,
+    pricing: dict[str, ModelPricing],
+    cache_read: int = 0,
+    cache_write: int = 0,
+) -> float:
+    """input_tokens is the full input; the cached share of it is billed at its own rate."""
     if not model or model not in pricing:
         return 0.0
     p = pricing[model]
-    return (input_tokens / 1_000_000.0) * p.input_per_mtok + (output_tokens / 1_000_000.0) * p.output_per_mtok
+    billed_input = (
+        input_tokens - cache_read - cache_write
+        + cache_write * _CACHE_WRITE_MULT
+        + cache_read * _CACHE_READ_MULT
+    )
+    return (billed_input / 1_000_000.0) * p.input_per_mtok + (output_tokens / 1_000_000.0) * p.output_per_mtok
 
 
 class StartSessionPayload(BaseModel):
@@ -602,7 +620,10 @@ async def session_traces(session_id: str) -> dict:
     traces = await list_traces(session_id)
     enriched: list[dict] = []
     for t in traces:
-        cost = _cost_for(t.get("model"), t["input_tokens"], t["output_tokens"], pricing)
+        cost = _cost_for(
+            t.get("model"), t["input_tokens"], t["output_tokens"], pricing,
+            t["cache_read_tokens"], t["cache_write_tokens"],
+        )
         enriched.append({**t, "cost_usd": cost})
     return {"traces": enriched}
 
@@ -614,7 +635,8 @@ async def trace_detail(session_id: str, card_id: str) -> dict:
         raise HTTPException(404, "trace not found")
     settings = load_settings()
     trace["cost_usd"] = _cost_for(
-        trace.get("model"), trace["input_tokens"], trace["output_tokens"], settings.model_pricing
+        trace.get("model"), trace["input_tokens"], trace["output_tokens"], settings.model_pricing,
+        trace["cache_read_tokens"], trace["cache_write_tokens"],
     )
     return trace
 
@@ -798,14 +820,14 @@ async def global_stats() -> dict:
     trace_rows: list[tuple] = raw["trace_rows"]
 
     by_type: dict[str, dict] = {}
-    for assistant_type, model, calls, input_tokens, output_tokens in trace_rows:
+    for assistant_type, model, calls, input_tokens, output_tokens, cache_read, cache_write in trace_rows:
         entry = by_type.setdefault(
             assistant_type, {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
         )
         entry["llm_calls"] += calls
         entry["input_tokens"] += input_tokens
         entry["output_tokens"] += output_tokens
-        entry["cost_usd"] += _cost_for(model, input_tokens, output_tokens, pricing)
+        entry["cost_usd"] += _cost_for(model, input_tokens, output_tokens, pricing, cache_read, cache_write)
 
     total_sessions = sum(sessions_by_type.values())
     total_calls = sum(e["llm_calls"] for e in by_type.values())

@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS traces (
     model          TEXT,
     input_tokens   INTEGER,
     output_tokens  INTEGER,
+    cache_read_tokens  INTEGER NOT NULL DEFAULT 0,
+    cache_write_tokens INTEGER NOT NULL DEFAULT 0,
     duration_ms    INTEGER,
     system_prompt  TEXT,
     user_prompt    TEXT,
@@ -234,6 +236,10 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     for col in ("system_prompt", "user_prompt", "response_text"):
         if col not in cols:
             await db.execute(f"ALTER TABLE traces ADD COLUMN {col} TEXT")
+    # Prompt-cache share of input_tokens, priced differently by _cost_for.
+    for col in ("cache_read_tokens", "cache_write_tokens"):
+        if col not in cols:
+            await db.execute(f"ALTER TABLE traces ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
 
     cur = await db.execute("PRAGMA table_info(sessions)")
     session_cols = {row[1] for row in await cur.fetchall()}

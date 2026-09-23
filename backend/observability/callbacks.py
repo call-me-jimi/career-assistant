@@ -17,6 +17,7 @@ from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import LLMResult
 
+from backend.llm.service import _content_text
 from backend.observability.event_bus import bus
 from backend.storage.traces import record_trace
 
@@ -32,7 +33,7 @@ def _split_messages(messages: list[list[BaseMessage]]) -> tuple[str, str]:
     user_parts: list[str] = []
     for batch in messages:
         for m in batch:
-            content = m.content if isinstance(m.content, str) else str(m.content)
+            content = _content_text(m.content)
             if m.type == "system":
                 system_parts.append(content)
             else:
@@ -132,7 +133,7 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
             return
         ended_at = time.time()
         duration_ms = int((ended_at - started["started_at"]) * 1000)
-        input_tokens, output_tokens = _usage_from_result(response)
+        input_tokens, output_tokens, cache_read, cache_write = _usage_from_result(response)
         output_text = _response_text(response)
         session_id = started["session_id"]
         if session_id:
@@ -159,6 +160,8 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
                     model=started["model"],
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
+                    cache_read_tokens=cache_read,
+                    cache_write_tokens=cache_write,
                     duration_ms=duration_ms,
                     system_prompt=started["system_prompt"],
                     user_prompt=started["user_prompt"],
@@ -188,20 +191,32 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
         )
 
 
-def _usage_from_result(response: LLMResult) -> tuple[int, int]:
-    usage = (response.llm_output or {}).get("token_usage") or (response.llm_output or {}).get("usage") or {}
-    input_tokens = int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0)
-    output_tokens = int(usage.get("completion_tokens") or usage.get("output_tokens") or 0)
-    if input_tokens or output_tokens:
-        return input_tokens, output_tokens
-    # Fallback: look into generation message usage_metadata (Anthropic/OpenAI LangChain >=0.3)
+def _usage_from_result(response: LLMResult) -> tuple[int, int, int, int]:
+    """(input, output, cache_read, cache_write) tokens; input includes both cache counts.
+
+    usage_metadata comes first: Anthropic's raw llm_output usage leaves cached
+    tokens out of input_tokens, which would under-report every cached call.
+    """
     for gen_list in response.generations:
         for gen in gen_list:
             msg = getattr(gen, "message", None)
             meta = getattr(msg, "usage_metadata", None) if msg else None
             if meta:
-                return int(meta.get("input_tokens", 0)), int(meta.get("output_tokens", 0))
-    return 0, 0
+                details = meta.get("input_token_details") or {}
+                cache_write = sum(
+                    int(details.get(k) or 0)
+                    for k in ("cache_creation", "ephemeral_5m_input_tokens", "ephemeral_1h_input_tokens")
+                )
+                return (
+                    int(meta.get("input_tokens", 0)),
+                    int(meta.get("output_tokens", 0)),
+                    int(details.get("cache_read") or 0),
+                    cache_write,
+                )
+    usage = (response.llm_output or {}).get("token_usage") or (response.llm_output or {}).get("usage") or {}
+    input_tokens = int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0)
+    output_tokens = int(usage.get("completion_tokens") or usage.get("output_tokens") or 0)
+    return input_tokens, output_tokens, 0, 0
 
 
 def _response_text(response: LLMResult) -> str:

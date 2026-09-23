@@ -1,6 +1,6 @@
 [project]
 name = "assistant"
-version = "0.17.1"
+version = "0.18.0"
 description = "Personal Application Assistant — agentic, conversational cover letter + Q&A helper"
 readme = "README.md"
 license = "MIT"

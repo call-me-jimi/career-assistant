@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Application Status Ladder",
+    "locale": "en",
+    "output": "docs/diagrams/status-ladder.html",
+    "viewBox": [
+      880,
+      640
+    ],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "happy-path",
+        "label": "Applied to offer",
+        "focus": [
+          "draft",
+          "applied",
+          "in_progress",
+          "offer"
+        ],
+        "note": "The path a successful application walks through derive_status()."
+      },
+      {
+        "id": "clock-rung",
+        "label": "The clock rung",
+        "focus": [
+          "applied",
+          "silent",
+          "in_progress"
+        ],
+        "note": "silent is the one status that changes overnight with nothing written."
+      },
+      {
+        "id": "terminal-exits",
+        "label": "Terminal exits",
+        "focus": [
+          "in_progress",
+          "on_hold",
+          "rejected",
+          "dropped"
+        ],
+        "note": "Dates that stop the ladder before it reaches offer."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Derived status"
+    },
+    {
+      "id": "paused",
+      "label": "Employer-side pause"
+    },
+    {
+      "id": "terminal",
+      "label": "Terminal exits"
+    }
+  ],
+  "states": [
+    {
+      "id": "draft",
+      "type": "start",
+      "label": "draft",
+      "sublabel": "no applied_at yet",
+      "lane": "main",
+      "col": 0,
+      "tag": "no dates"
+    },
+    {
+      "id": "applied",
+      "type": "active",
+      "label": "applied",
+      "sublabel": "sent, nothing since",
+      "lane": "main",
+      "col": 1,
+      "tag": "applied_at"
+    },
+    {
+      "id": "silent",
+      "type": "waiting",
+      "label": "silent",
+      "sublabel": "no contact in 30 days",
+      "lane": "main",
+      "col": 2,
+      "tag": "reads the clock"
+    },
+    {
+      "id": "in_progress",
+      "type": "active",
+      "label": "in_progress",
+      "sublabel": "a round is scheduled",
+      "lane": "main",
+      "col": 3,
+      "tag": "scheduled_at"
+    },
+    {
+      "id": "offer",
+      "type": "success",
+      "label": "offer",
+      "sublabel": "they said yes",
+      "lane": "main",
+      "col": 4,
+      "tag": "offer_at"
+    },
+    {
+      "id": "on_hold",
+      "type": "waiting",
+      "label": "on_hold",
+      "sublabel": "employer paused it",
+      "lane": "paused",
+      "col": 2,
+      "tag": "on_hold_at"
+    },
+    {
+      "id": "dropped",
+      "type": "failure",
+      "label": "dropped",
+      "sublabel": "you withdrew",
+      "lane": "terminal",
+      "col": 0,
+      "tag": "dropped_at"
+    },
+    {
+      "id": "rejected",
+      "type": "failure",
+      "label": "rejected",
+      "sublabel": "terminal — checked first",
+      "lane": "terminal",
+      "col": 1,
+      "tag": "rejected_at"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "t-applied",
+      "from": "draft",
+      "to": "applied",
+      "label": "applied_at",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight",
+      "labelDy": -34
+    },
+    {
+      "id": "t-quiet",
+      "from": "applied",
+      "to": "silent",
+      "label": "30 quiet days",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight",
+      "labelDy": -34
+    },
+    {
+      "id": "t-reply",
+      "from": "silent",
+      "to": "applied",
+      "label": "employer replies",
+      "variant": "emphasis",
+      "fromSide": "left",
+      "toSide": "right",
+      "route": "straight",
+      "labelDy": 64
+    },
+    {
+      "id": "t-skip-round",
+      "from": "applied",
+      "to": "in_progress",
+      "label": "scheduled_at",
+      "route": "top-channel",
+      "fromSide": "top",
+      "toSide": "top",
+      "labelSegment": 1,
+      "labelDy": -4,
+      "channelY": 64
+    },
+    {
+      "id": "t-round",
+      "from": "silent",
+      "to": "in_progress",
+      "label": "scheduled_at",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight",
+      "labelDy": -34
+    },
+    {
+      "id": "t-offer",
+      "from": "in_progress",
+      "to": "offer",
+      "label": "offer_at",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight",
+      "labelDy": -34
+    },
+    {
+      "id": "t-hold",
+      "from": "in_progress",
+      "to": "on_hold",
+      "label": "on_hold_at",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "auto",
+      "channelY": 233,
+      "labelSegment": 1,
+      "labelDy": -14
+    },
+    {
+      "id": "t-lift",
+      "from": "on_hold",
+      "to": "in_progress",
+      "label": "later round",
+      "variant": "emphasis",
+      "fromSide": "left",
+      "toSide": "bottom",
+      "route": "auto",
+      "channelY": 256,
+      "labelSegment": 1,
+      "labelDy": 14,
+      "labelDx": 50
+    },
+    {
+      "id": "t-dropped",
+      "from": "silent",
+      "to": "dropped",
+      "label": "dropped_at",
+      "variant": "security",
+      "labelDx": -62,
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 150
+    },
+    {
+      "id": "t-rejected",
+      "from": "in_progress",
+      "to": "rejected",
+      "label": "rejected_at",
+      "variant": "security",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDx": -64,
+      "labelDy": 215
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Derived, never stored",
+      "items": [
+        "There is no status column: derive_status() in backend/storage/journeys.py reads five dates on job_journeys plus job_interviews.scheduled_at",
+        "The API returns status read-only; PATCH /api/journeys/{id} accepts dates only",
+        "job_feedback.outcome is snapshotted from the same function as the row is written, never passed in"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "First match wins",
+      "items": [
+        "derive_status() tries the rungs in one fixed order: rejected, offer, dropped, on_hold, in_progress, applied or silent, draft",
+        "rejected_at is terminal — no lower rung is consulted, whatever the other dates say",
+        "rejected_at, offer_at and dropped_at can be written from any live state, not only the ones drawn here"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "One rung reads the clock",
+      "items": [
+        "silent needs no write: applied plus quiet_after_days (settings.json, default 30) of nothing flips it overnight",
+        "Every test asserting a status must pass now=, or it goes stale as its fixtures age",
+        "Only the employer resets the clock — last_contact_at() counts rounds and feedback, never events, because a follow-up you sent is not a reply"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,326 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Career Assistant Architecture",
+    "locale": "en",
+    "output": "docs/diagrams/system-architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1020,
+      516
+    ],
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Request path",
+        "focus": [
+          "browser",
+          "rest",
+          "runner",
+          "graphs"
+        ],
+        "note": "Creating a session and starting the graph that serves it."
+      },
+      {
+        "id": "stream-and-answers",
+        "label": "Stream and answers",
+        "focus": [
+          "browser",
+          "ws",
+          "runner",
+          "sqlite"
+        ],
+        "note": "How an interrupt reaches the UI and the answer gets back into the run."
+      },
+      {
+        "id": "model-and-state",
+        "label": "Model calls and state",
+        "focus": [
+          "graphs",
+          "llm",
+          "providers",
+          "sqlite",
+          "otel"
+        ],
+        "note": "Where prompts resolve, which provider answers, and what is kept."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "tools",
+      "type": "external",
+      "label": "Tools",
+      "sublabel": "scraper · cv_parser",
+      "pos": [
+        640,
+        70
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "providers",
+      "type": "cloud",
+      "label": "LLM providers",
+      "sublabel": "Anthropic · OpenAI",
+      "pos": [
+        840,
+        70
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Browser",
+      "sublabel": "Next.js 14",
+      "pos": [
+        40,
+        240
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "rest",
+      "type": "backend",
+      "label": "REST API",
+      "sublabel": "routes · uploads",
+      "pos": [
+        240,
+        240
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "SessionRunner",
+      "sublabel": "task per session",
+      "pos": [
+        440,
+        240
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "graphs",
+      "type": "backend",
+      "label": "Four LangGraphs",
+      "sublabel": "one per assistant",
+      "pos": [
+        640,
+        240
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "llm",
+      "type": "backend",
+      "label": "LLM service",
+      "sublabel": "prompts .vN",
+      "pos": [
+        840,
+        240
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "ws",
+      "type": "messagebus",
+      "label": "WebSocket",
+      "sublabel": "/ws/{session_id}",
+      "pos": [
+        240,
+        410
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "checkpoints + rows",
+      "pos": [
+        440,
+        410
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "exporters",
+      "type": "external",
+      "label": "Exporters",
+      "sublabel": "docx · pdf · Sheets",
+      "pos": [
+        640,
+        410
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "otel",
+      "type": "cloud",
+      "label": "OpenTelemetry",
+      "sublabel": "spans + usage",
+      "pos": [
+        840,
+        410
+      ],
+      "size": [
+        130,
+        64
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-browser-rest",
+      "from": "browser",
+      "to": "rest",
+      "label": "sessions · journeys · profiles",
+      "variant": "emphasis",
+      "labelDy": -50
+    },
+    {
+      "id": "c-rest-runner",
+      "from": "rest",
+      "to": "runner",
+      "label": "get_or_start",
+      "labelDy": -50
+    },
+    {
+      "id": "c-runner-graphs",
+      "from": "runner",
+      "to": "graphs",
+      "label": "invoke / resume",
+      "variant": "emphasis",
+      "labelDy": -50
+    },
+    {
+      "id": "c-graphs-llm",
+      "from": "graphs",
+      "to": "llm",
+      "label": "task + prompt .vN",
+      "labelDy": -50
+    },
+    {
+      "id": "c-llm-providers",
+      "from": "llm",
+      "to": "providers",
+      "label": "HTTP + schema",
+      "labelDx": 70
+    },
+    {
+      "id": "c-graphs-tools",
+      "from": "graphs",
+      "to": "tools",
+      "label": "scrape · parse",
+      "labelDx": -70
+    },
+    {
+      "id": "c-ws-browser",
+      "from": "ws",
+      "to": "browser",
+      "label": "events · interrupts",
+      "variant": "emphasis",
+      "labelDx": -70
+    },
+    {
+      "id": "c-browser-ws",
+      "from": "browser",
+      "to": "ws",
+      "label": "answers",
+      "labelDx": 44
+    },
+    {
+      "id": "c-ws-runner",
+      "from": "ws",
+      "to": "runner",
+      "label": "submit_input"
+    },
+    {
+      "id": "c-graphs-sqlite",
+      "from": "graphs",
+      "to": "sqlite",
+      "label": "checkpoints · journeys · traces",
+      "labelSegment": 1,
+      "labelDy": -12
+    },
+    {
+      "id": "c-graphs-exporters",
+      "from": "graphs",
+      "to": "exporters",
+      "label": "docx · pdf · Sheets",
+      "labelDx": 60,
+      "labelDy": 70
+    },
+    {
+      "id": "c-llm-otel",
+      "from": "llm",
+      "to": "otel",
+      "label": "spans + cost",
+      "labelDx": 60,
+      "labelDy": 70
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One process, four graphs",
+      "items": [
+        "FastAPI, the runners and all four LangGraphs live in a single uvicorn process",
+        "SessionRunner holds one background asyncio task per session, keyed by RunnerRegistry",
+        "Cover letter, interview prep, evaluator and advisor share one ApplicationState class"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Interrupts drive the UI",
+      "items": [
+        "A node calls interrupt(); the runner parks and the event goes out over /ws/{session_id}",
+        "Your answer returns on the same socket and re-enters the graph through submit_input",
+        "PATCH /api/sessions/{id}/state answers 409 while the runner is still running"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Everything lands in SQLite",
+      "items": [
+        "The checkpointer stores each node's state so a session resumes exactly at its interrupt",
+        "Storage modules keep profiles, journeys, interviews, feedback, traces and the playbook",
+        "Every LLM call is traced and priced, which is what the usage dashboard reads"
+      ]
+    }
+  ]
+}

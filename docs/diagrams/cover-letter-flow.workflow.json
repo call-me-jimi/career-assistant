@@ -1,0 +1,351 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Cover Letter Run and Its Gates",
+    "locale": "en",
+    "output": "docs/diagrams/cover-letter-flow.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "happy-path",
+        "label": "Session to artifacts",
+        "focus": [
+          "session_start",
+          "job_intake",
+          "fill_gaps",
+          "confirm",
+          "research",
+          "draft_loop",
+          "review_gate",
+          "log_gate",
+          "export_run",
+          "artifacts"
+        ],
+        "note": "One run from greeting to the exported letter and tracker row."
+      },
+      {
+        "id": "human-gates",
+        "label": "Where it stops for you",
+        "focus": [
+          "confirm",
+          "review_gate",
+          "log_gate"
+        ],
+        "note": "Three interrupts the graph cannot pass without an answer."
+      },
+      {
+        "id": "revision-cycle",
+        "label": "Revision cycle",
+        "focus": [
+          "draft_loop",
+          "review_gate",
+          "llm"
+        ],
+        "note": "cl_loop and cl_review trade the draft until you approve it."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "human",
+      "label": "You — interrupt() answers"
+    },
+    {
+      "id": "flow",
+      "label": "LangGraph rail — backend/agent/graph.py"
+    },
+    {
+      "id": "io",
+      "label": "Tools, LLM, artifacts"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "Intake",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "understand",
+      "label": "Understand the job",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "ship",
+      "label": "Draft and ship",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "session_start",
+    "job_intake",
+    "fill_gaps",
+    "confirm",
+    "research",
+    "draft_loop",
+    "review_gate",
+    "log_gate",
+    "export_run",
+    "artifacts"
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "session_start"
+    ],
+    "allowedTerminals": [
+      "artifacts",
+      "scraper",
+      "llm"
+    ],
+    "requiredPaths": [
+      {
+        "from": "session_start",
+        "to": "artifacts"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "session_start",
+      "lane": "flow",
+      "col": 0,
+      "type": "backend",
+      "label": "Session start",
+      "sublabel": "greeting · cv_intake",
+      "width": 132
+    },
+    {
+      "id": "job_intake",
+      "lane": "flow",
+      "col": 1,
+      "type": "backend",
+      "label": "Job intake",
+      "sublabel": "collect_job · extract_info",
+      "width": 132
+    },
+    {
+      "id": "fill_gaps",
+      "lane": "flow",
+      "col": 2,
+      "type": "backend",
+      "label": "Fill the gaps",
+      "sublabel": "fill_missing_info",
+      "width": 132
+    },
+    {
+      "id": "research",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "Research + strategy",
+      "sublabel": "research_company · strategy",
+      "width": 132
+    },
+    {
+      "id": "draft_loop",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "Draft loop",
+      "sublabel": "cl_loop → cl_review",
+      "width": 132
+    },
+    {
+      "id": "export_run",
+      "lane": "flow",
+      "col": 5,
+      "type": "backend",
+      "label": "Export run",
+      "sublabel": "export · export_sheets",
+      "width": 132
+    },
+    {
+      "id": "confirm",
+      "lane": "human",
+      "col": 2,
+      "type": "security",
+      "label": "Confirm the details",
+      "sublabel": "confirm_info",
+      "tag": "interrupt",
+      "width": 132
+    },
+    {
+      "id": "review_gate",
+      "lane": "human",
+      "col": 4,
+      "type": "security",
+      "label": "Approve or revise",
+      "sublabel": "cl_review verdict",
+      "tag": "interrupt",
+      "width": 132
+    },
+    {
+      "id": "log_gate",
+      "lane": "human",
+      "col": 5,
+      "type": "security",
+      "label": "Notes + sent?",
+      "sublabel": "log_application",
+      "tag": "interrupt",
+      "width": 132
+    },
+    {
+      "id": "scraper",
+      "lane": "io",
+      "col": 1,
+      "type": "external",
+      "label": "Scraper",
+      "sublabel": "job page + screenshot",
+      "width": 132
+    },
+    {
+      "id": "llm",
+      "lane": "io",
+      "col": 4,
+      "type": "cloud",
+      "label": "LLM dispatch",
+      "sublabel": "prompts .vN → provider",
+      "width": 132
+    },
+    {
+      "id": "artifacts",
+      "lane": "io",
+      "col": 5,
+      "type": "database",
+      "label": "Files + tracker row",
+      "sublabel": "docx · pdf · Sheets row",
+      "width": 132
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-start-job",
+      "from": "session_start",
+      "to": "job_intake",
+      "role": "main"
+    },
+    {
+      "id": "e-job-gaps",
+      "from": "job_intake",
+      "to": "fill_gaps",
+      "role": "main"
+    },
+    {
+      "id": "e-gaps-confirm",
+      "from": "fill_gaps",
+      "to": "confirm",
+      "label": "ask first",
+      "role": "main"
+    },
+    {
+      "id": "e-confirm-research",
+      "from": "confirm",
+      "to": "research",
+      "label": "confirmed",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-research-draft",
+      "from": "research",
+      "to": "draft_loop",
+      "role": "main"
+    },
+    {
+      "id": "e-draft-review",
+      "from": "draft_loop",
+      "to": "review_gate",
+      "label": "draft ready",
+      "role": "main"
+    },
+    {
+      "id": "e-revise",
+      "from": "review_gate",
+      "to": "draft_loop",
+      "label": "revise",
+      "role": "branch",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-review-log",
+      "from": "review_gate",
+      "to": "log_gate",
+      "label": "approved",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-log-export",
+      "from": "log_gate",
+      "to": "export_run",
+      "label": "answers first",
+      "role": "main"
+    },
+    {
+      "id": "e-export-files",
+      "from": "export_run",
+      "to": "artifacts",
+      "label": "Notes + Status",
+      "role": "main"
+    },
+    {
+      "id": "e-scrape",
+      "from": "job_intake",
+      "to": "scraper",
+      "label": "scrape",
+      "role": "async",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-research-llm",
+      "from": "research",
+      "to": "llm",
+      "label": "prompts",
+      "role": "async",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-draft-llm",
+      "from": "draft_loop",
+      "to": "llm",
+      "label": "draft prompt",
+      "role": "async",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Every gate is an interrupt()",
+      "items": [
+        "The graph parks at interrupt() and SessionRunner waits for your answer over the WebSocket",
+        "On resume LangGraph re-runs the node body, so an emit_message before the interrupt needs key=",
+        "File and DB writes belong after the last interrupt, or they replay too"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Ask before you write",
+      "items": [
+        "log_application asks for notes and whether you sent it, before export_node writes anything",
+        "Both answers fill the spreadsheet row; Status and Submission say Draft until you confirm",
+        "Answering no leaves applied_at unset, so the journey stays a draft"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Loops and resumption",
+      "items": [
+        "cl_review routes back into itself until the verdict is done, then the Q&A menu runs",
+        "select_journey reads state.phase and re-enters at collect_job, research, strategy or cl_loop",
+        "post_export returns to the Q&A menu; only the final pass synthesises a playbook lesson"
+      ]
+    }
+  ]
+}

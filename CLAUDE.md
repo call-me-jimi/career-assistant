@@ -26,6 +26,7 @@ backend/
     prompts.py        # versioned prompt resolution
     schemas.py        # task-specific response schemas
   storage/            # aiosqlite: sessions, profiles, traces, job journeys, events, playbook, coaching
+  eval/               # offline model/prompt evaluation: `uv run python -m backend.eval` (docs/evaluation.md)
   tools/              # scraper, cv_parser, exporters, web_search
   templates/
     prompts/          # user prompt templates — {stem}.vN.txt

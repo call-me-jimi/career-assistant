@@ -49,7 +49,7 @@ async def test_call_llm_records_template_versions(test_db, monkeypatch):
 
     cfg = LLMConfig(provider="ollama", model_name="fake")
     monkeypatch.setattr(
-        service, "build_chat_model", lambda task: (FakeListChatModel(responses=["German"]), cfg)
+        service, "build_chat_model", lambda task, llm=None: (FakeListChatModel(responses=["German"]), cfg)
     )
     await service.call_llm(
         task="detect_language",

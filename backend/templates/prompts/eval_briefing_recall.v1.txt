@@ -1,0 +1,14 @@
+Interview briefing:
+"""
+{{ briefing }}
+"""
+
+Questions actually asked in the interview:
+{% for q in questions %}
+{{ loop.index }}. {{ q }}
+{% endfor %}
+
+For each question, decide whether the briefing anticipated it.
+
+Respond with ONLY a JSON object, no code fences:
+{"anticipated": [true | false, ...]}   (one entry per question, in order)

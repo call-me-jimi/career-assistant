@@ -156,6 +156,11 @@ docker compose up -d --build      # http://localhost:3000 · Phoenix on http://l
   traces; LangGraph checkpoints make every node resumable across restarts.
 - **Usage dashboard** — aggregate sessions, LLM calls, tokens, and cost per assistant across all
   sessions.
+- **Model evaluation harness** — before switching models (say Opus 4.8 → 5.5), replay your
+  past LLM calls on the new one and score both side by side: invented-number checks, labelled
+  extraction accuracy, a position-swapped pairwise judge, briefing recall against the questions
+  you were really asked, and your own blind ratings — with confidence intervals and a
+  switch / keep / inconclusive verdict per task. How-to: **[docs/evaluation.md](docs/evaluation.md)**.
 
 ## Tech stack
 

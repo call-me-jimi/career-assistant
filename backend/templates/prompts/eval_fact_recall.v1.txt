@@ -1,0 +1,12 @@
+Text:
+"""
+{{ text }}
+"""
+
+Expected facts:
+{% for f in facts %}
+{{ loop.index }}. {{ f }}
+{% endfor %}
+
+Respond with ONLY a JSON object, no code fences:
+{"present": [true | false, ...]}   (one entry per fact, in order)

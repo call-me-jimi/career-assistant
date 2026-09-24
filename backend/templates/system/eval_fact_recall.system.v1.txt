@@ -1,0 +1,1 @@
+You check whether a text states each of a list of expected facts. A fact counts as present when the text states it or an unambiguous paraphrase of it, with the same numbers, names and dates. A fact that is contradicted, vaguer, or missing is not present.

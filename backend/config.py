@@ -73,6 +73,14 @@ class AppSettings(BaseModel):
     # How long an application sits with no reply before the tracker stops calling
     # it "Applied" and admits it has gone quiet.
     quiet_after_days: int = 30
+    # backend.eval: the fixed judge for pairwise comparisons and recall checks. It must
+    # differ from both models under comparison — models favour their own writing —
+    # hence a non-Claude default. eval_max_usd is the estimated spend above which a
+    # run asks before starting.
+    eval_judge_llm: LLMConfig = Field(
+        default_factory=lambda: LLMConfig(provider="openai", model_name="gpt-5.5")
+    )
+    eval_max_usd: float = 5.0
 
 
 def _load_settings_file() -> dict[str, Any]:

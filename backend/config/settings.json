@@ -195,5 +195,13 @@
   "inline_surface_threshold": 3,
   "feedback_window_n": 5,
   "calibration_window_n": 3,
-  "quiet_after_days": 30
+  "quiet_after_days": 30,
+  "eval_judge_llm": {
+    "provider": "openai",
+    "model_name": "gpt-5.5",
+    "base_url": null,
+    "api_key": null,
+    "max_tokens": null
+  },
+  "eval_max_usd": 5.0
 }

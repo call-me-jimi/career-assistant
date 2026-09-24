@@ -228,6 +228,47 @@ CREATE TABLE IF NOT EXISTS job_events (
 
 CREATE INDEX IF NOT EXISTS idx_job_events_journey
     ON job_events(journey_id, occurred_at DESC);
+
+-- backend.eval: frozen input sets, one comparison per run, one output per row.
+CREATE TABLE IF NOT EXISTS eval_sets (
+    name        TEXT PRIMARY KEY,
+    task        TEXT NOT NULL,
+    trace_ids   TEXT NOT NULL,            -- JSON list of traces.trace_id
+    created_at  REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS eval_runs (
+    run_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    set_name        TEXT NOT NULL,
+    task            TEXT NOT NULL,
+    kind            TEXT NOT NULL,        -- replay | judge-check
+    baseline_model  TEXT NOT NULL,        -- provider:model, or "stored" for the traced output
+    candidate_model TEXT NOT NULL,
+    judge_model     TEXT,
+    samples         INTEGER NOT NULL,
+    created_at      REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS eval_results (
+    result_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id         INTEGER NOT NULL,
+    trace_id       INTEGER NOT NULL,
+    side           TEXT NOT NULL,         -- A = baseline, B = candidate
+    sample         INTEGER NOT NULL,
+    variant        TEXT NOT NULL DEFAULT '',  -- judge-check: original | a degradation name
+    response_text  TEXT NOT NULL DEFAULT '',
+    error          TEXT,
+    input_tokens   INTEGER NOT NULL DEFAULT 0,
+    output_tokens  INTEGER NOT NULL DEFAULT 0,
+    cost_usd       REAL NOT NULL DEFAULT 0,
+    duration_ms    INTEGER NOT NULL DEFAULT 0,
+    metrics        TEXT NOT NULL DEFAULT '{}',  -- JSON, filled by `eval score`
+    judge_verdict  TEXT,                  -- pairwise, on the B row: win | loss | tie
+    human_verdict  TEXT,
+    FOREIGN KEY (run_id) REFERENCES eval_runs(run_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_eval_results_run ON eval_results(run_id);
 """
 
 

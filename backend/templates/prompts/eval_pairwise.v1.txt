@@ -1,0 +1,17 @@
+Task type: {{ task }}
+
+The model received this request (system instructions omitted):
+"""
+{{ request }}
+"""
+
+--- Output 1 ---
+{{ output_1 }}
+
+--- Output 2 ---
+{{ output_2 }}
+
+Which output serves the candidate better? Answer "tie" only if you genuinely cannot separate them.
+
+Respond with ONLY a JSON object, no code fences:
+{"winner": "1" | "2" | "tie", "reason": "<one or two sentences>"}

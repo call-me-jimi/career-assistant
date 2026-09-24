@@ -174,6 +174,8 @@ async def call_llm(
             "session_id": session_id,
             "provider": cfg.provider,
             "model": cfg.model_name,
+            "prompt_version": getattr(user, "template", None),
+            "system_prompt_version": getattr(system, "template", None),
         },
         "run_name": task,
         "callbacks": [event_bus_callback],

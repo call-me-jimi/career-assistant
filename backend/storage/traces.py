@@ -23,6 +23,8 @@ async def record_trace(
     system_prompt: str,
     user_prompt: str,
     response_text: str,
+    prompt_version: str | None = None,
+    system_prompt_version: str | None = None,
 ) -> None:
     async with connect() as db:
         await db.execute(
@@ -30,8 +32,9 @@ async def record_trace(
             INSERT INTO traces (
                 session_id, card_id, task, provider, model,
                 input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
-                duration_ms, system_prompt, user_prompt, response_text, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                duration_ms, system_prompt, user_prompt, response_text,
+                prompt_version, system_prompt_version, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session_id,
@@ -47,6 +50,8 @@ async def record_trace(
                 system_prompt,
                 user_prompt,
                 response_text,
+                prompt_version,
+                system_prompt_version,
                 time.time(),
             ),
         )

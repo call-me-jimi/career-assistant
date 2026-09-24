@@ -47,12 +47,27 @@ def latest_system_path(stem: str) -> Path:
     return _resolve_latest(SYSTEM_DIR, f"{stem}.system")
 
 
-def render_user_prompt(stem: str, **context) -> str:
+class Prompt(str):
+    """Prompt text that remembers the template it came from, e.g. "detect_language.v1".
+
+    call_llm forwards `template` into the trace, so every trace row says which prompt
+    version produced it. Any string operation returns a plain str and drops the tag.
+    """
+
+    template: str
+
+    def __new__(cls, text: str, path: Path) -> "Prompt":
+        obj = super().__new__(cls, text)
+        obj.template = path.name.removesuffix(".txt")
+        return obj
+
+
+def render_user_prompt(stem: str, **context) -> Prompt:
     path = latest_prompt_path(stem)
     tmpl = _env.get_template(path.name)
-    return tmpl.render(**context)
+    return Prompt(tmpl.render(**context), path)
 
 
-def load_system_prompt(stem: str) -> str:
+def load_system_prompt(stem: str) -> Prompt:
     path = latest_system_path(stem)
-    return path.read_text()
+    return Prompt(path.read_text(), path)

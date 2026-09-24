@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS traces (
     system_prompt  TEXT,
     user_prompt    TEXT,
     response_text  TEXT,
+    prompt_version        TEXT,
+    system_prompt_version TEXT,
     created_at     REAL NOT NULL
 );
 
@@ -240,6 +242,11 @@ async def _migrate(db: aiosqlite.Connection) -> None:
     for col in ("cache_read_tokens", "cache_write_tokens"):
         if col not in cols:
             await db.execute(f"ALTER TABLE traces ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
+    # Template that produced each prompt, e.g. "generate_cover_letter.v8"; NULL for
+    # rows written before this column and for inline prompts with no template.
+    for col in ("prompt_version", "system_prompt_version"):
+        if col not in cols:
+            await db.execute(f"ALTER TABLE traces ADD COLUMN {col} TEXT")
 
     cur = await db.execute("PRAGMA table_info(sessions)")
     session_cols = {row[1] for row in await cur.fetchall()}

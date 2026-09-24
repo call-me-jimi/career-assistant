@@ -104,6 +104,8 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
             "task": metadata.get("task"),
             "provider": metadata.get("provider"),
             "model": metadata.get("model"),
+            "prompt_version": metadata.get("prompt_version"),
+            "system_prompt_version": metadata.get("system_prompt_version"),
             "system_prompt": system_prompt,
             "user_prompt": user_prompt,
         }
@@ -166,6 +168,8 @@ class EventBusCallbackHandler(AsyncCallbackHandler):
                     system_prompt=started["system_prompt"],
                     user_prompt=started["user_prompt"],
                     response_text=output_text,
+                    prompt_version=started["prompt_version"],
+                    system_prompt_version=started["system_prompt_version"],
                 )
             except Exception:  # pragma: no cover — trace persistence must not break calls
                 pass

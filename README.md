@@ -90,6 +90,14 @@ of a job posting needs a headless browser (`uv run playwright install chromium`)
 the Python package but not the browser itself; without it, scraping still works and the screenshot
 is skipped.
 
+**Or with Docker** — backend, frontend, and Phoenix tracing in one command, with no local Python,
+Node, or Chromium needed:
+
+```bash
+cp .env.example .env              # same minimum as above
+docker compose up -d --build      # http://localhost:3000 · Phoenix on http://localhost:6006
+```
+
 ➡️ Full installation, optional integrations (Google Sheets, Tavily, Phoenix), and troubleshooting:
 **[docs/SETUP.md](docs/SETUP.md)**.
 

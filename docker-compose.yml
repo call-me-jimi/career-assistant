@@ -1,0 +1,74 @@
+# Full stack: `docker compose up -d --build` → http://localhost:3000
+# Local LLMs too: `docker compose --profile ollama up -d --build`
+#
+# Secrets come from ./.env (same file the local dev setup uses); the
+# `environment:` entries below override the host-specific values in it.
+
+services:
+  backend:
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        WITH_DIARIZATION: ${WITH_DIARIZATION:-false}
+    env_file: .env
+    environment:
+      DEFAULT_EXPORT_FOLDER: /exports
+      OLLAMA_BASE_URL: ${DOCKER_OLLAMA_BASE_URL:-http://ollama:11434}
+      PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:6006/v1/traces
+      GOOGLE_SHEETS_CREDENTIALS_PATH: /run/secrets/google_service_account.json
+    ports:
+      # The browser opens the session WebSocket straight to :8001.
+      - "8001:8001"
+    volumes:
+      - app-data:/app/backend/data
+      # settings.json is edited from the Settings page; keep it in the repo copy.
+      - ./backend/config:/app/backend/config
+      - ${EXPORT_DIR:-${HOME}/JobApplications/Applications}:/exports
+      - ${GOOGLE_SHEETS_CREDENTIALS_PATH:-/dev/null}:/run/secrets/google_service_account.json:ro
+      - whisper-models:/home/app/.cache/huggingface
+    extra_hosts:
+      # Lets DOCKER_OLLAMA_BASE_URL=http://host.docker.internal:11434 reach an Ollama on the host.
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - phoenix
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:8001
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # OpenTelemetry / LLM trace viewer → http://localhost:6006
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports:
+      - "6006:6006"
+    environment:
+      PHOENIX_WORKING_DIR: /mnt/data
+    volumes:
+      - phoenix-data:/mnt/data
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  whisper-models:
+  phoenix-data:
+  ollama-models:

@@ -87,6 +87,53 @@ npm run dev
 The dev server runs on `http://localhost:3000` and talks to the backend on `127.0.0.1:8001` via
 REST + a WebSocket per session.
 
+## Docker (alternative)
+
+Instead of the Backend and Frontend steps above, you can run the whole stack in containers. The only
+prerequisite is Docker with Compose v2. The images bundle everything else: Python, Node, WeasyPrint's
+system libraries, and the Playwright Chromium browser.
+
+```bash
+cp .env.example .env              # fill in at minimum LLM_PROVIDER + LLM_API_KEY
+docker compose up -d --build
+```
+
+| Service    | URL                     | Notes                                                        |
+|------------|-------------------------|--------------------------------------------------------------|
+| `frontend` | `http://localhost:3000` | Proxies `/api` and `/media` to the backend                   |
+| `backend`  | `http://localhost:8001` | Must be published: the browser opens its WebSocket directly  |
+| `phoenix`  | `http://localhost:6006` | Tracing; the backend is pointed at it automatically          |
+| `ollama`   | `http://localhost:11434`| Only with `docker compose --profile ollama up -d`            |
+
+The containers use the same ports as the local dev servers, so stop those (and any standalone
+`phoenix` container) first.
+
+**Where things live:**
+
+- **Secrets** are read from `.env`. Compose overrides the host-specific values for you: the export
+  folder, the Ollama and Phoenix addresses, and the Google credentials path.
+- **Database, CVs, recordings, screenshots** are stored in the `app-data` volume, not in your local
+  `backend/data/`. To bring existing data over, copy it in once:
+  `docker compose cp backend/data/. backend:/app/backend/data/` (then `docker compose restart backend`).
+- **Settings**: `backend/config/` is bind-mounted, so edits on the Settings page land in the
+  repo's `settings.json` just as they do locally.
+- **Exports** are written to `$EXPORT_DIR` on the host (default `~/JobApplications/Applications`).
+- **Google Sheets**: the file at `GOOGLE_SHEETS_CREDENTIALS_PATH` in `.env` is mounted read-only
+  into the container.
+- **Whisper models** download on first transcription and are cached in the `whisper-models` volume.
+
+**Build options** (set in `.env` or the shell):
+
+- `WITH_DIARIZATION=true` builds in the [speaker-diarization](#speaker-diarization-optional) extra
+  (~2.5 GB). You still need to enable `transcription.diarize` in settings.
+- `DOCKER_OLLAMA_BASE_URL=http://host.docker.internal:11434` uses an Ollama running on the host
+  instead of the `ollama` container.
+- `UID` / `GID` (default 1000) set the container user, so files written to the bind mounts are owned
+  by you.
+
+After pulling new code, run `docker compose up -d --build` again. Watch the logs with
+`docker compose logs -f backend`.
+
 ## Choosing an LLM provider
 
 Set `LLM_PROVIDER` to one of `anthropic`, `openai`, `ollama`, or `http`. For per-task model
@@ -148,7 +195,8 @@ cross-session analysis, historical comparison, or OTel-native exploration.
 
 **Recommended: run Phoenix in Docker.** The PyPI packages currently have version mismatches between
 `arize-phoenix` and `arize-phoenix-evals` that break `phoenix serve`. Docker avoids the problem —
-the image bundles a known-good combination.
+the image bundles a known-good combination. (If you use the [Docker setup](#docker-alternative),
+Phoenix is already included and wired up. Skip the rest of this section.)
 
 ```bash
 docker run -d --name phoenix \

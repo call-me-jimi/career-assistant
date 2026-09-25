@@ -45,6 +45,7 @@ type Journey = {
   job_title: string;
   company_name: string;
   location: string;
+  job_description: string;
   // Read by coverLetterLabel() to name the step the assistant would resume at.
   company_description: string;
   alignment_strategy: string;
@@ -267,6 +268,7 @@ export default function JobsPage() {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [types, setTypes] = useState<InterviewType[]>([]);
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [reveal, setReveal] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("applied");
@@ -431,6 +433,14 @@ export default function JobsPage() {
       setOpen((prev) => new Set(prev).add(created.journey_id));
       setQuery("");
       setStatus("all");
+      // Its group sits at the bottom and may be collapsed; show it for this
+      // visit (not persisted) and scroll to it, or the click seems to do nothing.
+      setCollapsed((prev) => {
+        const next = new Set(prev);
+        next.delete(created.status);
+        return next;
+      });
+      setReveal(created.journey_id);
     } catch {
       setError("Could not add an application.");
     }
@@ -633,6 +643,8 @@ export default function JobsPage() {
                     journey={j}
                     types={types}
                     isOpen={open.has(j.journey_id)}
+                    reveal={reveal === j.journey_id}
+                    onRevealed={() => setReveal(null)}
                     onToggle={() => toggle(j.journey_id)}
                     onPatch={(body) => patchJourney(j.journey_id, body)}
                     onRefresh={() => call(() => refresh(j.journey_id))}
@@ -699,6 +711,8 @@ function Row({
   journey,
   types,
   isOpen,
+  reveal,
+  onRevealed,
   onToggle,
   onPatch,
   onRefresh,
@@ -710,6 +724,8 @@ function Row({
   journey: Journey;
   types: InterviewType[];
   isOpen: boolean;
+  reveal: boolean;
+  onRevealed: () => void;
   onToggle: () => void;
   onPatch: (body: Record<string, unknown>) => void;
   onRefresh: () => void;
@@ -722,10 +738,17 @@ function Row({
   const outcome = OUTCOME_FIELDS.find(([field]) => journey[field]);
   const cellPad = "px-3 py-2 border-b border-border align-middle";
   const [panel, setPanel] = useState<RowPanel>(null);
+  const rowRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (!reveal) return;
+    rowRef.current?.scrollIntoView({ block: "start" });
+    onRevealed();
+  }, [reveal, onRevealed]);
 
   return (
     <>
-      <tr className="group hover:bg-panel2/40">
+      <tr ref={rowRef} className="group hover:bg-panel2/40">
         <td className={`${cellPad} sticky left-0 bg-bg group-hover:bg-panel2 z-10 border-r border-border`}>
           <div className="flex items-center gap-1.5 w-[250px]">
             <button
@@ -849,6 +872,7 @@ function Row({
               types={types}
               onPatch={onPatch}
               onRefresh={onRefresh}
+              onDelete={onDelete}
             />
           </td>
         </tr>
@@ -1479,18 +1503,31 @@ function Drawer({
   types,
   onPatch,
   onRefresh,
+  onDelete,
 }: {
   journey: Journey;
   types: InterviewType[];
   onPatch: (body: Record<string, unknown>) => void;
   onRefresh: () => void;
+  onDelete: () => void;
 }) {
   const [notes, setNotes] = useState(journey.notes);
   const [saved, setSaved] = useState(false);
+  const [jobUrl, setJobUrl] = useState(journey.job_url);
+  const [jobText, setJobText] = useState(journey.job_description);
+  const [adSaved, setAdSaved] = useState(false);
   const [eventDate, setEventDate] = useState("");
   const [eventText, setEventText] = useState("");
 
   useEffect(() => setNotes(journey.notes), [journey.notes]);
+  useEffect(() => setJobUrl(journey.job_url), [journey.job_url]);
+  useEffect(() => setJobText(journey.job_description), [journey.job_description]);
+
+  function saveAd(body: Record<string, unknown>) {
+    onPatch(body);
+    setAdSaved(true);
+    setTimeout(() => setAdSaved(false), 1200);
+  }
 
   async function mutate(url: string, init: RequestInit) {
     const r = await fetch(url, init);
@@ -1561,6 +1598,12 @@ function Drawer({
             JOB AD →
           </a>
         )}
+        <button
+          onClick={onDelete}
+          className="ml-auto text-xs px-2.5 py-1 rounded border border-border text-subtle hover:border-err hover:text-err"
+        >
+          Delete
+        </button>
       </div>
 
       <div className="grid gap-px bg-border md:grid-cols-[minmax(280px,1.05fr)_minmax(190px,0.7fr)_minmax(300px,1.4fr)]">
@@ -1713,6 +1756,32 @@ function Drawer({
         </div>
       </section>
       </div>
+
+      {/* Filled by the assistant when it ran on this job; typed here for one
+          applied to by hand. A cover-letter session started from this row
+          seeds from the text, so it need not be scraped again. */}
+      <section className="border-t border-border p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <Heading>Job ad</Heading>
+          {adSaved && <span className="text-[10px] tracking-widest text-ok">SAVED</span>}
+        </div>
+        <input
+          type="url"
+          value={jobUrl}
+          onChange={(e) => setJobUrl(e.target.value)}
+          onBlur={() => jobUrl.trim() !== journey.job_url && saveAd({ job_url: jobUrl.trim() })}
+          placeholder="https://… link to the job ad"
+          className="w-full text-sm bg-bg border border-border rounded px-2 py-1"
+        />
+        <textarea
+          value={jobText}
+          onChange={(e) => setJobText(e.target.value)}
+          onBlur={() => jobText !== journey.job_description && saveAd({ job_description: jobText })}
+          rows={jobText ? 8 : 3}
+          placeholder="Paste the job ad text — useful when the link will expire."
+          className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 resize-y leading-relaxed"
+        />
+      </section>
     </div>
   );
 }

@@ -132,6 +132,23 @@ async def test_patch_leaves_omitted_fields_alone(client):
     assert journey["applied_at"] == DAY
 
 
+async def test_patch_sets_and_clears_the_job_ad(client):
+    """A job added by hand (an Easy Apply, say) gets its ad after the fact —
+    the text is what a later cover-letter session seeds from."""
+    jid = await _job()
+
+    await client.patch(
+        f"/api/journeys/{jid}",
+        json={"job_url": "https://example.com/job/1", "job_description": "We need a..."},
+    )
+    journey = await get_journey(jid)
+    assert journey["job_url"] == "https://example.com/job/1"
+    assert journey["job_description"] == "We need a..."
+
+    await client.patch(f"/api/journeys/{jid}", json={"job_description": None})
+    assert (await get_journey(jid))["job_description"] == ""
+
+
 async def test_patch_status_is_ignored_it_is_not_writable(client):
     jid = await _job(applied_at=DAY)
 

@@ -297,7 +297,7 @@ async def journey_detail(journey_id: str) -> dict:
 
 # Text columns are NOT NULL, so a null from the client means "empty", not "NULL".
 _JOURNEY_TEXT_FIELDS = frozenset(
-    {"job_title", "company_name", "location", "job_url", "notes", "next_step"}
+    {"job_title", "company_name", "location", "job_url", "job_description", "notes", "next_step"}
 )
 
 
@@ -307,6 +307,7 @@ class JourneyCreatePayload(BaseModel):
     company_name: str = ""
     location: str = ""
     job_url: str = ""
+    job_description: str = ""
     notes: str = ""
     applied_at: float | None = None
 
@@ -316,6 +317,7 @@ class JourneyPatchPayload(BaseModel):
     company_name: str | None = None
     location: str | None = None
     job_url: str | None = None
+    job_description: str | None = None
     notes: str | None = None
     next_step: str | None = None
     applied_at: float | None = None

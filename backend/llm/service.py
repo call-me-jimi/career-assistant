@@ -74,7 +74,7 @@ def build_chat_model(task: str | None = None, cfg: LLMConfig | None = None):
         if cfg.base_url:
             kwargs["base_url"] = cfg.base_url
         # Some reasoning models reject temperature overrides; default otherwise.
-        if not cfg.model_name.lower().startswith(("gpt-5", "o1", "o3")):
+        if not cfg.model_name.lower().startswith(("gpt-5", "gpt-6", "o1", "o3")):
             kwargs["temperature"] = 0.7
         return ChatOpenAI(**kwargs), cfg
     if provider == "ollama":

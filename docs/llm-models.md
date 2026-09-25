@@ -18,12 +18,15 @@ Add an entry under `model_pricing`:
 
 Pricing is in USD per million tokens. If unknown, omit the entry — cost tracking will show $0.
 
-### Known prices (last verified 2026-05-04)
+### Known prices (last verified 2026-09-25)
 
 Sources: [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) · [OpenAI pricing](https://developers.openai.com/api/docs/pricing)
 
 | Model | Input $/1M | Output $/1M |
 |---|---|---|
+| `gpt-6-astra` | 10.00 | 50.00 |
+| `gpt-6-sol` | 2.00 | 10.00 |
+| `gpt-6-luna` | 0.10 | 0.50 |
 | `gpt-5.5` | 5.00 | 30.00 |
 | `gpt-5.5-pro` | 30.00 | 180.00 |
 | `gpt-5.4` | 2.50 | 15.00 |
@@ -53,10 +56,10 @@ const PROVIDER_MODELS = {
 
 ## 3. `backend/llm/service.py` — temperature handling (OpenAI only)
 
-Check the `startswith` guard at the `build_chat_model` function. Reasoning/frontier models typically reject a `temperature` parameter. The current guard covers `gpt-5`, `o1`, and `o3` prefixes:
+Check the `startswith` guard at the `build_chat_model` function. Reasoning/frontier models typically reject a `temperature` parameter. The current guard covers `gpt-5`, `gpt-6`, `o1`, and `o3` prefixes:
 
 ```python
-if not cfg.model_name.lower().startswith(("gpt-5", "o1", "o3")):
+if not cfg.model_name.lower().startswith(("gpt-5", "gpt-6", "o1", "o3")):
     kwargs["temperature"] = 0.7
 ```
 

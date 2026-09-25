@@ -356,6 +356,9 @@ export default function JobDetailPage() {
 
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
         <div className="space-y-3">
+          <a href="/jobs" className="inline-block text-sm text-subtle hover:text-accent">
+            ← Back to applications
+          </a>
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight">

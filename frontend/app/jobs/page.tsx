@@ -98,6 +98,9 @@ const GROUP_LABELS: Record<string, string> = {
    that would otherwise bury the handful you are actually working on. */
 const COLLAPSED_BY_DEFAULT = ["silent", "rejected", "dropped"];
 const COLLAPSE_KEY = "tracker:collapsed-groups";
+/* Per tab, not forever: the filters should survive a trip into one application
+   and back, but a fresh visit starts from the full list. */
+const FILTERS_KEY = "tracker:filters";
 
 const SORTS: [string, string, (a: Journey, b: Journey) => number][] = [
   ["contact", "Last contact", (a, b) => (b.last_contact_at ?? 0) - (a.last_contact_at ?? 0)],
@@ -275,6 +278,7 @@ export default function JobsPage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSED_BY_DEFAULT));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
 
   /* Read once on mount rather than during render: the server pass has neither
      localStorage nor a query string, and reading them inline would hydrate to
@@ -287,10 +291,31 @@ export default function JobsPage() {
       /* corrupt or unavailable — the defaults are fine */
     }
 
-    // The landing counters link here already filtered.
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(FILTERS_KEY) || "{}");
+      if (typeof saved.query === "string") setQuery(saved.query);
+      if (saved.status === "all" || STATUS_META[saved.status]) setStatus(saved.status);
+      if (SORTS.some(([key]) => key === saved.sort)) setSort(saved.sort);
+    } catch {
+      /* corrupt or unavailable — start unfiltered */
+    }
+
+    // The landing counters link here already filtered, which beats what was saved.
     const wanted = new URLSearchParams(window.location.search).get("status");
     if (wanted === "all" || (wanted && STATUS_META[wanted])) setStatus(wanted);
+    setRestored(true);
   }, []);
+
+  /* Gated on `restored` so the defaults of the first render never overwrite
+     what the mount effect is about to read back. */
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      window.sessionStorage.setItem(FILTERS_KEY, JSON.stringify({ query, status, sort }));
+    } catch {
+      /* not persisting only costs the round trip */
+    }
+  }, [restored, query, status, sort]);
 
   const toggleGroup = useCallback((key: string) => {
     setCollapsed((prev) => {

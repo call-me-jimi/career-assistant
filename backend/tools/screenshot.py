@@ -22,18 +22,26 @@ SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Hard ceiling so a slow/hanging page never stalls the collect_job node.
 _TIMEOUT_S = 25.0
-_NAV_TIMEOUT_MS = 20_000
+_NAV_TIMEOUT_MS = 15_000
+_IDLE_TIMEOUT_MS = 5_000
 _VIEWPORT = {"width": 1280, "height": 1024}
 
 
 async def _render(url: str, dest: Path) -> None:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         try:
             page = await browser.new_page(viewport=_VIEWPORT)
-            await page.goto(url, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+            await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
+            # Give late XHR-rendered content a chance, but don't require idle:
+            # some sites (e.g. Personio) keep a request open forever.
+            try:
+                await page.wait_for_load_state("networkidle", timeout=_IDLE_TIMEOUT_MS)
+            except PlaywrightTimeoutError:
+                pass
             await page.screenshot(path=str(dest), full_page=True)
         finally:
             await browser.close()

@@ -564,13 +564,26 @@ export default function JobsPage() {
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search title, company or notes…"
-            className="flex-1 min-w-[180px] bg-panel2 border border-border rounded px-2 py-1 text-sm"
-          />
+          <div className="relative flex-1 min-w-[180px]">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search title, company or notes…"
+              className="w-full bg-panel2 border border-border rounded pl-2 pr-7 py-1 text-sm [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                title="Clear search"
+                className="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 text-subtle hover:text-text leading-none"
+              >
+                ×
+              </button>
+            )}
+          </div>
           <div className="flex gap-1 flex-wrap">
             {["all", ...STATUS_ORDER].map((key) => (
               <button

@@ -356,13 +356,29 @@ export default function JobsPage() {
     async (journeyId: string) => {
       const r = await fetch(`/api/journeys/${journeyId}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      splice(await r.json());
+      const updated: Journey = await r.json();
+      splice(updated);
+      return updated;
     },
     [splice]
   );
 
+  /* An edit can re-sort or regroup a row out of view; follow it. Its new group
+     may be collapsed (Rejected is by default), which would leave nothing to
+     scroll to — so show it for this visit, not persisted. "nearest" leaves the
+     page alone while the row is still on screen. */
+  const follow = useCallback((updated: Journey) => {
+    setCollapsed((prev) => {
+      if (!prev.has(updated.status)) return prev;
+      const next = new Set(prev);
+      next.delete(updated.status);
+      return next;
+    });
+    setReveal({ id: updated.journey_id, block: "nearest" });
+  }, []);
+
   /* Returns whether it worked, so a panel knows whether to close itself. */
-  const call = useCallback(async (fn: () => Promise<void>) => {
+  const call = useCallback(async (fn: () => Promise<unknown>) => {
     setError(null);
     try {
       await fn();
@@ -382,16 +398,14 @@ export default function JobsPage() {
           body: JSON.stringify(body),
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        splice(await r.json());
-        // A new title or date can re-sort the row out of view; follow it.
-        // "nearest" leaves the page alone while the row is still on screen.
-        setReveal({ id: journeyId, block: "nearest" });
+        const updated: Journey = await r.json();
+        splice(updated);
+        follow(updated);
       }),
-    [call, splice]
+    [call, splice, follow]
   );
 
-  /* After the render that placed the row. A row in a collapsed group isn't
-     rendered, so there is nothing to follow and the request just lapses. */
+  /* After the render that placed the row. */
   useEffect(() => {
     if (!reveal) return;
     document.getElementById(`journey-${reveal.id}`)?.scrollIntoView({ block: reveal.block });
@@ -409,9 +423,11 @@ export default function JobsPage() {
           body: JSON.stringify(body),
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        splice(await r.json());
+        const updated: Journey = await r.json();
+        splice(updated);
+        follow(updated);
       }),
-    [call, splice]
+    [call, splice, follow]
   );
 
   const scheduleRound = useCallback(
@@ -423,9 +439,9 @@ export default function JobsPage() {
           body: JSON.stringify(body),
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        await refresh(journeyId);
+        follow(await refresh(journeyId));
       }),
-    [call, refresh]
+    [call, refresh, follow]
   );
 
   /* Start an assistant already knowing the job — and the round, when one was

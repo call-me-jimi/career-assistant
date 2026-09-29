@@ -173,7 +173,7 @@ the REST/WebSocket API — is documented in **[docs/ARCHITECTURE.md](docs/ARCHIT
 
 ## Supported LLM providers
 
-- **Anthropic** (Claude — default; `claude-sonnet-5` out of the box)
+- **Anthropic** (Claude — default; `claude-sonnet-5-5` out of the box)
 - **OpenAI** (GPT models)
 - **Ollama** (local models, via `OLLAMA_BASE_URL`)
 - **Generic HTTP** endpoints

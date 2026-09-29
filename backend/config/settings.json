@@ -1,7 +1,7 @@
 {
   "default_llm": {
     "provider": "anthropic",
-    "model_name": "claude-sonnet-5",
+    "model_name": "claude-sonnet-5-5",
     "base_url": null,
     "api_key": null,
     "max_tokens": null
@@ -23,7 +23,7 @@
     },
     "alignment_strategy": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-5",
+      "model_name": "claude-sonnet-5-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": null
@@ -37,7 +37,7 @@
     },
     "position_candidate": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-5",
+      "model_name": "claude-sonnet-5-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": null
@@ -65,21 +65,21 @@
     },
     "qa": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-5",
+      "model_name": "claude-sonnet-5-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": null
     },
     "interview_briefing": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-5",
+      "model_name": "claude-sonnet-5-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": 16000
     },
     "refine_interview_briefing": {
       "provider": "anthropic",
-      "model_name": "claude-sonnet-5",
+      "model_name": "claude-sonnet-5-5",
       "base_url": null,
       "api_key": null,
       "max_tokens": 16000
@@ -165,9 +165,13 @@
       "input_per_mtok": 5.0,
       "output_per_mtok": 25.0
     },
+    "claude-sonnet-5-5": {
+      "input_per_mtok": 2.0,
+      "output_per_mtok": 10.0
+    },
     "claude-sonnet-5": {
-      "input_per_mtok": 3.0,
-      "output_per_mtok": 15.0
+      "input_per_mtok": 2.0,
+      "output_per_mtok": 10.0
     },
     "claude-sonnet-4-6": {
       "input_per_mtok": 3.0,

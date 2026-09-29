@@ -271,7 +271,9 @@ export default function JobsPage() {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [types, setTypes] = useState<InterviewType[]>([]);
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const [reveal, setReveal] = useState<string | null>(null);
+  const [reveal, setReveal] = useState<{ id: string; block: ScrollLogicalPosition } | null>(
+    null
+  );
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("applied");
@@ -381,9 +383,20 @@ export default function JobsPage() {
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         splice(await r.json());
+        // A new title or date can re-sort the row out of view; follow it.
+        // "nearest" leaves the page alone while the row is still on screen.
+        setReveal({ id: journeyId, block: "nearest" });
       }),
     [call, splice]
   );
+
+  /* After the render that placed the row. A row in a collapsed group isn't
+     rendered, so there is nothing to follow and the request just lapses. */
+  useEffect(() => {
+    if (!reveal) return;
+    document.getElementById(`journey-${reveal.id}`)?.scrollIntoView({ block: reveal.block });
+    setReveal(null);
+  }, [reveal]);
 
   /* The date and what they said in one call — see POST /journeys/{id}/outcome.
      The response is the journey with its status already recomputed. */
@@ -465,7 +478,7 @@ export default function JobsPage() {
         next.delete(created.status);
         return next;
       });
-      setReveal(created.journey_id);
+      setReveal({ id: created.journey_id, block: "start" });
     } catch {
       setError("Could not add an application.");
     }
@@ -681,8 +694,6 @@ export default function JobsPage() {
                     journey={j}
                     types={types}
                     isOpen={open.has(j.journey_id)}
-                    reveal={reveal === j.journey_id}
-                    onRevealed={() => setReveal(null)}
                     onToggle={() => toggle(j.journey_id)}
                     onPatch={(body) => patchJourney(j.journey_id, body)}
                     onRefresh={() => call(() => refresh(j.journey_id))}
@@ -749,8 +760,6 @@ function Row({
   journey,
   types,
   isOpen,
-  reveal,
-  onRevealed,
   onToggle,
   onPatch,
   onRefresh,
@@ -762,8 +771,6 @@ function Row({
   journey: Journey;
   types: InterviewType[];
   isOpen: boolean;
-  reveal: boolean;
-  onRevealed: () => void;
   onToggle: () => void;
   onPatch: (body: Record<string, unknown>) => void;
   onRefresh: () => void;
@@ -776,17 +783,10 @@ function Row({
   const outcome = OUTCOME_FIELDS.find(([field]) => journey[field]);
   const cellPad = "px-3 py-2 border-b border-border align-middle";
   const [panel, setPanel] = useState<RowPanel>(null);
-  const rowRef = useRef<HTMLTableRowElement>(null);
-
-  useEffect(() => {
-    if (!reveal) return;
-    rowRef.current?.scrollIntoView({ block: "start" });
-    onRevealed();
-  }, [reveal, onRevealed]);
 
   return (
     <>
-      <tr ref={rowRef} className="group hover:bg-panel2/40">
+      <tr id={`journey-${journey.journey_id}`} className="group hover:bg-panel2/40">
         <td className={`${cellPad} sticky left-0 bg-bg group-hover:bg-panel2 z-10 border-r border-border`}>
           <div className="flex items-center gap-1.5 w-[250px]">
             <button
@@ -1956,6 +1956,8 @@ function EditableText({
         autoFocus
         defaultValue={value}
         placeholder={placeholder}
+        // Type-on to append, not wherever the browser happens to drop the caret.
+        onFocus={(e) => e.currentTarget.setSelectionRange(value.length, value.length)}
         onBlur={(e) => {
           setEditing(false);
           if (e.target.value !== value) onSave(e.target.value.trim());
@@ -1972,6 +1974,9 @@ function EditableText({
   return (
     <button
       onClick={() => setEditing(true)}
+      /* Tabbing out of the previous cell lands here; a focused cell that isn't
+         an input would swallow the keystrokes that follow. */
+      onFocus={() => setEditing(true)}
       /* The cell truncates; the tooltip is the cheapest way to read the rest
          without opening the row. */
       title={value ? `${value} — click to edit` : "Click to edit"}

@@ -307,7 +307,8 @@ export default function Insights({
         <Seg label="Submitted within" value={range} options={RANGES} onChange={setRange} />
       </div>
 
-      <Summary apps={apps} quietDays={quietDays} onShowStatus={onShowStatus} />
+      <Summary apps={apps} quietDays={quietDays} />
+      {apps.length > 0 && <Flow {...props} onShowStatus={onShowStatus} />}
       <Cadence {...props} />
       <PeriodTable {...props} />
       <Outcomes {...props} />
@@ -347,17 +348,9 @@ type ChartProps = {
   hideTip: () => void;
 };
 
-/* ---------- headline: rates, then your sheet's counts ---------- */
+/* ---------- headline tiles ---------- */
 
-function Summary({
-  apps,
-  quietDays,
-  onShowStatus,
-}: {
-  apps: App[];
-  quietDays: number;
-  onShowStatus: (status: string) => void;
-}) {
+function Summary({ apps, quietDays }: { apps: App[]; quietDays: number }) {
   const sent = apps.filter((a) => a.applied);
   const replied = sent.filter((a) => a.firstReply).length;
   const invited = sent.filter((a) => a.rounds.length).length;
@@ -365,7 +358,10 @@ function Summary({
   const count = (...s: string[]) => apps.filter((a) => s.includes(a.status)).length;
   const rounds = apps.flatMap((a) => a.rounds.filter((r) => r.held));
   const roundCount = (f: (t: string) => boolean) => rounds.filter((r) => f(r.type)).length;
+  const cases = roundCount((t) => t === "case_study");
 
+  /* Where each application stands is the flow below; the tiles keep what it
+     doesn't show — rates, waits, the open pile, and rounds rather than applications. */
   const tiles: [string, string, string][] = [
     ["Heard back", `${pct(replied, sent.length)}%`, `${replied} of ${sent.length} submitted`],
     ["Invited to a round", `${pct(invited, sent.length)}%`, `${invited} of ${sent.length} submitted`],
@@ -374,67 +370,201 @@ function Summary({
       rejDays.length ? `${median(rejDays)} days` : "–",
       rejDays.length ? `80% arrive within ${quantile(rejDays, 0.8)} days` : "no rejections yet",
     ],
+    [
+      "Still open",
+      `${count("applied", "silent", "in_progress")}`,
+      `${count("silent")} with no reply for ${quietDays}+ days`,
+    ],
+    [
+      "Rounds held",
+      `${rounds.length}`,
+      `${roundCount((t) => t === "recruiter")} recruiter · ${roundCount((t) => t === "screening")} screening · ` +
+        `${roundCount((t) => !FIRST_ROUNDS[t])} later${cases ? `, ${cases} of them case studies` : ""}`,
+    ],
   ];
-
-  /* The five status lines partition the total, as the sheet's list did. A line
-     that is exactly one tracker status links to it. */
-  const appLines: [string, number, string | null, boolean?][] = [
-    ["Applications", apps.length, "all"],
-    ["Open", count("applied", "silent", "in_progress"), null],
-    [`no reply for ${quietDays}+ days`, count("silent"), "silent", true],
-    ["On hold", count("on_hold"), "on_hold"],
-    ["Rejected", count("rejected"), "rejected"],
-    ["without any interview", apps.filter((a) => a.cat === "rej_cv").length, null, true],
-    ["Withdrawn", count("dropped"), "dropped"],
-    ["Offers", count("offer"), "offer"],
-  ];
-  const roundLines: [string, number, null, boolean?][] = [
-    ["Recruiter", roundCount((t) => t === "recruiter"), null],
-    ["Screening", roundCount((t) => t === "screening"), null],
-    ["Second stage", roundCount((t) => !FIRST_ROUNDS[t]), null],
-    ["case studies", roundCount((t) => t === "case_study"), null, true],
-  ];
-
-  const ledger = (heading: string, lines: [string, number, string | null, boolean?][]) => (
-    <div>
-      <h3 className="text-[10px] uppercase tracking-widest text-subtle mb-1">{heading}</h3>
-      <dl className="grid grid-cols-[1fr_auto] text-sm tabular-nums">
-        {lines.map(([label, value, status, sub]) => (
-          <div key={label} className="contents">
-            <dt className={`py-1 border-b border-[#20263a] ${sub ? "pl-4 text-subtle" : ""}`}>
-              {status ? (
-                <button onClick={() => onShowStatus(status)} className="hover:text-accent text-left">
-                  {label} <span className="text-subtle">→</span>
-                </button>
-              ) : (
-                label
-              )}
-            </dt>
-            <dd className={`py-1 border-b border-[#20263a] text-right ${sub ? "text-subtle" : "font-semibold"}`}>
-              {value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {tiles.map(([k, v, s]) => (
-          <div key={k} className="rounded-xl border border-border bg-panel px-4 py-3">
-            <div className="text-[10px] uppercase tracking-widest text-subtle">{k}</div>
-            <div className="text-2xl font-semibold mt-1">{v}</div>
-            <div className="text-xs text-subtle mt-1">{s}</div>
-          </div>
-        ))}
-      </div>
-      <div className="rounded-xl border border-border bg-panel p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-        {ledger("Applications", appLines)}
-        {ledger("Interview rounds held", roundLines)}
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      {tiles.map(([k, v, s]) => (
+        <div key={k} className="rounded-xl border border-border bg-panel px-4 py-3">
+          <div className="text-[10px] uppercase tracking-widest text-subtle">{k}</div>
+          <div className="text-2xl font-semibold mt-1">{v}</div>
+          <div className="text-xs text-subtle mt-1">{s}</div>
+        </div>
+      ))}
     </div>
+  );
+}
+
+/* ---------- where each application got to ---------- */
+
+type Stage = "second" | "first" | "none";
+
+/* The furthest round you were invited to, the same split the rounds tile
+   uses. Counts applications, where that tile counts rounds. */
+const stageOf = (a: App): Stage =>
+  !a.rounds.length ? "none" : a.rounds.some((r) => !FIRST_ROUNDS[r.type]) ? "second" : "first";
+
+/* The tracker status a node lists when clicked. "Interviewing or on hold" is
+   two statuses, so it has none; both rejection nodes list every rejection. */
+const NODE_STATUS: Record<string, string> = {
+  all: "all",
+  offer: "offer",
+  rej_int: "rejected",
+  rej_cv: "rejected",
+  dropped: "dropped",
+  silent: "silent",
+  waiting: "applied",
+};
+
+type FlowNode = { id: string; label: string; color: string; n: number; col: number; ord: number; x: number; y: number };
+
+function Flow({
+  apps,
+  quietDays,
+  showTip,
+  hideTip,
+  onShowStatus,
+}: ChartProps & { onShowStatus: (status: string) => void }) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  const total = apps.length;
+
+  const count = (s: Stage | null, c: Cat | null) =>
+    apps.filter((a) => (!s || stageOf(a) === s) && (!c || a.cat === c)).length;
+  const stages: [Stage, string, string][] = [
+    ["second", "Reached a second stage", C.inv],
+    ["first", "First round only", C.inv],
+    ["none", "No interview", C.sub],
+  ];
+  const cats = outcomeCats(quietDays);
+
+  // Too narrow for three columns of labels: the panel scrolls instead.
+  const W = Math.max(680, width), H = 360, PAD = 8, GAP = 14, NW = 10, L = 118, R = 270;
+  const k = (H - 2 * PAD - GAP * (cats.length - 1)) / total;
+  const xs = [L, L + (W - L - R) * 0.46, W - R - NW];
+  const cols = [
+    [{ id: "all", label: "Applications", color: C.sub, n: total }],
+    stages.map(([id, label, color]) => ({ id, label, color, n: count(id, null) })),
+    cats.map(([id, label, color]) => ({ id, label, color, n: count(null, id) })),
+  ];
+  const node: Record<string, FlowNode> = {};
+  cols.forEach((col, ci) => {
+    let y = (H - total * k - GAP * (col.length - 1)) / 2;
+    col.forEach((d, ord) => {
+      node[d.id] = { ...d, col: ci, ord, x: xs[ci], y };
+      y += d.n * k + GAP;
+    });
+  });
+
+  const links = [
+    ...stages.map(([s]) => ({ s: node.all, t: node[s], v: node[s].n })),
+    ...stages.flatMap(([s]) => cats.map(([c]) => ({ s: node[s], t: node[c], v: count(s, c) }))),
+  ]
+    .filter((l) => l.v)
+    .map((l) => ({ ...l, sy: 0, ty: 0 }));
+  // Leave each source in target order and enter each target in source order, so ribbons don't cross needlessly.
+  const out: Record<string, number> = {}, into: Record<string, number> = {};
+  [...links].sort((a, b) => a.t.col - b.t.col || a.t.ord - b.t.ord).forEach((l) => {
+    l.sy = l.s.y + (out[l.s.id] ?? 0);
+    out[l.s.id] = (out[l.s.id] ?? 0) + l.v * k;
+  });
+  [...links].sort((a, b) => a.s.col - b.s.col || a.s.ord - b.s.ord).forEach((l) => {
+    l.ty = l.t.y + (into[l.t.id] ?? 0);
+    into[l.t.id] = (into[l.t.id] ?? 0) + l.v * k;
+  });
+
+  const reached = total - node.none.n;
+  // No submission date: the "Invited to a round" tile leaves these out, the flow counts them.
+  const brought = apps.filter((a) => !a.applied && a.rounds.length).length;
+  return (
+    <Panel
+      title="Where each application got to"
+      question="From sending, through the furthest round you were invited to, to where it stands today. Percentages are of all applications; click a status to list it."
+    >
+      <div ref={ref} className="w-full overflow-x-auto">
+        {width > 0 && (
+          <svg width={W} height={H} className="block">
+            {links.map((l) => {
+              const x0 = l.s.x + NW, x1 = l.t.x, xm = (x0 + x1) / 2, h = l.v * k;
+              return (
+                <path
+                  key={`${l.s.id}-${l.t.id}`}
+                  d={`M${x0},${l.sy} C${xm},${l.sy} ${xm},${l.ty} ${x1},${l.ty} L${x1},${l.ty + h} C${xm},${l.ty + h} ${xm},${l.sy + h} ${x0},${l.sy + h} Z`}
+                  fill={l.t.color}
+                  className="opacity-40 hover:opacity-80"
+                  onMouseMove={(e) =>
+                    showTip(e, `${l.s.label} → ${l.t.label}`, [
+                      [l.t.color, "Applications", `${l.v} · ${pct(l.v, l.s.n)}% of ${l.s.n}`],
+                    ])
+                  }
+                  onMouseLeave={hideTip}
+                />
+              );
+            })}
+            {Object.values(node).map((d) => {
+              const status = d.n ? NODE_STATUS[d.id] : undefined;
+              return (
+                <g
+                  key={d.id}
+                  onClick={status ? () => onShowStatus(status) : undefined}
+                  className={status ? "cursor-pointer [&:hover_tspan:first-child]:fill-accent" : ""}
+                >
+                  {d.n ? (
+                    <rect
+                      x={d.x}
+                      y={d.y}
+                      width={NW}
+                      height={Math.max(1, d.n * k)}
+                      rx={2}
+                      fill={d.color}
+                      onMouseMove={(e) => showTip(e, d.label, [[d.color, "Applications", `${d.n} · ${pct(d.n, total)}%`]])}
+                      onMouseLeave={hideTip}
+                    />
+                  ) : (
+                    <rect x={d.x} y={d.y - 1} width={NW} height={2} fill="none" stroke={d.color} strokeDasharray="2 2" />
+                  )}
+                  <text
+                    x={d.col ? d.x + NW + 8 : d.x - 8}
+                    y={d.y + (d.n * k) / 2}
+                    textAnchor={d.col ? "start" : "end"}
+                    dominantBaseline="middle"
+                    paintOrder="stroke"
+                    stroke={C.panel}
+                    strokeWidth={4}
+                    strokeLinejoin="round"
+                    className="fill-text text-[12px] tabular-nums"
+                  >
+                    <tspan className={d.col ? "" : "fill-subtle"}>{d.label}</tspan>
+                    <tspan dx={6} fontWeight={600}>
+                      {d.n}
+                    </tspan>
+                    {d.col > 0 && (
+                      <tspan dx={4} className="fill-subtle">
+                        · {pct(d.n, total)}%
+                      </tspan>
+                    )}
+                    {status && (
+                      <tspan dx={4} className="fill-subtle">
+                        →
+                      </tspan>
+                    )}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        )}
+      </div>
+      <Readout>
+        <strong>{pct(node.none.n, total)}%</strong> of applications never reached a round.
+        {reached > 0 && (
+          <>
+            {" "}Of the {reached} that did, <strong>{pct(node.second.n, reached)}%</strong> got to a second stage
+            {brought > 0 && <>, and {brought} of them were roles a recruiter brought to you rather than ones you applied to</>}.
+          </>
+        )}
+      </Readout>
+    </Panel>
   );
 }
 
@@ -693,18 +823,22 @@ function PeriodTable({ all, cutoff, today }: ChartProps) {
 
 /* ---------- what became of each period's applications ---------- */
 
+/* Sorted by how far an application got; shared with the flow above so a
+   category keeps its colour and place across the tab. */
+const outcomeCats = (quietDays: number): [Cat, string, string][] => [
+  ["offer", "Offer", C.offer],
+  ["active", "Interviewing or on hold", C.inv],
+  ["rej_int", "Rejected after interviews", C.rejInt],
+  ["rej_cv", "Rejected without an interview", C.rej],
+  ["dropped", "Withdrawn", C.drop],
+  ["silent", `Silent ${quietDays}+ days`, C.silent],
+  ["waiting", `Waiting, under ${quietDays} days`, C.wait],
+];
+
 function Outcomes({ apps, cutoff, today, quietDays, showTip, hideTip }: ChartProps) {
   const [grain, setGrain] = useState<Grain>("month");
   const [ref, W] = useWidth<HTMLDivElement>();
-  const cats: [Cat, string, string][] = [
-    ["offer", "Offer", C.offer],
-    ["active", "Interviewing or on hold", C.inv],
-    ["rej_int", "Rejected after interviews", C.rejInt],
-    ["rej_cv", "Rejected without an interview", C.rej],
-    ["dropped", "Withdrawn", C.drop],
-    ["silent", `Silent ${quietDays}+ days`, C.silent],
-    ["waiting", `Waiting, under ${quietDays} days`, C.wait],
-  ];
+  const cats = outcomeCats(quietDays);
 
   const { ps, by } = useMemo(() => {
     const ps = periods(cutoff, today, grain);

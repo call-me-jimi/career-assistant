@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import Brand from "../../components/Brand";
+import Insights from "./Insights";
 
 type Interview = {
   interview_id: string;
@@ -27,6 +28,7 @@ type JobEvent = {
   kind: string;
   occurred_at: number;
   text: string;
+  created_at: number;
 };
 
 type Feedback = {
@@ -281,6 +283,8 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
+  const [tab, setTab] = useState<"tracker" | "insights">("tracker");
+  const [quietDays, setQuietDays] = useState(30);
 
   /* Read once on mount rather than during render: the server pass has neither
      localStorage nor a query string, and reading them inline would hydrate to
@@ -305,6 +309,7 @@ export default function JobsPage() {
     // The landing counters link here already filtered, which beats what was saved.
     const wanted = new URLSearchParams(window.location.search).get("status");
     if (wanted === "all" || (wanted && STATUS_META[wanted])) setStatus(wanted);
+    if (new URLSearchParams(window.location.search).get("tab") === "insights") setTab("insights");
     setRestored(true);
   }, []);
 
@@ -340,6 +345,7 @@ export default function JobsPage() {
     ])
       .then(([j, t]) => {
         setJourneys(j.journeys);
+        setQuietDays(j.quiet_after_days ?? 30);
         setTypes(t.types);
       })
       .catch(() => setError("Could not load applications."))
@@ -376,6 +382,26 @@ export default function JobsPage() {
     });
     setReveal({ id: updated.journey_id, block: "nearest" });
   }, []);
+
+  /* In the URL, so a reload or a shared link lands on the same tab. */
+  const switchTab = useCallback((next: "tracker" | "insights") => {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === "insights") url.searchParams.set("tab", "insights");
+    else url.searchParams.delete("tab");
+    window.history.replaceState(null, "", url);
+  }, []);
+
+  /* An insights count opens the tracker showing exactly the rows it counted. */
+  const showStatus = useCallback(
+    (next: string) => {
+      setQuery("");
+      setStatus(next);
+      switchTab("tracker");
+      window.scrollTo({ top: 0 });
+    },
+    [switchTab]
+  );
 
   /* Returns whether it worked, so a panel knows whether to close itself. */
   const call = useCallback(async (fn: () => Promise<unknown>) => {
@@ -580,7 +606,35 @@ export default function JobsPage() {
         </span>
       </header>
 
+      <nav className="px-6 flex gap-1 border-b border-border" aria-label="View">
+        {(
+          [
+            ["tracker", "Tracker"],
+            ["insights", "Insights"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => switchTab(key)}
+            aria-current={tab === key ? "page" : undefined}
+            className={`px-3 py-2.5 text-sm -mb-px border-b-2 ${
+              tab === key ? "border-accent text-text" : "border-transparent text-subtle hover:text-text"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
       <div className="max-w-[1400px] mx-auto p-6 space-y-5">
+        {tab === "insights" ? (
+          loading ? (
+            <p className="text-sm text-subtle">Loading…</p>
+          ) : (
+            <Insights journeys={journeys} quietDays={quietDays} onShowStatus={showStatus} />
+          )
+        ) : (
+        <>
         <p className="text-sm text-subtle max-w-2xl">
           Every application, with the dates that drive it. Status is not something you set — it
           follows from the dates below, so it can never disagree with them.
@@ -727,6 +781,8 @@ export default function JobsPage() {
               </tbody>
             </table>
           </div>
+        )}
+        </>
         )}
       </div>
     </main>

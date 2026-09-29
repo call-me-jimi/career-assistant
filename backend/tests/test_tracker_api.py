@@ -72,6 +72,12 @@ async def test_list_is_not_capped_at_ten(client):
     assert len(r.json()["journeys"]) == 12
 
 
+async def test_list_carries_the_silence_threshold(client):
+    # never_quiet has widened it, so this is the configured value, not the default.
+    r = await client.get("/api/journeys")
+    assert r.json()["quiet_after_days"] == 10**6
+
+
 # --- create -----------------------------------------------------------------
 
 

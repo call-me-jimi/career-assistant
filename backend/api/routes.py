@@ -239,7 +239,9 @@ async def journeys() -> dict:
     return {
         "journeys": [
             await _with_tracker_fields(j, quiet_after_days=quiet_after_days) for j in rows
-        ]
+        ],
+        # The insights tab labels "silent" with the threshold that decided it.
+        "quiet_after_days": quiet_after_days,
     }
 
 

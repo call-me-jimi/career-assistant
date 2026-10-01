@@ -812,15 +812,21 @@ async def select_cover_letter_version(session_id: str, body: dict) -> dict:
         text = v.text if hasattr(v, "text") else v.get("text", "")
         if vid == version_id:
             matched = text
+            iteration = v.iteration if hasattr(v, "iteration") else v.get("iteration")
             break
     if matched is None:
         raise HTTPException(404, "version not found")
+    previous_id = values.get("best_version_id")
     ok = await runner.update_state_values({
         "best_version_id": version_id,
         "cover_letter": matched,
     })
     if not ok:
         raise HTTPException(409, "session is running — wait until paused")
+    # The chat still shows the letter cl_review picked; put the new one there too.
+    if version_id != previous_id:
+        emit_message(session_id, f"I switched the cover letter to version {iteration}.", role="user")
+        emit_message(session_id, matched, localized=True)
     return {"ok": True, "best_version_id": version_id}
 
 

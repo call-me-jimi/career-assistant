@@ -728,7 +728,7 @@ function SuggestionsTab({
   onReject: (id: number) => void;
   busy: string | null;
 }) {
-  const [viewMode, setViewMode] = useState<"proposed" | "diff">("proposed");
+  const [viewMode, setViewMode] = useState<"proposed" | "diff">("diff");
 
   if (suggestions.length === 0) {
     return (
@@ -743,17 +743,6 @@ function SuggestionsTab({
     <div className="space-y-4">
       <div className="flex items-center gap-1 self-start rounded-lg border border-subtle/30 p-0.5 w-fit text-xs">
         <button
-          onClick={() => setViewMode("proposed")}
-          className={
-            "px-3 py-1 rounded-md font-medium transition-colors " +
-            (viewMode === "proposed"
-              ? "bg-accent text-bg"
-              : "text-subtle hover:text-fg")
-          }
-        >
-          Proposed
-        </button>
-        <button
           onClick={() => setViewMode("diff")}
           className={
             "px-3 py-1 rounded-md font-medium transition-colors " +
@@ -763,6 +752,17 @@ function SuggestionsTab({
           }
         >
           Diff
+        </button>
+        <button
+          onClick={() => setViewMode("proposed")}
+          className={
+            "px-3 py-1 rounded-md font-medium transition-colors " +
+            (viewMode === "proposed"
+              ? "bg-accent text-bg"
+              : "text-subtle hover:text-fg")
+          }
+        >
+          Side by side
         </button>
       </div>
 

@@ -342,6 +342,18 @@ export default function InputBar({
       {kind === "export_items" && exportItems.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-subtle">Pick any:</span>
+          <button
+            onClick={() =>
+              setSelected(
+                selected.length === exportItems.length
+                  ? []
+                  : exportItems.map((i) => i.value)
+              )
+            }
+            className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-subtle hover:border-accent/50"
+          >
+            {selected.length === exportItems.length ? "Clear all" : "Select all"}
+          </button>
           {exportItems.map((item) => {
             const on = selected.includes(item.value);
             return (

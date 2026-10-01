@@ -68,6 +68,18 @@ def test_jsonld_flattens_graph_container():
     assert "Lead." in out["raw_text"]
 
 
+def test_jsonld_tolerates_raw_control_characters():
+    """Michael Page emits literal newlines/tabs inside JSON strings, which strict
+    ``json.loads`` rejects — the whole JobPosting must not be dropped for it."""
+    raw = '{"@type": "JobPosting", "title": "AI Manager", "description": "<p>Line one\n\tLine two</p>"}'
+    html = f'<html><head><script type="application/ld+json">{raw}</script></head><body></body></html>'
+    out = scraper._scrape_jsonld(html, "https://x/job/5")
+
+    assert out is not None
+    assert "Line one" in out["raw_text"]
+    assert "Line two" in out["raw_text"]
+
+
 def test_jsonld_returns_none_without_jobposting():
     ld = {"@type": "WebPage", "name": "Careers"}
     assert scraper._scrape_jsonld(_page(ld), "https://x/job/4") is None

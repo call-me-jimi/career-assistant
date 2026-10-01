@@ -91,7 +91,8 @@ def _iter_jsonld(html: str):
         if not raw.strip():
             continue
         try:
-            data = json.loads(raw)
+            # strict=False: some sites (Michael Page) put raw newlines/tabs in strings
+            data = json.loads(raw, strict=False)
         except (ValueError, TypeError):
             continue
         for entry in data if isinstance(data, list) else [data]:

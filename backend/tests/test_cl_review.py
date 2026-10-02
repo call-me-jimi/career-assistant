@@ -138,3 +138,28 @@ async def test_revision_without_rescore_skips_hm(monkeypatch):
     versions = update["cover_letter_versions"]
     assert versions[-1].hm_score is None
     assert versions[-1].hm_feedback is None
+
+
+@pytest.mark.asyncio
+async def test_rescore_gives_up_after_two_unreadable_reviews(monkeypatch):
+    state = _state_at_review()
+    calls = {"hm": 0}
+
+    async def fake_call_llm(*, task, system, user, session_id, history=None):
+        if task == "refine_cover_letter":
+            return LLMCallResult(text="revised letter", model="m", provider="p")
+        calls["hm"] += 1
+        return LLMCallResult(text="not json", model="m", provider="p")
+
+    monkeypatch.setattr(cl_review_mod, "call_llm", fake_call_llm)
+    monkeypatch.setattr(cl_review_mod, "load_system_prompt", lambda stem: "sys")
+    monkeypatch.setattr(cl_review_mod, "render_user_prompt", lambda stem, **kw: "usr")
+    monkeypatch.setattr(cl_review_mod, "interrupt", lambda payload: "rescore: more formal")
+    monkeypatch.setattr(cl_review_mod, "emit_message", lambda *a, **kw: None)
+    monkeypatch.setattr(cl_review_mod, "action_start", lambda *a, **kw: "aid")
+    monkeypatch.setattr(cl_review_mod, "action_finish", lambda *a, **kw: None)
+
+    update = await cl_review_mod.cl_review_node(state)
+
+    assert calls["hm"] == 2
+    assert update["cover_letter_versions"][-1].hm_score is None

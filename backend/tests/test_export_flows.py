@@ -263,6 +263,46 @@ async def test_sheets_node_skips_on_no(replies, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_sheets_node_retries_a_dropped_connection_once(replies, monkeypatch):
+    import requests
+
+    attempts: list[int] = []
+
+    def flaky(state_dict):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise requests.ConnectionError("connection reset")
+        return "https://sheet"
+
+    monkeypatch.setattr(mod.exporters, "export_google_sheets", flaky)
+    monkeypatch.setattr(mod, "SHEETS_RETRY_DELAY", 0)
+    replies.append("yes")
+
+    update = await mod.export_sheets_node(_state("cover_letter", cover_letter="Dear team,"))
+
+    assert len(attempts) == 2
+    assert [r.kind for r in update["export_results"]][-1] == "sheets"
+
+
+@pytest.mark.asyncio
+async def test_sheets_node_does_not_retry_a_config_error(replies, monkeypatch):
+    attempts: list[int] = []
+
+    def unconfigured(state_dict):
+        attempts.append(1)
+        raise RuntimeError("Google Sheets not configured (set env vars)")
+
+    monkeypatch.setattr(mod.exporters, "export_google_sheets", unconfigured)
+    monkeypatch.setattr(mod, "SHEETS_RETRY_DELAY", 0)
+    replies.append("yes")
+
+    update = await mod.export_sheets_node(_state("cover_letter", cover_letter="Dear team,"))
+
+    assert len(attempts) == 1
+    assert update == {"phase": "post_export"}
+
+
+@pytest.mark.asyncio
 async def test_other_assistants_go_straight_to_post_export(replies, written):
     state = _state("interview_prep", interview_briefing="# Briefing")
     replies.extend([["briefing"], "links"])

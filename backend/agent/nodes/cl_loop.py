@@ -101,18 +101,20 @@ async def cl_loop_node(state: ApplicationState) -> dict:
             company_description=state.company_description,
             cover_letter=gen.text,
         )
-        hm = await call_llm(
-            task="simulate_hiring_manager",
-            system=hm_system,
-            user=hm_user,
-            session_id=sid,
-        )
+        feedback = None
+        for _ in range(2):  # an unreadable reply usually parses on a second ask
+            hm = await call_llm(
+                task="simulate_hiring_manager",
+                system=hm_system,
+                user=hm_user,
+                session_id=sid,
+            )
+            try:
+                feedback = parse_hm_feedback(hm.text)
+                break
+            except Exception:
+                pass
         action_finish(sid, aid)
-
-        try:
-            feedback = parse_hm_feedback(hm.text)
-        except Exception:
-            feedback = None
 
         if feedback:
             version.hm_score = feedback.overall_score

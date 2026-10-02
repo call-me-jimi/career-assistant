@@ -281,6 +281,19 @@ async def export_node(state: ApplicationState) -> dict:
     }
 
 
+SHEETS_RETRY_DELAY = 3  # seconds before the one retry of a Sheets append
+
+
+def _sheets_transient(exc: Exception) -> bool:
+    """A dropped connection or a Google-side 408/429/5xx; not a config error."""
+    import requests
+
+    if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
+        return True
+    code = getattr(exc, "code", None)
+    return isinstance(code, int) and (code in (408, 429) or code >= 500)
+
+
 async def export_sheets_node(state: ApplicationState) -> dict:
     """Cover Letter only: log the application to the tracking spreadsheet.
 
@@ -304,9 +317,17 @@ async def export_sheets_node(state: ApplicationState) -> dict:
 
     aid = action_start(sid, "export_sheets", "Appending to Google Sheets")
     try:
-        url = await asyncio.to_thread(
-            exporters.export_google_sheets, state.model_dump(mode="json")
-        )
+        try:
+            url = await asyncio.to_thread(
+                exporters.export_google_sheets, state.model_dump(mode="json")
+            )
+        except Exception as exc:
+            if not _sheets_transient(exc):
+                raise
+            await asyncio.sleep(SHEETS_RETRY_DELAY)
+            url = await asyncio.to_thread(
+                exporters.export_google_sheets, state.model_dump(mode="json")
+            )
     except Exception as exc:
         action_finish(sid, aid, status="error")
         emit_message(sid, f"✗ Google Sheets append failed: {exc}")

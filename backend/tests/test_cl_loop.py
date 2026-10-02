@@ -96,3 +96,25 @@ async def test_loop_runs_max_iters_when_quality_low(monkeypatch, base_state):
     # Best of {6.0, 6.5, 7.0} is iteration 3 (draft-3).
     assert update["cover_letter"] == "draft-3"
     assert update["hm_iterations"] == 3
+
+
+@pytest.mark.asyncio
+async def test_unreadable_review_is_asked_for_once_more(monkeypatch, base_state):
+    calls = {"gen": 0, "hm": 0}
+    replies = ["Sorry, here is my verdict: great letter!", _fake_hm_json(9.0)]
+
+    async def fake_call_llm(*, task, system, user, session_id, history=None):
+        if task == "cover_letter_generation":
+            calls["gen"] += 1
+            return LLMCallResult(text=f"draft-{calls['gen']}", model="m", provider="p")
+        calls["hm"] += 1
+        return LLMCallResult(text=replies[calls["hm"] - 1], model="m", provider="p")
+
+    monkeypatch.setattr(cl_loop_mod, "call_llm", fake_call_llm)
+    monkeypatch.setattr(cl_loop_mod, "load_system_prompt", lambda stem: "sys")
+    monkeypatch.setattr(cl_loop_mod, "render_user_prompt", lambda stem, **kw: "usr")
+
+    update = await cl_loop_mod.cl_loop_node(base_state)
+
+    assert calls == {"gen": 1, "hm": 2}
+    assert update["cover_letter_versions"][0].hm_score == 9.0

@@ -19,5 +19,10 @@ def tavily_search(query: str, max_results: int = 5) -> list[dict]:
         log.warning("tavily-python not installed")
         return []
     client = TavilyClient(api_key=api_key)
-    resp = client.search(query=query, max_results=max_results, search_depth="basic")
+    # Search only enriches a prompt; an outage shouldn't stop the session.
+    try:
+        resp = client.search(query=query, max_results=max_results, search_depth="basic")
+    except Exception as exc:
+        log.warning("web search failed, continuing without results: %s", exc)
+        return []
     return resp.get("results", [])

@@ -99,4 +99,5 @@ export type ServerEvent =
   | { type: "state.update"; patch: Record<string, any> }
   | { type: "export.ready"; kind: string; path: string; timestamp: number }
   | { type: "session.complete" }
-  | { type: "session.error"; error: string };
+  | { type: "session.error"; error: string; retryable?: boolean }
+  | { type: "session.resumed" };

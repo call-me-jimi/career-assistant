@@ -7,7 +7,7 @@ export function connectSession(
   onEvent: (ev: ServerEvent) => void,
   onOpen?: () => void,
   onClose?: () => void,
-): { send: SendInput; close: () => void } {
+): { send: SendInput; retry: () => void; close: () => void } {
   // WebSockets can't be proxied by Next.js rewrites in dev, so connect
   // directly to the backend on its own port.
   const base =
@@ -31,6 +31,11 @@ export function connectSession(
     send: (value) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "user.input", value }));
+      }
+    },
+    retry: () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "session.retry" }));
       }
     },
     close: () => ws.close(),

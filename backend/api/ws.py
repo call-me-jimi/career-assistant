@@ -4,7 +4,8 @@ Protocol:
 - Server → client: events from the event bus (chat.message, action.*, llm.*,
   interrupt.request, state.update, export.ready, session.complete).
 - Client → server: JSON `{"type": "user.input", "value": <any>}` to resume
-  the graph at the current interrupt.
+  the graph at the current interrupt, or `{"type": "session.retry"}` to rerun
+  the step that failed (after a retryable `session.error`).
 """
 
 from __future__ import annotations
@@ -71,6 +72,8 @@ async def session_ws(websocket: WebSocket, session_id: str) -> None:
                 continue
             if msg.get("type") == "user.input":
                 await runner.submit_input(msg.get("value"))
+            elif msg.get("type") == "session.retry":
+                runner.retry()
     except WebSocketDisconnect:
         log.info("ws disconnect session=%s", session_id)
     finally:

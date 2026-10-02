@@ -68,9 +68,17 @@ class SessionRunner:
         self._graph: Any = None
         self._paused: bool = False
         self._final_state: dict[str, Any] | None = None
+        self._retry: asyncio.Event | None = None
 
     async def submit_input(self, value: Any) -> None:
         await self._input_queue.put(value)
+
+    def retry(self) -> bool:
+        """Resume a run that stopped on an error. False if it isn't stopped."""
+        if self._retry is None:
+            return False
+        self._retry.set()
+        return True
 
     def _config(self) -> dict:
         return {"configurable": {"thread_id": self.session_id}, "recursion_limit": 50}
@@ -125,7 +133,15 @@ class SessionRunner:
 
                 next_input: Any = initial
                 while True:
-                    result = await graph.ainvoke(next_input, config=config)
+                    try:
+                        result = await graph.ainvoke(next_input, config=config)
+                    except Exception as exc:
+                        await self._wait_for_retry(exc)
+                        # None resumes from the last checkpoint: only the node
+                        # that raised runs again, and an interrupt answer it
+                        # had already received is replayed, not re-asked.
+                        next_input = None
+                        continue
 
                     snapshot = await graph.aget_state(config)
                     interrupt_value = self._interrupt_from(snapshot)
@@ -169,6 +185,26 @@ class SessionRunner:
         finally:
             self._done = True
             self._paused = False
+
+    async def _wait_for_retry(self, exc: Exception) -> None:
+        """Report a failed step and hold the session until the user retries."""
+        log.exception("runner step failed: %s", exc)
+        from backend.agent.interrupts import emit_message
+        emit_message(
+            self.session_id,
+            f"⚠️ The assistant hit an error: `{exc}`\n\n"
+            "Press **Retry** to pick up where it stopped.",
+        )
+        self._retry = asyncio.Event()
+        bus.publish(
+            self.session_id,
+            {"type": "session.error", "error": str(exc), "retryable": True},
+        )
+        try:
+            await self._retry.wait()
+        finally:
+            self._retry = None
+        bus.publish(self.session_id, {"type": "session.resumed"})
 
 
 class RunnerRegistry:

@@ -46,6 +46,12 @@ def _resolve_config(task: str | None) -> LLMConfig:
     return settings.default_llm
 
 
+# The SDKs retry 429/5xx (Anthropic's 529 "overloaded" included) with
+# exponential backoff capped at 8s. Their default of 2 gives up within a couple
+# of seconds; 6 rides out ~25s of overload before the session offers Retry.
+MAX_RETRIES = 6
+
+
 def build_chat_model(task: str | None = None, cfg: LLMConfig | None = None):
     cfg = cfg or _resolve_config(task)
     provider = cfg.provider.lower()
@@ -63,6 +69,7 @@ def build_chat_model(task: str | None = None, cfg: LLMConfig | None = None):
             "model": cfg.model_name,
             "api_key": api_key,
             "max_tokens": cfg.max_tokens or 16000,
+            "max_retries": MAX_RETRIES,
         }
         if not cfg.model_name.lower().startswith(("claude-opus-4", "claude-opus-5", "claude-sonnet-5")):
             kwargs_anthropic["temperature"] = 0.7
@@ -70,7 +77,11 @@ def build_chat_model(task: str | None = None, cfg: LLMConfig | None = None):
     if provider == "openai":
         from langchain_openai import ChatOpenAI
 
-        kwargs: dict[str, Any] = {"model": cfg.model_name, "api_key": api_key}
+        kwargs: dict[str, Any] = {
+            "model": cfg.model_name,
+            "api_key": api_key,
+            "max_retries": MAX_RETRIES,
+        }
         if cfg.base_url:
             kwargs["base_url"] = cfg.base_url
         # Some reasoning models reject temperature overrides; default otherwise.

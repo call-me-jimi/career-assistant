@@ -34,6 +34,7 @@ function SessionView() {
   const [downloads, setDownloads] = useState<DownloadLine[]>([]);
   const [pending, setPending] = useState<InterruptPayload | null>(null);
   const [done, setDone] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [assistantType, setAssistantType] = useState<string>("");
   const [language, setLanguage] = useState<string>("");
   const [evaluationEntry, setEvaluationEntry] = useState<{
@@ -41,11 +42,13 @@ function SessionView() {
     data: InterviewEvaluation;
   } | null>(null);
   const sendRef = useRef<(v: unknown) => void>(() => {});
+  const retryRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!sessionId) return;
     const conn = connectSession(sessionId, handleEvent);
     sendRef.current = conn.send;
+    retryRef.current = conn.retry;
     fetch(`/api/sessions/${sessionId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -164,7 +167,15 @@ function SessionView() {
         setDone(true);
         break;
       case "session.error":
-        setDone(true);
+        // The step that failed never finished its action line.
+        setActions((prev) =>
+          prev.map((a) => (a.status === "running" ? { ...a, status: "error" } : a)),
+        );
+        if (ev.retryable) setFailed(true);
+        else setDone(true);
+        break;
+      case "session.resumed":
+        setFailed(false);
         break;
     }
   }
@@ -234,6 +245,22 @@ function SessionView() {
       <div className="flex-1 grid grid-cols-[2fr_1fr] overflow-hidden">
         <section className="flex flex-col overflow-hidden">
           <ChatPane messages={messages} actions={actions} downloads={downloads} evaluationEntry={evaluationEntry} />
+          {failed && (
+            <div className="border-t border-border px-4 py-3 flex items-center gap-3 text-sm">
+              <span className="text-subtle flex-1">
+                The last step failed. Retry runs it again from where it stopped.
+              </span>
+              <button
+                onClick={() => {
+                  setFailed(false);
+                  retryRef.current();
+                }}
+                className="px-4 py-1.5 rounded-lg bg-accent text-bg text-sm font-medium"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           <InputBar
             pending={pending}
             disabled={done}

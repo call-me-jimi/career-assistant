@@ -50,8 +50,8 @@
       "max_tokens": null
     },
     "simulate_hiring_manager": {
-      "provider": "anthropic",
-      "model_name": "claude-opus-5-5",
+      "provider": "openai",
+      "model_name": "gpt-6-sol",
       "base_url": null,
       "api_key": null,
       "max_tokens": null

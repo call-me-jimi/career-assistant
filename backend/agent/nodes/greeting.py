@@ -8,6 +8,7 @@ from langgraph.types import interrupt
 
 from backend.agent.interrupts import emit_message
 from backend.agent.state import ApplicationState
+from backend.storage.journeys import attach_profile
 from backend.storage.profiles import get_profile, list_profiles
 
 
@@ -61,6 +62,7 @@ async def greeting_node(state: ApplicationState) -> dict:
         )
         return {"applicant_name": applicant_name, "phase": "cv_intake"}
 
+    job = " at ".join(x for x in (state.job_title, state.company_name) if x)
     profiles = (await list_profiles())[:10]
     if profiles:
         lines = []
@@ -70,11 +72,18 @@ async def greeting_node(state: ApplicationState) -> dict:
             if candidate and candidate != label:
                 label = f"{label} ({candidate})"
             lines.append(f"{i}. **{label}** — saved {_format_saved_at(p.get('updated_at') or p.get('created_at'))}")
-        profiles_block = (
-            "\n\nYou have saved profiles:\n\n"
-            + "\n".join(lines)
-            + "\n\n_Pick a number to reuse a profile, or type your name to start fresh._"
-        )
+        if state.journey_id:
+            # Launched from an application row whose job has no profile yet (a
+            # spreadsheet import): name the job, and say the answer sticks.
+            header = (
+                f"**{job or 'This application'}** has no profile attached yet. "
+                "Which one did you apply with?"
+            )
+            footer = "_Pick a number — I'll remember it for this application — or type your name to start fresh._"
+        else:
+            header = "You have saved profiles:"
+            footer = "_Pick a number to reuse a profile, or type your name to start fresh._"
+        profiles_block = f"\n\n{header}\n\n" + "\n".join(lines) + f"\n\n{footer}"
     else:
         profiles_block = "\n\nFirst — what's your name?"
 
@@ -106,8 +115,12 @@ async def greeting_node(state: ApplicationState) -> dict:
     update: dict = {"applicant_name": applicant_name, "phase": "cv_intake"}
     if matched_profile:
         update["profile_id"] = matched_profile["profile_id"]
+        if state.journey_id:
+            await attach_profile(state.journey_id, matched_profile["profile_id"])
         if state.assistant_type == "career_advisor":
             next_hint = "We can dive straight into the conversation."
+        elif state.journey_id:
+            next_hint = f"Let's get you ready for **{job or 'this application'}**."
         else:
             next_hint = (
                 "Now share the job you're applying for. Paste the URL of the posting, "

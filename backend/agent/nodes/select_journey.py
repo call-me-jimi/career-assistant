@@ -57,6 +57,10 @@ def continue_phase(assistant_type: str, journey: dict) -> str:
     ever reaching the picker below — the runner seeds the journey, and this says
     which node the graph should resume at.
     """
+    # Rows imported from the spreadsheet carry a URL but no ad; fetch it before
+    # anything downstream works from an empty job description.
+    if not journey["job_description"] and assistant_type != "interview_evaluator":
+        return "collect_job"
     if assistant_type == "interview_prep":
         return "research_company" if not journey["company_description"] else "interview_context"
     if assistant_type == "interview_evaluator":

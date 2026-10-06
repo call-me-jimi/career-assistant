@@ -192,6 +192,20 @@ async def create_journey(*, profile_id: str | None, **fields: Any) -> str:
     return journey_id
 
 
+async def attach_profile(journey_id: str, profile_id: str) -> None:
+    """Give an ownerless job (e.g. a spreadsheet import) the profile it was applied with.
+
+    Only fills a blank: a job that already belongs to a profile keeps it.
+    """
+    async with connect() as db:
+        await db.execute(
+            "UPDATE job_journeys SET profile_id = ?, updated_at = ? "
+            "WHERE journey_id = ? AND profile_id IS NULL",
+            (profile_id, time.time(), journey_id),
+        )
+        await db.commit()
+
+
 async def update_journey(journey_id: str, **fields: Any) -> None:
     unknown = set(fields) - _ALLOWED_FIELDS
     if unknown:

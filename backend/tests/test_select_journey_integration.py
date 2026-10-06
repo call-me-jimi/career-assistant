@@ -89,6 +89,7 @@ async def test_continue_journey_skips_intake_to_interview_context(test_db, monke
         job_url="https://example.com/job/1",
         job_title="Engineer",
         company_name="ACME",
+        job_description="Build widgets.",
         company_description="Makes widgets",
         cover_letter="Dear ACME, ...",
     )

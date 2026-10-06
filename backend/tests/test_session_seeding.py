@@ -37,6 +37,7 @@ async def _job(**fields) -> str:
         profile_id="p1",
         company_name="voize",
         job_title="Head of Data & AI",
+        job_description="Lead the data team.",
         company_description="Healthcare speech AI.",
         **fields,
     )
@@ -196,3 +197,52 @@ async def test_a_round_that_is_not_on_this_job_still_asks(test_db):
 
     with pytest.raises(Exception):
         await select_interview_node(state)
+
+
+# --- a job with no profile yet (rows imported from the spreadsheet) --------
+
+
+async def test_picking_a_profile_attaches_it_to_the_job(test_db, monkeypatch):
+    from backend.agent.nodes import greeting as mod
+    from backend.storage.journeys import get_journey
+
+    await save_profile(
+        profile_id="p1", name="Head of Data", applicant_name="Hendrik", cv_text="…",
+        candidate_profile="…",
+    )
+    jid = await create_journey(profile_id=None, company_name="Würth", job_title="Team Lead")
+    said: list[str] = []
+    monkeypatch.setattr(mod, "emit_message", lambda sid, text, **k: said.append(text))
+    monkeypatch.setattr(mod, "interrupt", lambda payload: "1")
+    state = ApplicationState(
+        session_id="s1", assistant_type="interview_prep", journey_id=jid,
+        company_name="Würth", job_title="Team Lead",
+    )
+
+    update = await mod.greeting_node(state)
+
+    assert update["profile_id"] == "p1"
+    assert (await get_journey(jid))["profile_id"] == "p1"
+    # It names the job it already knows, and doesn't ask for it again.
+    assert "Team Lead" in said[0] and "Würth" in said[0]
+    assert "share the job" not in said[-1]
+
+
+async def test_attaching_never_takes_a_job_from_its_owner(test_db):
+    from backend.storage.journeys import attach_profile, get_journey
+
+    jid = await _job()
+
+    await attach_profile(jid, "someone-else")
+
+    assert (await get_journey(jid))["profile_id"] == "p1"
+
+
+async def test_a_job_without_a_description_goes_fetch_it(test_db):
+    jid = await create_journey(
+        profile_id="p1", company_name="Würth", job_title="Team Lead",
+        job_url="https://example.com/job",
+    )
+    for assistant in ("interview_prep", "cover_letter"):
+        state = ApplicationState(session_id="s1", assistant_type=assistant, journey_id=jid)
+        assert await select_journey_node(state) == {"phase": "collect_job"}

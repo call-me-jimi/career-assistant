@@ -9,6 +9,7 @@ from backend.agent.state import ApplicationState
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
 from backend.storage.cv_files import claim_upload
+from backend.storage.journeys import attach_profile
 from backend.storage.profiles import get_profile, save_profile
 
 
@@ -77,6 +78,8 @@ async def cv_intake_node(state: ApplicationState) -> dict:
     )
     if upload_id:
         await claim_upload(pid, upload_id)
+    if state.journey_id:
+        await attach_profile(state.journey_id, pid)
     emit_message(sid, f"Saved profile as **{profile_name}**.")
     return {
         "profile_id": pid,

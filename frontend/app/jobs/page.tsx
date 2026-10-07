@@ -601,9 +601,15 @@ export default function JobsPage() {
           <span className="h-5 w-px bg-border" />
           <div className="font-semibold">Jobs</div>
         </div>
-        <span className="text-sm text-subtle">
-          {shown.length} of {journeys.length} &middot; {stats.live} live
-        </span>
+        {loading ? (
+          <span className="flex h-5 items-center animate-pulse" aria-hidden>
+            <span className="h-3 w-28 rounded bg-subtle/20" />
+          </span>
+        ) : (
+          <span className="text-sm text-subtle">
+            {shown.length} of {journeys.length} &middot; {stats.live} live
+          </span>
+        )}
       </header>
 
       <nav className="px-6 flex gap-1 border-b border-border" aria-label="View">
@@ -640,7 +646,7 @@ export default function JobsPage() {
           follows from the dates below, so it can never disagree with them.
         </p>
 
-        <Funnel stats={stats} />
+        <Funnel stats={stats} loading={loading} />
 
         {error && (
           <p className="text-sm text-err border border-err/40 rounded px-3 py-2">{error}</p>
@@ -705,7 +711,36 @@ export default function JobsPage() {
           </button>
         </div>
 
-        {loading && <p className="text-sm text-subtle">Loading…</p>}
+        {loading && (
+          /* The table's shell with one blank heading per status, so the page
+             already has its shape when the rows land. */
+          <div className="overflow-x-auto border border-border rounded-xl" aria-busy="true">
+            <table className="w-full min-w-[1180px] border-collapse">
+              <thead>
+                <tr className="bg-panel">
+                  <th
+                    colSpan={9}
+                    className="text-left text-[10px] font-semibold px-3 py-2 border-b border-border"
+                  >
+                    <span className="invisible">Title</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="animate-pulse">
+                {STATUS_ORDER.map((key) => (
+                  <tr key={key} className="bg-panel">
+                    <td colSpan={9} className="px-3 py-1.5 border-y border-border">
+                      <div className="flex items-center gap-2.5">
+                        <span className="invisible text-[10px]">▶</span>
+                        <span className="h-2 w-28 rounded bg-subtle/20" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {!loading && journeys.length === 0 && (
           <p className="text-sm text-subtle">
@@ -793,8 +828,10 @@ export default function JobsPage() {
 
 function Funnel({
   stats,
+  loading,
 }: {
   stats: { applied: number; interviewed: number; late: number; offers: number };
+  loading: boolean;
 }) {
   const steps: [string, number, string][] = [
     ["Applied", stats.applied, "submission date set"],
@@ -812,13 +849,17 @@ function Funnel({
           className="flex-1 min-w-[130px] relative overflow-hidden bg-panel border border-border rounded px-4 py-3"
         >
           <div className="text-[10px] uppercase tracking-widest text-subtle">{label}</div>
-          <div className="text-2xl font-semibold tabular-nums leading-none mt-1">{value}</div>
+          {loading ? (
+            <div className="h-6 w-10 mt-1 rounded bg-subtle/20 animate-pulse" />
+          ) : (
+            <div className="text-2xl font-semibold tabular-nums leading-none mt-1">{value}</div>
+          )}
           <div className="text-xs text-subtle mt-1">{hint}</div>
           <span
             className={`absolute bottom-0 left-0 h-[3px] origin-left ${
               i === steps.length - 1 ? "bg-subtle" : "bg-accent"
             }`}
-            style={{ width: `${Math.max((value / top) * 100, 1.5)}%` }}
+            style={{ width: loading ? 0 : `${Math.max((value / top) * 100, 1.5)}%` }}
           />
         </div>
       ))}

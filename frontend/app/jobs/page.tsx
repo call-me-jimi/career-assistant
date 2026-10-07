@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import Brand from "../../components/Brand";
-import Insights from "./Insights";
+import Insights, { InsightsSkeleton } from "./Insights";
 
 type Interview = {
   interview_id: string;
@@ -635,7 +635,7 @@ export default function JobsPage() {
       <div className="max-w-[1400px] mx-auto p-6 space-y-5">
         {tab === "insights" ? (
           loading ? (
-            <p className="text-sm text-subtle">Loading…</p>
+            <InsightsSkeleton />
           ) : (
             <Insights journeys={journeys} quietDays={quietDays} onShowStatus={showStatus} />
           )

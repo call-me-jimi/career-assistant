@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 /* The Insights tab: statistics over the same journeys the tracker lists.
    Everything is computed here from dates the API already returns, so the
@@ -171,8 +171,11 @@ function barPath(x: number, y: number, w: number, h: number, down = false) {
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState(0);
-  useEffect(() => {
+  /* Layout effect, measured once up front: the observer's first report lands
+     after a paint, which would show every chart collapsed for a frame. */
+  useLayoutEffect(() => {
     if (!ref.current) return;
+    setWidth(Math.floor(ref.current.getBoundingClientRect().width));
     const ro = new ResizeObserver(([e]) => setWidth(Math.floor(e.contentRect.width)));
     ro.observe(ref.current);
     return () => ro.disconnect();
@@ -299,13 +302,7 @@ export default function Insights({
   const props = { apps, all, cutoff, today, quietDays, showTip, hideTip };
   return (
     <div className="space-y-5" onMouseLeave={hideTip}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-subtle max-w-2xl">
-          How the search is going: the pace you keep, what becomes of each application, and how
-          long employers take to answer.
-        </p>
-        <Seg label="Submitted within" value={range} options={RANGES} onChange={setRange} />
-      </div>
+      <Intro range={range} onRange={setRange} />
 
       <Summary apps={apps} quietDays={quietDays} />
       {apps.length > 0 && <Flow {...props} onShowStatus={onShowStatus} />}
@@ -334,6 +331,64 @@ export default function Insights({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function Intro({ range, onRange }: { range: string; onRange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-subtle max-w-2xl">
+        How the search is going: the pace you keep, what becomes of each application, and how
+        long employers take to answer.
+      </p>
+      <Seg label="Submitted within" value={range} options={RANGES} onChange={onRange} />
+    </div>
+  );
+}
+
+/* The tab before the journeys arrive: blanks the size of the tiles and of the
+   first two panels, so the page does not jump when they land. The panels further
+   down size to the data and start below the fold, so they are left out. */
+export function InsightsSkeleton() {
+  const bar = "rounded bg-subtle/20";
+  const head = (
+    <div>
+      <div className="flex h-5 items-center">
+        <span className={`h-3 w-48 ${bar}`} />
+      </div>
+      <div className="mt-0.5 flex h-4 items-center">
+        <span className={`h-2.5 w-96 max-w-full ${bar}`} />
+      </div>
+    </div>
+  );
+  return (
+    <div className="space-y-5" aria-busy="true">
+      <Intro range="0" onRange={() => {}} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 animate-pulse">
+        {Array.from({ length: 5 }, (_, i) => (
+          <div key={i} className="rounded-xl border border-border bg-panel px-4 py-3">
+            <div className="flex h-[15px] items-center">
+              <span className={`h-2 w-24 ${bar}`} />
+            </div>
+            <div className="mt-1 flex h-8 items-center">
+              <span className={`h-6 w-16 ${bar}`} />
+            </div>
+            {/* Two lines on wide screens: the rounds tile wraps there, and the
+                grid stretches every tile to match it. */}
+            <div className="mt-1 flex h-4 lg:h-8 items-start pt-[3px]">
+              <span className={`h-2.5 w-28 ${bar}`} />
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Chart plus the one-line readout under it; the second panel adds its legend. */}
+      {[393, 301].map((h) => (
+        <section key={h} className="rounded-xl border border-border bg-panel p-4 space-y-3 animate-pulse">
+          {head}
+          <div className="rounded bg-subtle/10" style={{ height: h }} />
+        </section>
+      ))}
     </div>
   );
 }

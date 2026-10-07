@@ -155,7 +155,9 @@ export default function LandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState("English");
   const [hasPendingUpdates, setHasPendingUpdates] = useState(false);
-  const [summary, setSummary] = useState<Summary | null>(null);
+  // undefined while loading (placeholders hold the strip's space), null when
+  // the fetch failed.
+  const [summary, setSummary] = useState<Summary | null | undefined>(undefined);
 
   useEffect(() => {
     fetch("/api/profiles")
@@ -172,8 +174,8 @@ export default function LandingPage() {
 
     fetch("/api/journeys/summary")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setSummary(d))
-      .catch(() => {});
+      .then((d) => setSummary(d))
+      .catch(() => setSummary(null));
   }, []);
 
   async function startSession(assistantType: AssistantType) {
@@ -232,6 +234,35 @@ export default function LandingPage() {
               Specialised assistants for the hard parts of your job search.
             </p>
           </div>
+
+          {summary === undefined && (
+            /* Same boxes as the strip below, so nothing moves when it lands. */
+            <div className="animate-pulse space-y-3.5" aria-busy="true">
+              <div className="flex items-center gap-3.5">
+                <p className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.14em] text-subtle">
+                  Application overview
+                </p>
+                <span className="h-px flex-1 bg-subtle/30" />
+                <span className="flex h-5 items-center">
+                  <span className="h-3 w-36 rounded bg-subtle/20" />
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-px sm:grid-cols-4 lg:grid-cols-7">
+                {COUNTERS.map(([key]) => (
+                  <div
+                    key={key}
+                    className="rounded-lg border border-subtle/25 bg-panel px-3.5 py-2.5"
+                  >
+                    <div className="h-[22px] w-8 rounded bg-subtle/20" />
+                    <div className="mt-1 flex h-4 items-center">
+                      <span className="h-2.5 w-16 rounded bg-subtle/20" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {summary && summary.total > 0 && (
             <div className="space-y-3.5">

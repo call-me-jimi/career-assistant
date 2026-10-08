@@ -33,6 +33,9 @@ GRAPH_BUILDERS = {
 
 log = logging.getLogger("assistant.runner")
 
+# State the nodes stream to the client via emit_state; republished when a session is reopened.
+STREAMED_STATE = ("language", "interview_evaluation")
+
 
 async def _seed_from_session(session_row: dict[str, Any]) -> dict[str, Any]:
     """What a session launched from an application row already knows.
@@ -132,6 +135,20 @@ class SessionRunner:
                 ).model_dump()
 
                 next_input: Any = initial
+                saved = await graph.aget_state(config)
+                if saved.values:
+                    # A thread with checkpoints is being reopened (the bus history
+                    # and this runner died with the last backend process). Invoking
+                    # with `initial` would start a new run over it; pick it up instead.
+                    patch = {k: saved.values[k] for k in STREAMED_STATE if saved.values.get(k)}
+                    if patch:
+                        bus.publish(self.session_id, {"type": "state.update", "patch": patch})
+                    if not saved.next:
+                        self._final_state = dict(saved.values)
+                        bus.publish(self.session_id, {"type": "session.complete"})
+                        return
+                    # None resumes: the node holding the open question asks it again.
+                    next_input = None
                 while True:
                     try:
                         result = await graph.ainvoke(next_input, config=config)

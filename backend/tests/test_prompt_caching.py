@@ -35,12 +35,17 @@ def _split(rendered: str) -> tuple[str, str]:
 def test_hm_prompt_caches_everything_but_the_cover_letter():
     head, tail = _split(render_user_prompt(
         "simulate_hiring_manager",
+        job_title="TITLE-TEXT",
+        company_name="COMPANY-TEXT",
+        job_source_type="recruiter",
+        language="German",
         cv_content="CV-TEXT",
         job_description="JD-TEXT",
         company_description="CO-TEXT",
         cover_letter="LETTER-TEXT",
     ))
     assert "CV-TEXT" in head and "JD-TEXT" in head and "CO-TEXT" in head
+    assert "TITLE-TEXT" in head and "COMPANY-TEXT" in head and "German" in head
     assert "LETTER-TEXT" in tail and "LETTER-TEXT" not in head
 
 

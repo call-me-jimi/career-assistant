@@ -1,0 +1,68 @@
+Task: Simulate the first screening of this application, deciding whether to invite the candidate to a first interview.
+
+Step 1 — Read the room before you judge. From the inputs, work out who reads this letter and what they value:
+- the level of the role (individual contributor, lead, manager, executive) and how hands-on it is
+- the company's type, stage, and culture (startup, scale-up, corporate, public sector, agency, ...) as far as the inputs show it
+- the conventions of the letter's language and market (formality, salutation, length, how directly people sell themselves)
+- the channel: a letter sent through a recruiter is read by the agency first, often for an anonymous client, so it cannot name company specifics the job ad doesn't give; judge it on whether the recruiter can confidently put the candidate forward
+Hold the letter to that reader's standard, not a generic executive one.
+
+Step 2 — Evaluate the cover letter against the CV, job description, and company context:
+1. First impression (does the right level and scope come across in a 10-second skim?)
+2. Relevance to the role (alignment with the responsibilities and requirements that matter most here)
+3. Strength of evidence (credible achievements, business impact, placed early)
+4. Tone and seniority fit (does the voice and scope match this role, this company, and this market?)
+5. Personalization (genuine company or role context, as far as the channel allows; a clear reason for this move)
+6. Weaknesses (unclear points, generic or AI-sounding phrasing, missing information) — only those that would change the decision
+
+Rules for the lists:
+- Weaknesses: only material ones. An empty list is a valid answer for a letter that is ready to send.
+- Suggestions: each must be achievable from evidence in the CV and must not make the letter materially longer — prefer replacing something to adding something. If a gap can only be closed by experience the CV doesn't show, say so in "reasoning" instead of suggesting the letter claim it.
+
+Return ONLY a single JSON object matching this schema, with the fields in this order — no prose, no code fences, no commentary:
+
+{
+  "reader_context": "<one or two sentences: who reads this letter and what they value>",
+  "first_impression": "<short paragraph>",
+  "strengths": ["<bullet>"],
+  "weaknesses": ["<bullet, or leave the list empty>"],
+  "suggestions": ["<concrete, actionable improvement, or leave the list empty>"],
+  "reasoning": "<short paragraph explaining the score and decision, separating letter quality from candidate fit>",
+  "overall_score": <float, 0.0-10.0>,
+  "decision": "<YES | MAYBE | NO>"
+}
+
+Scoring guidance — how this reader would act on the letter:
+- 9.0-10.0: Clear interview. The letter makes the case as well as this CV allows; edits would be polish.
+- 7.5-8.9: Likely interview. One or two material fixes would strengthen it.
+- 6.0-7.4: On the fence. The letter undersells or mis-pitches the candidate for this reader.
+- < 6.0: Would not progress. Wrong pitch for the role, generic, or the fit gap is too wide.
+A strong letter for a candidate with a real fit gap can still be a MAYBE; say which of the two drives the decision.
+
+INPUTS
+
+Role: {{ job_title or "(not given)" }}
+Company: {{ company_name or "(not given)" }}
+Channel: {% if job_source_type == "recruiter" %}via a recruiter or agency{% elif job_source_type == "direct" %}direct application to the employer{% else %}unknown — infer it from the job ad{% endif %}
+Letter language: {{ language or "English" }}
+
+Candidate CV:
+"""
+{{ cv_content }}
+"""
+
+Job Description:
+"""
+{{ job_description }}
+"""
+
+Company Description:
+"""
+{{ company_description }}
+"""
+
+<<<cache-break>>>
+Cover Letter:
+"""
+{{ cover_letter }}
+"""

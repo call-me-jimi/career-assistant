@@ -13,7 +13,7 @@ def test_rendered_prompts_carry_their_template_name():
     user = render_user_prompt("detect_language", text="Hallo")
     system = load_system_prompt("simulate_hiring_manager")
     assert user.template == "detect_language.v1"
-    assert system.template == "simulate_hiring_manager.system.v2"
+    assert system.template == "simulate_hiring_manager.system.v3"
     # Still plain text as far as every caller is concerned.
     assert isinstance(user, str) and "Hallo" in user
 

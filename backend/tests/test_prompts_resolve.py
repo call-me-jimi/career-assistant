@@ -7,10 +7,10 @@ def test_generate_cover_letter_latest_is_v8():
     assert latest_prompt_path("generate_cover_letter").name == "generate_cover_letter.v8.txt"
 
 
-def test_simulate_hiring_manager_latest_is_v3():
-    # v3 adds the prompt-cache break before the cover letter; the resolver must pick it.
-    assert latest_prompt_path("simulate_hiring_manager").name == "simulate_hiring_manager.v3.txt"
-    assert latest_system_path("simulate_hiring_manager").name == "simulate_hiring_manager.system.v2.txt"
+def test_simulate_hiring_manager_latest_is_v4():
+    # v4 adds role, company, channel and language so the reviewer can read the room.
+    assert latest_prompt_path("simulate_hiring_manager").name == "simulate_hiring_manager.v4.txt"
+    assert latest_system_path("simulate_hiring_manager").name == "simulate_hiring_manager.system.v3.txt"
 
 
 def test_cover_letter_generation_system_latest_is_v3():

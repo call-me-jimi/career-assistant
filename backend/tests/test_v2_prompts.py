@@ -172,12 +172,14 @@ def test_evaluator_v4_round_section_renders_when_set():
     assert "Technical — coding deep-dive" in result
 
 
-def test_evaluator_v4_round_section_absent_when_empty():
+def test_evaluator_v6_infers_round_when_empty():
+    # v6 keeps the section and asks the model to infer the round from the transcript.
     _clear_cache()
     result = render_user_prompt(
         "analyze_interview_performance", **EVALUATOR_KWARGS, interview_briefing=""
     )
-    assert "INTERVIEW ROUND" not in result
+    assert "INTERVIEW ROUND" in result
+    assert "Not given — infer it" in result
 
 
 def test_briefing_v4_round_section_renders_when_set():

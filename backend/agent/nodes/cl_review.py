@@ -105,6 +105,10 @@ async def cl_review_node(state: ApplicationState) -> dict:
         hm_system = load_system_prompt("simulate_hiring_manager")
         hm_user = render_user_prompt(
             "simulate_hiring_manager",
+            job_title=state.job_title,
+            company_name=state.company_name,
+            job_source_type=state.job_source_type,
+            language=state.language,
             cv_content=state.cv_text,
             job_description=state.job_description,
             company_description=state.company_description,

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 class HiringManagerFeedback(BaseModel):
     overall_score: float = Field(ge=0.0, le=10.0)
     decision: str  # "YES" | "MAYBE" | "NO"
+    reader_context: str = ""
     first_impression: str = ""
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
@@ -26,6 +27,7 @@ class CommunicationMetrics(BaseModel):
 
 class QuestionAnalysis(BaseModel):
     question: str
+    intent: str = ""
     answer_summary: str = ""
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
@@ -40,9 +42,11 @@ class InterviewerInsight(BaseModel):
 class InterviewEvaluation(BaseModel):
     overall_score: float = Field(ge=0.0, le=10.0)
     decision: Literal["YES", "MAYBE", "NO"]
+    room_read: str = ""
     summary: str = ""
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
+    fit_gaps: list[str] = Field(default_factory=list)
     improvements: list[str] = Field(default_factory=list)
     communication: CommunicationMetrics
     per_question: list[QuestionAnalysis] = Field(default_factory=list)

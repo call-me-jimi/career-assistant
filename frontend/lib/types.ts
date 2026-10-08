@@ -24,9 +24,11 @@ export type DownloadLine = {
 export type InterviewEvaluation = {
   overall_score: number;
   decision: "YES" | "MAYBE" | "NO" | string;
+  room_read?: string;
   summary: string;
   strengths: string[];
   weaknesses: string[];
+  fit_gaps?: string[];
   improvements: string[];
   communication: {
     pace: "too_fast" | "appropriate" | "too_slow" | string;

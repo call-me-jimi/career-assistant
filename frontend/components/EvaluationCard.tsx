@@ -52,11 +52,25 @@ export default function EvaluationCard({ evaluation }: Props) {
         </p>
       )}
 
+      {evaluation.room_read && (
+        <div className="rounded-xl border border-border p-3 space-y-1 text-sm">
+          <div className="font-semibold text-subtle text-xs uppercase tracking-wide">
+            Reading the room
+          </div>
+          <p className="leading-relaxed">{evaluation.room_read}</p>
+        </div>
+      )}
+
       <Section title="Strengths" items={evaluation.strengths} variant="ok" />
       <Section
         title="Weaknesses"
         items={evaluation.weaknesses}
         variant="warn"
+      />
+      <Section
+        title="Fit gaps — your background, not your answers"
+        items={evaluation.fit_gaps}
+        variant="subtle"
       />
       <Section
         title="Points to improve"
@@ -179,12 +193,15 @@ function Section({
 }: {
   title: string;
   items: string[] | undefined;
-  variant: "ok" | "warn" | "accent";
+  variant: "ok" | "warn" | "accent" | "subtle";
 }) {
   if (!items || items.length === 0) return null;
-  const bullet = { ok: "text-ok", warn: "text-warn", accent: "text-accent" }[
-    variant
-  ];
+  const bullet = {
+    ok: "text-ok",
+    warn: "text-warn",
+    accent: "text-accent",
+    subtle: "text-subtle",
+  }[variant];
   return (
     <div>
       <div className="font-semibold text-subtle text-xs uppercase tracking-wide mb-1">

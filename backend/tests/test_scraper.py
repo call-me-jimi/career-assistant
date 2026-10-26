@@ -136,3 +136,63 @@ def test_aem_jobdetails_returns_none_without_section_bodies():
 
 def test_aem_jobdetails_returns_none_without_component():
     assert scraper._scrape_aem_jobdetails("<html><body>nothing</body></html>", "https://x/job/7") is None
+
+
+# Symrise's page, trimmed: the widget's tech id is a JS var and its host an
+# attribute set by script — the job body itself is never in the HTML.
+_LUMESSE_PAGE = """<html><body>
+<script>var lumesseSiteTechId = 'Q7UFK026203F3VBQB68V7V70S';</script>
+<script>$s.attr("data-lumesse-fo-host", "emea3.recruitmentplatform.com");</script>
+<div id="lumesseJobDetailWidget"></div><p>Please accept cookies.</p></body></html>"""
+
+_LUMESSE_DETAILS = {
+    "jobFields": {"id": 32633, "jobTitle": "Head of Data & AI Platform", "jobNumber": "EA04390"},
+    "structuredData": {
+        "@type": "JobPosting",
+        "title": "Head of Data & AI Platform",
+        "hiringOrganization": {"@type": "Organization", "name": "Symrise"},
+        "jobLocation": {"address": {"addressLocality": "Barcelona", "addressCountry": "ES"}},
+        "employmentType": "FULL_TIME",
+    },
+    "customFields": [
+        {"title": "Your role", "content": "<p>Lead the platform.</p>"},
+        {"title": "About you", "content": "<ul><li>Leadership</li></ul>"},
+        {"title": "Empty", "content": ""},
+    ],
+}
+
+
+class _Resp:
+    def __init__(self, text: str = "", data: dict | None = None):
+        self.text, self._data = text, data
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._data
+
+
+def test_lumesse_reads_job_from_front_office_api(monkeypatch):
+    url = "https://www.symrise.com/your-career/search-and-apply/search-and-apply/?jobId=32633"
+    calls = []
+
+    def fake_get(u, headers=None, timeout=None):
+        calls.append((u, headers))
+        return _Resp(text=_LUMESSE_PAGE) if u == url else _Resp(data=_LUMESSE_DETAILS)
+
+    monkeypatch.setattr(scraper.requests, "get", fake_get)
+    out = scraper.scrape_job_page(url)
+
+    api_url, api_headers = calls[1]
+    assert api_url == "https://emea3.recruitmentplatform.com/fo/rest/jobs/32633/details"
+    assert api_headers["username"] == "Q7UFK026203F3VBQB68V7V70S:guest:FO"
+    assert api_headers["password"] == "guest"
+    assert api_headers["lumesse-language"] == "EN"
+    assert out["title"] == "Head of Data & AI Platform - Symrise"
+    assert "Location: Barcelona, ES" in out["raw_text"]
+    assert "Req ID: EA04390" in out["raw_text"]
+    assert "Your role:\nLead the platform." in out["raw_text"]
+    assert "About you:\nLeadership" in out["raw_text"]
+    assert "Empty:" not in out["raw_text"]
+    assert "cookies" not in out["raw_text"]

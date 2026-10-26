@@ -75,6 +75,15 @@ _CSB_HOST_RE = re.compile(r"csbep-([a-z0-9\-]+)\.firebaseapp\.com", re.IGNORECAS
 _CSB_JOBID_RE = re.compile(r"jobID\s*:\s*'(\d+)")
 _CSB_SEARCH_API = "https://production.api.recruiting-solutions.org/search"
 
+# Lumesse / Cornerstone TalentLink widgets (e.g. symrise.com) inject the job body
+# client-side, and some sites only load the widget after cookie consent; the
+# static HTML holds nav chrome only. The widget reads the posting from the
+# front-office REST API with fixed guest credentials.
+_LUMESSE_TECH_ID_RE = re.compile(
+    r"(?:lumesseSiteTechId\s*=\s*|data-lumesse-site-tech-id\s*=\s*)[\"']([A-Z0-9]+)[\"']"
+)
+_LUMESSE_FO_HOST_RE = re.compile(r"[a-z0-9\-]+\.recruitmentplatform\.com", re.IGNORECASE)
+
 
 def _html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
@@ -404,6 +413,56 @@ def _scrape_successfactors_csb(page_html: str, url: str, timeout: int) -> dict[s
     return {"url": url, "title": f"{title} - {company}", "raw_text": raw_text}
 
 
+def _scrape_lumesse(page_html: str, url: str, timeout: int) -> dict[str, str]:
+    tech_id = _LUMESSE_TECH_ID_RE.search(page_html).group(1)
+    host_match = _LUMESSE_FO_HOST_RE.search(page_html)
+    if not host_match:
+        raise ValueError("Lumesse front-office host not found on page")
+    qs = parse_qs(urlparse(url).query)
+    job_ids = qs.get("jobId")
+    if not job_ids:
+        raise ValueError("jobId query parameter missing from URL")
+
+    api_url = f"https://{host_match.group(0)}/fo/rest/jobs/{job_ids[0]}/details"
+    resp = requests.get(
+        api_url,
+        headers={
+            **_HEADERS,
+            "Accept": "application/json",
+            "username": f"{tech_id}:guest:FO",
+            "password": "guest",
+            # Required: the API answers 400 without it
+            "lumesse-language": (qs.get("languageSelect") or ["EN"])[0],
+        },
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    fields = data.get("jobFields") or {}
+    ld = data.get("structuredData") or {}
+
+    title = fields.get("jobTitle") or ld.get("title", "")
+    company = (ld.get("hiringOrganization") or {}).get("name", "")
+    parts = [f"Job Title: {title}", f"Company: {company}"]
+    addr = (ld.get("jobLocation") or {}).get("address") or {}
+    loc = ", ".join(v for v in (addr.get("addressLocality"), addr.get("addressCountry")) if v)
+    if loc:
+        parts.append(f"Location: {loc}")
+    if ld.get("employmentType"):
+        parts.append(f"Type: {ld['employmentType']}")
+    if fields.get("jobNumber"):
+        parts.append(f"Req ID: {fields['jobNumber']}")
+    # The posting body is a list of titled sections ("Your role", "About you", …)
+    for section in data.get("customFields") or []:
+        text = _html_to_text(section.get("content") or "")
+        if text.strip():
+            parts.append(f"\n{section.get('title') or 'Description'}:\n{text}")
+
+    raw_text = "\n".join(parts)
+    log.info("scraped lumesse %s via API (%d chars)", url, len(raw_text))
+    return {"url": url, "title": f"{title} - {company}".strip(" -"), "raw_text": raw_text}
+
+
 def _scrape_aem_jobdetails(html: str, url: str) -> dict[str, str] | None:
     """Extract the posting from an AEM career site that hydrates the job body
     client-side from a ``data-react-props`` blob.
@@ -484,6 +543,13 @@ def scrape_job_page(url: str, timeout: int = 20) -> dict[str, str]:
             return _scrape_successfactors_csb(resp.text, url, timeout)
         except Exception:
             log.warning("successfactors-csb handler failed for %s; falling back", url, exc_info=True)
+
+    # Detect Lumesse TalentLink widgets (JS-rendered, often consent-gated; body via API)
+    if _LUMESSE_TECH_ID_RE.search(resp.text):
+        try:
+            return _scrape_lumesse(resp.text, url, timeout)
+        except Exception:
+            log.warning("lumesse handler failed for %s; falling back", url, exc_info=True)
 
     # Detect AEM career sites that hydrate the body from data-react-props.
     # Must precede the JSON-LD path — those pages emit a JobPosting block whose

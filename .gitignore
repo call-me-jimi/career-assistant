@@ -6,6 +6,9 @@ dist/
 wheels/
 *.egg-info
 
+# Emacs backup files
+*~
+
 # Virtual environments
 .venv
 

@@ -370,8 +370,20 @@ def export_zip(state: dict[str, Any], paths: list[str], target_dir: Path) -> str
     return str(archive)
 
 
+def _markdown_to_html(text: str, hard_breaks: bool = False) -> str:
+    """Render Markdown the way the chat does: CommonMark plus GFM tables.
+
+    The chat uses react-markdown, so the PDF needs a CommonMark parser too. LLMs
+    indent sublists by 2 or 3 spaces, which Python-Markdown (4 spaces only)
+    flattens into the parent list. Raw HTML is escaped, as it is in the chat.
+    """
+    from markdown_it import MarkdownIt
+
+    parser = MarkdownIt("commonmark", {"html": False, "breaks": hard_breaks})
+    return parser.enable(["table", "strikethrough"]).render(text)
+
+
 def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
-    import markdown as md
     from weasyprint import HTML
 
     folder = _ensure_folder(state, target_dir)
@@ -412,10 +424,9 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
         raise RuntimeError("Nothing to export as PDF yet.")
 
     path = _unique_path(folder / filename)
-    # nl2br keeps single line breaks (e.g. the farewell and the signed name) as
-    # separate lines in the cover letter instead of Markdown collapsing them.
-    extensions = ["tables", "fenced_code"] + (["nl2br"] if is_cover_letter else [])
-    body_html = md.markdown(body_text, extensions=extensions)
+    # Hard breaks keep single line breaks (e.g. the farewell and the signed name)
+    # as separate lines in the cover letter instead of Markdown collapsing them.
+    body_html = _markdown_to_html(body_text, hard_breaks=is_cover_letter)
     if is_cover_letter:
         # Match a Google Doc with Calibri 11 (Carlito is the metric-compatible
         # clone): 1.15 line spacing and 1-inch margins keep a normal cover
@@ -430,21 +441,44 @@ def export_pdf(state: dict[str, Any], target_dir: Path | None = None) -> str:
       em { font-style: italic; }
         """
     else:
+        # Liberation Sans ships with the Docker image too, so a PDF looks the same
+        # wherever it is exported.
         style = """
-      body { font-family: 'Helvetica', sans-serif; font-size: 11pt; line-height: 1.6; color: #222; margin: 2cm; }
-      h1 { font-size: 18pt; margin: 0 0 0.4em 0; color: #111; }
-      h2 { font-size: 14pt; margin: 1.2em 0 0.3em 0; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 0.15em; }
-      h3 { font-size: 12pt; margin: 1em 0 0.2em 0; color: #333; }
-      h4 { font-size: 11pt; margin: 1.2em 0 0.2em 0; color: #111; font-weight: bold; border-left: 3px solid #888; padding-left: 0.5em; }
-      p { margin: 0 0 0.6em 0; }
-      ul, ol { margin: 0 0 0.6em 1.5em; padding: 0; }
-      li { margin-bottom: 0.25em; }
-      strong { font-weight: bold; }
+      @page {
+        size: A4;
+        margin: 2cm 2.2cm 2.2cm;
+        @bottom-right {
+          content: counter(page) " / " counter(pages);
+          font-family: 'Liberation Sans', 'Helvetica', sans-serif;
+          font-size: 8.5pt;
+          color: #7b8794;
+        }
+      }
+      body { font-family: 'Liberation Sans', 'Helvetica', sans-serif; font-size: 10.5pt; line-height: 1.45; color: #27303a; orphans: 2; widows: 2; }
+      h1, h2, h3, h4 { color: #111827; line-height: 1.25; break-after: avoid; }
+      h1 { font-size: 20pt; margin: 0 0 0.4em 0; }
+      h2 { font-size: 13.5pt; margin: 1.5em 0 0.5em 0; padding-bottom: 0.2em; border-bottom: 1px solid #d5dae1; }
+      h3 { font-size: 11.5pt; margin: 1.2em 0 0.35em 0; }
+      h4 { font-size: 10.5pt; margin: 1.1em 0 0.3em 0; padding-left: 0.5em; border-left: 3px solid #9aa5b1; }
+      p { margin: 0 0 0.55em 0; }
+      ul, ol { margin: 0 0 0.6em 0; padding-left: 1.35em; }
+      ul ul { list-style-type: disc; }
+      li { margin-bottom: 0.2em; }
+      li::marker { color: #7b8794; }
+      li > p { margin-bottom: 0.2em; }
+      li > ul, li > ol { margin: 0.2em 0 0.35em 0; }
+      strong { font-weight: bold; color: #111827; }
       em { font-style: italic; }
-      code { font-family: monospace; background: #f4f4f4; padding: 0.1em 0.3em; border-radius: 3px; font-size: 10pt; }
-      table { border-collapse: collapse; width: 100%; margin-bottom: 0.8em; }
-      th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; text-align: left; }
-      th { background: #f0f0f0; font-weight: bold; }
+      a { color: #1d4ed8; text-decoration: none; }
+      hr { border: 0; border-top: 1px solid #d5dae1; margin: 1.2em 0; }
+      blockquote { margin: 0 0 0.6em 0; padding: 0.1em 0 0.1em 0.8em; border-left: 3px solid #d5dae1; color: #4b5563; }
+      code { font-family: 'Liberation Mono', monospace; background: #f1f3f5; padding: 0.1em 0.3em; border-radius: 3px; font-size: 9.5pt; }
+      pre { background: #f1f3f5; padding: 0.6em 0.8em; border-radius: 4px; white-space: pre-wrap; margin: 0 0 0.6em 0; }
+      pre code { background: none; padding: 0; }
+      table { border-collapse: collapse; width: 100%; margin: 0.3em 0 0.9em 0; font-size: 9.5pt; line-height: 1.35; }
+      th, td { border-bottom: 1px solid #d5dae1; padding: 0.4em 0.6em; text-align: left; vertical-align: top; }
+      th { background: #f1f3f5; color: #111827; font-weight: bold; border-bottom: 1px solid #9aa5b1; }
+      tr { break-inside: avoid; }
         """
     html = f"""
     <html><head><meta charset='utf-8'><style>{style}</style></head><body>

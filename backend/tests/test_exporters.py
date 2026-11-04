@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 import zipfile
 from pathlib import Path
@@ -52,6 +53,33 @@ def test_export_pdf_cover_letter_filename_includes_name():
     path = Path(exporters.export_pdf(state))
     assert path.name == "CoverLetter.HendrikHache.pdf"
     assert path.exists()
+
+
+def test_pdf_markdown_nests_lists_indented_like_the_chat_renders_them():
+    # LLMs indent sublists by 2 or 3 spaces; the chat's CommonMark parser nests
+    # those, so the PDF has to as well.
+    html = exporters._markdown_to_html(
+        "- Parent:\n  - Two-space child\n\n1. Step\n   - Three-space child\n"
+    )
+    assert re.search(r"Parent:\s*<ul>\s*<li>Two-space child", html)
+    assert re.search(r"Step\s*<ul>\s*<li>Three-space child", html)
+
+
+def test_pdf_markdown_starts_a_list_right_after_a_paragraph():
+    html = exporters._markdown_to_html("Key points:\n- One\n- Two\n")
+    assert re.search(r"<p>Key points:</p>\s*<ul>", html)
+
+
+def test_pdf_markdown_renders_tables():
+    html = exporters._markdown_to_html("| A | B |\n| --- | --- |\n| 1 | 2 |\n")
+    assert "<table>" in html
+    assert "<td>2</td>" in html
+
+
+def test_pdf_markdown_keeps_line_breaks_only_when_asked():
+    text = "Kind regards,\nJane Doe"
+    assert "<br" not in exporters._markdown_to_html(text)
+    assert "<br" in exporters._markdown_to_html(text, hard_breaks=True)
 
 
 def test_export_markdown_writes_expected_sections():

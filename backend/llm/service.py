@@ -11,6 +11,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from json_repair import repair_json
@@ -126,9 +127,12 @@ def _messages(
     history: list[dict] | None = None,
     provider: str = "",
 ):
-    msgs: list = []
-    if system:
-        msgs.append(SystemMessage(content=system))
+    # Without it the model takes "now" from its training data, so a job started two years
+    # ago reads as "very recent" (hosted user test, 2026-11-09).
+    today = (
+        f"Today's date is {date.today().isoformat()}. Measure tenures, gaps and recency against it."
+    )
+    msgs: list = [SystemMessage(content=f"{today}\n\n{system}" if system else today)]
     for h in history or []:
         role = h.get("role")
         content = h.get("content", "")

@@ -1,6 +1,8 @@
 """Prompt caching: templates mark where the stable prefix ends, the service turns
 that into a cache breakpoint for Anthropic, and the cost reflects cached tokens."""
 
+from datetime import date
+
 from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, LLMResult
 
@@ -83,7 +85,7 @@ def test_other_providers_get_the_marker_removed():
 def test_trace_shows_block_content_as_text():
     msgs = _messages("SYS", f"STABLE\n{CACHE_BREAK}CHANGING", provider="anthropic")
     system, user = _split_messages([msgs])
-    assert system == "SYS"
+    assert system.endswith("\n\nSYS")  # after the date line every call now carries
     assert user == "[human] STABLE\nCHANGING"
 
 
@@ -116,3 +118,10 @@ def test_cost_prices_cache_reads_and_writes():
     assert _cost_for("m", 1_000_000, 0, pricing) == 10.0
     # 1M total: 600k read at 0.1x, 400k written at 1.25x.
     assert abs(_cost_for("m", 1_000_000, 0, pricing, cache_read=600_000, cache_write=400_000) - 5.6) < 1e-9
+
+
+def test_every_call_is_told_todays_date():
+    today = date.today().isoformat()
+    with_system = _messages("SYS", "PLAIN")
+    assert today in with_system[0].content and with_system[0].content.endswith("SYS")
+    assert today in _messages(None, "PLAIN")[0].content

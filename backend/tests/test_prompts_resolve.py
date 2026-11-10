@@ -7,11 +7,12 @@ def test_generate_cover_letter_latest_is_v8():
     assert latest_prompt_path("generate_cover_letter").name == "generate_cover_letter.v8.txt"
 
 
-def test_simulate_hiring_manager_latest_is_v4():
-    # v4 adds role, company, channel and language so the reviewer can read the room.
-    assert latest_prompt_path("simulate_hiring_manager").name == "simulate_hiring_manager.v4.txt"
+def test_simulate_hiring_manager_latest_is_v5():
+    # v5 checks every claim against the CV and caps the score while an overclaim stands.
+    assert latest_prompt_path("simulate_hiring_manager").name == "simulate_hiring_manager.v5.txt"
     assert latest_system_path("simulate_hiring_manager").name == "simulate_hiring_manager.system.v3.txt"
 
 
-def test_cover_letter_generation_system_latest_is_v3():
-    assert latest_system_path("cover_letter_generation").name == "cover_letter_generation.system.v3.txt"
+def test_cover_letter_generation_system_latest_is_v4():
+    # v4 forbids generalising CV facts ("always", "throughout my career").
+    assert latest_system_path("cover_letter_generation").name == "cover_letter_generation.system.v4.txt"

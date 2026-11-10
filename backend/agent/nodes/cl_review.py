@@ -81,9 +81,14 @@ async def cl_review_node(state: ApplicationState) -> dict:
 
     aid = action_start(sid, "refine_cover_letter", "Applying your revisions")
     chat_system = load_system_prompt("chat")
+    # The CV keeps a revision ("make it bolder") from claiming more than the candidate did.
     user = (
+        f"Here is the candidate's CV:\n\n{state.cv_text}\n\n"
         f"Here is the current cover letter:\n\n{state.cover_letter}\n\n"
         f"Please revise it based on this feedback: {revision_text}\n\n"
+        "Keep every claim within what the CV supports: no generalising from a few instances "
+        '("always", "throughout my career"), no inflated counts, durations or scope. If the '
+        "feedback asks for a claim the CV doesn't support, make the closest change it does.\n\n"
         "Return only the revised cover letter."
     )
     user = with_language_directive(user, state.language)

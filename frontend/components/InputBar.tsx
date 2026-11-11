@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { InterruptPayload } from "../lib/types";
+import { useTranslate } from "../lib/translate";
 import { API_BASE } from "../lib/ws";
 import MicButton from "./MicButton";
 import RecordInterviewHelp from "./RecordInterviewHelp";
@@ -27,6 +28,7 @@ type Props = {
   onUserMessage: (text: string) => void;
   disabled?: boolean;
   sessionId?: string;
+  language?: string;
 };
 
 type QuickReply = {
@@ -49,6 +51,28 @@ function quickRepliesFor(pending?: InterruptPayload | null): QuickReply[] {
             { label: "Yes, correct", value: "accept" },
             { label: "No — it's a recruiter ad", value: "recruiter" },
           ];
+    case "evaluator_context":
+      // Both send `none`; the label says what that means for this round.
+      return pending?.has_context
+        ? [{ label: "None", value: "none" }]
+        : [{ label: "Skip — go to the recording", value: "none" }];
+    case "interview_context":
+      return [{ label: "Nothing specific", value: "none" }];
+    case "advisor_chat":
+      return [
+        { label: "SWOT summary", value: "/swot" },
+        { label: "Done", value: "done" },
+      ];
+    case "profile_label":
+      return [{ label: "Don't save", value: "no" }];
+    case "profile_suggestion":
+      return [
+        { label: "Apply", value: "yes" },
+        { label: "Discard", value: "no" },
+        { label: "Decide later", value: "later" },
+      ];
+    case "select_journey":
+      return [{ label: "Start fresh", value: "new" }];
     case "cl_review":
       return [{ label: "Accept", value: "accept" }];
     case "interview_review":
@@ -118,6 +142,7 @@ export default function InputBar({
   onUserMessage,
   disabled,
   sessionId,
+  language = "",
 }: Props) {
   const [text, setText] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -138,6 +163,13 @@ export default function InputBar({
   // one interrupt to the next.
   const exportItems: QuickReply[] =
     kind === "export_items" && Array.isArray(pending?.items) ? pending.items : [];
+
+  const quickReplies = pending && !disabled ? quickRepliesFor(pending) : [];
+  // Before the early returns below: a hook must run on every render.
+  const t = useTranslate(
+    [...quickReplies, ...exportItems].map((r) => r.label).concat("None"),
+    language
+  );
 
   function toggleItem(value: string) {
     setSelected((prev) =>
@@ -295,7 +327,6 @@ export default function InputBar({
     );
   }
 
-  const quickReplies = pending && !disabled ? quickRepliesFor(pending) : [];
   const showVoice = supportsVoiceInput(kind) && !disabled;
 
   return (
@@ -368,7 +399,7 @@ export default function InputBar({
                 }`}
               >
                 <span className="mr-1.5">{on ? "✓" : "+"}</span>
-                {item.label}
+                {t(item.label)}
               </button>
             );
           })}
@@ -391,7 +422,7 @@ export default function InputBar({
             onClick={() => submitText("none")}
             className="px-3 py-1.5 rounded-lg border border-border text-sm text-subtle hover:border-accent/50"
           >
-            None
+            {t("None")}
           </button>
         </div>
       )}
@@ -404,7 +435,7 @@ export default function InputBar({
               onClick={() => submitText(qr.value)}
               className="px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-sm text-accent hover:bg-accent/15 hover:border-accent transition-colors"
             >
-              {qr.label}
+              {t(qr.label)}
             </button>
           ))}
         </div>

@@ -265,6 +265,7 @@ function SessionView() {
             pending={pending}
             disabled={done}
             sessionId={sessionId}
+            language={language}
             onSend={(value) => {
               sendRef.current(value);
               setPending(null);

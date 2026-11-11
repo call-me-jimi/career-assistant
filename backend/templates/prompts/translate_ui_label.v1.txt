@@ -1,0 +1,11 @@
+Translate this quick-reply button label into {{ language }}.
+
+Rules:
+- Output ONLY the translated label — no quotes, no notes, no preamble.
+- Keep it as short as the original; use the wording a {{ language }} app would put on such a button.
+- Keep any emoji and punctuation such as dashes.
+
+Label:
+"""
+{{ text }}
+"""

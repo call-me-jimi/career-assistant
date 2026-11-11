@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.agent.interrupts import emit_message, emit_state
 from backend.agent.runner import registry
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
+from backend.llm.translate import translate_label
 from backend.storage.feedback import (
     add_feedback,
     delete_feedback,
@@ -128,6 +130,24 @@ async def start_session(payload: StartSessionPayload | None = None) -> dict:
     )
     registry.get_or_start(session_id)
     return {"session_id": session_id, "assistant_type": assistant_type, "language": language}
+
+
+class TranslatePayload(BaseModel):
+    language: str
+    texts: list[str] = Field(max_length=50)
+
+
+@router.post("/translate")
+async def translate_labels(payload: TranslatePayload) -> dict:
+    """Quick-reply labels in the session language.
+
+    The WebSocket translates chat messages, but the chips are drawn by the client
+    and never pass through it. Cached, so each label costs one LLM call per
+    language, ever.
+    """
+    texts = [t[:200] for t in payload.texts]
+    translated = await asyncio.gather(*(translate_label(t, payload.language) for t in texts))
+    return {"translations": list(translated)}
 
 
 @router.get("/sessions/{session_id}")

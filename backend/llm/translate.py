@@ -71,10 +71,23 @@ async def translate_message(text: str, language: str) -> str:
     English (or unset) passes straight through. Each unique (language, text) pair
     is translated once and cached on disk.
     """
+    return await _translate(text, language, "translate_ui_message", language)
+
+
+async def translate_label(text: str, language: str) -> str:
+    """Translate a quick-reply button label, cached apart from chat messages.
+
+    The message translator sees "None" with no context and returns it unchanged;
+    this prompt knows it is a button and translates it.
+    """
+    return await _translate(text, language, "translate_ui_label", f"{language} (labels)")
+
+
+async def _translate(text: str, language: str, stem: str, bucket: str) -> str:
     if is_english_language(language) or not text or not text.strip():
         return text
 
-    per_lang = _cache.setdefault(language, {})
+    per_lang = _cache.setdefault(bucket, {})
     cached = per_lang.get(text)
     if cached is not None:
         return cached
@@ -82,8 +95,8 @@ async def translate_message(text: str, language: str) -> str:
     try:
         result = await call_llm(
             task="ui_translation",
-            system=load_system_prompt("translate_ui_message"),
-            user=render_user_prompt("translate_ui_message", text=text, language=language),
+            system=load_system_prompt(stem),
+            user=render_user_prompt(stem, text=text, language=language),
         )
         translated = result.text.strip() or text
     except Exception:

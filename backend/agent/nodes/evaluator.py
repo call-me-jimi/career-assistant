@@ -51,7 +51,7 @@ async def evaluator_context_node(state: ApplicationState) -> dict:
             "rather just dive into the transcript."
         )
     emit_message(sid, prompt, key="evaluator_context:prompt")
-    reply = interrupt({"kind": "evaluator_context"})
+    reply = interrupt({"kind": "evaluator_context", "has_context": bool(state.interview_context)})
     text = (reply or "").strip() if isinstance(reply, str) else ""
     if not text or text.lower() == "none":
         return {"interview_context": state.interview_context, "phase": "evaluator_upload"}

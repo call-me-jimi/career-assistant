@@ -210,3 +210,16 @@ async def test_none_keeps_the_noted_context(monkeypatch):
 
     assert update["interview_context"] == "Live coding"
     assert not saved
+
+
+async def test_context_interrupt_says_whether_details_exist(monkeypatch):
+    from backend.agent.nodes import evaluator as ev
+
+    payloads: list[dict] = []
+    monkeypatch.setattr(ev, "emit_message", lambda *a, **k: None)
+    monkeypatch.setattr(ev, "interrupt", lambda payload: payloads.append(payload) or "none")
+
+    await ev.evaluator_context_node(ApplicationState(session_id="s"))
+    await ev.evaluator_context_node(ApplicationState(session_id="s", interview_context="x"))
+
+    assert [p["has_context"] for p in payloads] == [False, True]

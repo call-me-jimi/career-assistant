@@ -17,13 +17,17 @@ caller keeps today's unlabelled transcript.
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 log = logging.getLogger(__name__)
 
 SAMPLE_RATE = 16000
 MIN_SEGMENT_SEC = 0.8  # ECAPA embeddings get unreliable below this
+# A "speaker" holding fewer segments than this share is a stray sound, not a person.
+MIN_CLUSTER_SHARE = 0.05
+MAX_OUTLIER_PASSES = 3
 ECAPA_SOURCE = "speechbrain/spkrec-ecapa-voxceleb"
 
 _SPEAKER_NAMES = ["SPEAKER_A", "SPEAKER_B", "SPEAKER_C", "SPEAKER_D"]
@@ -55,6 +59,30 @@ def _resolve_device(device: str) -> str:
 
     # speechbrain wants an explicit index — a bare "cuda" logs a parse warning.
     return "cuda:0" if torch.cuda.is_available() else "cpu"
+
+
+def _cluster_ignoring_outliers(
+    n: int, fit: Callable[[list[int]], list[int]], num_speakers: int
+) -> dict[int, int]:
+    """Cluster items 0..n-1, re-clustering without any implausibly small cluster.
+
+    Average linkage gives a lone outlier — a trailing slice of silence, a cough —
+    a cluster of its own whenever it is further from everything than the two
+    voices are from each other, leaving one "speaker" with the whole interview.
+    Dropped items get no cluster here; `_backfill_clusters` labels them from
+    their neighbours in time.
+    """
+    keep = list(range(n))
+    ids = fit(keep)
+    for _ in range(MAX_OUTLIER_PASSES):
+        counts = Counter(ids)
+        tiny = {c for c in counts if counts[c] < MIN_CLUSTER_SHARE * len(keep)}
+        survivors = [k for k, c in zip(keep, ids) if c not in tiny]
+        if not tiny or len(survivors) < num_speakers:
+            break
+        keep = survivors
+        ids = fit(keep)
+    return {k: int(c) for k, c in zip(keep, ids)}
 
 
 def _backfill_clusters(
@@ -145,11 +173,15 @@ def diarize(
             )
             return None
 
-        ids = AgglomerativeClustering(
-            n_clusters=num_speakers, metric="cosine", linkage="average"
-        ).fit_predict(np.vstack(vectors))
+        matrix = np.vstack(vectors)
 
-        clusters = {i: int(c) for i, c in zip(embedded, ids)}
+        def fit(rows: list[int]) -> list[int]:
+            return AgglomerativeClustering(
+                n_clusters=num_speakers, metric="cosine", linkage="average"
+            ).fit_predict(matrix[rows]).tolist()
+
+        kept = _cluster_ignoring_outliers(len(vectors), fit, num_speakers)
+        clusters = {embedded[k]: c for k, c in kept.items()}
         filled = _backfill_clusters([float(s.start) for s in segments], clusters)
         if filled is None:
             return None

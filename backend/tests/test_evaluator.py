@@ -114,6 +114,41 @@ def test_build_provider_passes_diarize_flag():
     assert build_provider(TranscriptionConfig(diarize=False)).diarize is False
 
 
+def test_whisper_segment_is_split_at_pauses_between_words():
+    from types import SimpleNamespace as W
+
+    from backend.tools.transcribe import _split_on_pauses
+
+    seg = W(
+        start=5202.4,
+        end=5216.6,
+        text=" have a nice day you too bye",
+        words=[
+            W(start=5202.4, end=5202.9, word=" have"),
+            W(start=5202.9, end=5203.0, word=" a"),
+            W(start=5203.0, end=5203.3, word=" nice"),
+            W(start=5203.3, end=5203.6, word=" day"),
+            W(start=5204.2, end=5204.4, word=" you"),  # 0.6 s pause: turn change
+            W(start=5204.4, end=5204.7, word=" too"),
+            W(start=5206.8, end=5207.1, word=" bye"),
+        ],
+    )
+    assert [(p.start, p.end, p.text) for p in _split_on_pauses(seg)] == [
+        (5202.4, 5203.6, "have a nice day"),
+        (5204.2, 5204.7, "you too"),
+        (5206.8, 5207.1, "bye"),
+    ]
+
+
+def test_segment_without_word_timestamps_is_kept_whole():
+    from types import SimpleNamespace as W
+
+    from backend.tools.transcribe import _split_on_pauses
+
+    (only,) = _split_on_pauses(W(start=0.0, end=4.0, text=" Hello there.", words=None))
+    assert (only.start, only.end, only.text) == (0.0, 4.0, "Hello there.")
+
+
 def test_format_transcript_labels_every_line_when_diarized():
     from backend.agent.nodes.evaluator import _format_transcript
 

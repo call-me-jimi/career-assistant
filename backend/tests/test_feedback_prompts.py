@@ -47,6 +47,7 @@ EVALUATOR_KWARGS = dict(
     interview_context="Panel round",
     interview_briefing="",
     transcript="[00:00] Hello",
+    speaker_labelled=False,
     revision_feedback="",
 )
 SYNTHESIS_KWARGS = dict(

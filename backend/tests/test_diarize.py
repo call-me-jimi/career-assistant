@@ -30,6 +30,37 @@ def test_short_segments_inherit_nearest_speaker_in_time():
     assert mod._backfill_clusters(starts, clusters) == [0, 1, 1, 0]
 
 
+def test_lone_outlier_does_not_become_the_second_speaker():
+    # Item 40 is a trailing slice of silence. The first fit isolates it, which
+    # would put the whole interview on one speaker; the refit must split 0..39.
+    calls: list[list[int]] = []
+
+    def fit(rows):
+        calls.append(rows)
+        if 40 in rows:
+            return [1 if r == 40 else 0 for r in rows]
+        return [0 if r % 2 else 1 for r in rows]
+
+    clusters = mod._cluster_ignoring_outliers(41, fit, num_speakers=2)
+
+    assert len(calls) == 2
+    assert 40 not in clusters  # left for _backfill_clusters
+    assert sorted(set(clusters.values())) == [0, 1]
+
+
+def test_balanced_clusters_are_fitted_once():
+    calls = []
+
+    def fit(rows):
+        calls.append(rows)
+        return [r % 2 for r in rows]
+
+    assert mod._cluster_ignoring_outliers(10, fit, num_speakers=2) == {
+        r: r % 2 for r in range(10)
+    }
+    assert len(calls) == 1
+
+
 def test_backfill_returns_none_when_nothing_was_embedded():
     assert mod._backfill_clusters([0.0, 1.0], {}) is None
 

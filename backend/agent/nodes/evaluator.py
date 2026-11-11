@@ -183,6 +183,7 @@ async def _generate_evaluation(
         interview_context=state.interview_context or "",
         interview_briefing=state.interview_briefing or "",
         transcript=_format_transcript(state.interview_transcript),
+        speaker_labelled=any(seg.get("speaker") for seg in state.interview_transcript),
         revision_feedback=revision_feedback,
     )
     user = with_language_directive(user, state.language)

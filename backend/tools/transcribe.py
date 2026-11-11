@@ -33,6 +33,34 @@ class TranscriptionResult(BaseModel):
 
 ProgressCallback = Callable[[float, str], None]
 
+PAUSE_SPLIT_SEC = 0.5  # a word gap this long starts a new transcript segment
+
+
+def _split_on_pauses(seg: Any) -> list[TranscriptSegment]:
+    """Cut a whisper segment where the speech pauses.
+
+    Whisper's segments follow its decoding windows, not turns, so one can hold
+    both voices ("…have a nice day you too…"). Diarization labels whole
+    segments, so a mixed one is at best half right; the pauses between words are
+    where a turn change usually sits.
+    """
+    words = [w for w in (seg.words or []) if w.word.strip()]
+    if not words:
+        return [
+            TranscriptSegment(start=seg.start, end=seg.end, text=(seg.text or "").strip())
+        ]
+    pieces = [[words[0]]]
+    for prev, word in zip(words, words[1:]):
+        if word.start - prev.end >= PAUSE_SPLIT_SEC:
+            pieces.append([])
+        pieces[-1].append(word)
+    return [
+        TranscriptSegment(
+            start=p[0].start, end=p[-1].end, text="".join(w.word for w in p).strip()
+        )
+        for p in pieces
+    ]
+
 
 class TranscriptionProvider(Protocol):
     async def transcribe(
@@ -85,7 +113,11 @@ class FasterWhisperProvider:
             language=language,
             beam_size=self.beam_size,
             vad_filter=True,
-            condition_on_previous_text=True,
+            # Conditioning on the previous window lets one unpunctuated window
+            # set the style for every window after it — lowercase run-ons for
+            # the rest of the interview.
+            condition_on_previous_text=False,
+            word_timestamps=True,
         )
 
         # ctranslate2 crashes when iterating a segment generator after VAD removes
@@ -102,7 +134,7 @@ class FasterWhisperProvider:
         last_report = 0.0
         for seg in segments_iter:
             text = (seg.text or "").strip()
-            collected.append(TranscriptSegment(start=seg.start, end=seg.end, text=text))
+            collected.extend(_split_on_pauses(seg))
             if text:
                 full_parts.append(text)
             if on_progress and total > 0 and (seg.end - last_report) >= 10.0:

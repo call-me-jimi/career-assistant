@@ -135,6 +135,7 @@ EVALUATOR_KWARGS = dict(
     interview_type="",
     interview_context="Panel round",
     transcript="[00:00] Hello",
+    speaker_labelled=False,
     revision_feedback="",
     calibration="",
 )
@@ -180,6 +181,18 @@ def test_evaluator_v6_infers_round_when_empty():
     )
     assert "INTERVIEW ROUND" in result
     assert "Not given — infer it" in result
+
+
+def test_evaluator_v7_transcript_note_follows_speaker_labels():
+    _clear_cache()
+    kwargs = {**EVALUATOR_KWARGS, "interview_briefing": ""}
+    unlabelled = render_user_prompt("analyze_interview_performance", **kwargs)
+    labelled = render_user_prompt(
+        "analyze_interview_performance", **{**kwargs, "speaker_labelled": True}
+    )
+    assert "no speaker labels" in unlabelled
+    assert "no speaker labels" not in labelled
+    assert "speaker label from automatic diarization" in labelled
 
 
 def test_briefing_v4_round_section_renders_when_set():

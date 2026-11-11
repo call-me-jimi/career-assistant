@@ -17,6 +17,7 @@ type Interview = {
   interview_type: string;
   type_label: string;
   label: string;
+  context: string;
   briefing: string;
   evaluation_summary: string;
   scheduled_at: number | null;
@@ -1406,6 +1407,7 @@ function SchedulePanel({
   const [type, setType] = useState("screening");
   const [date, setDate] = useState(toDateInput(Date.now() / 1000));
   const [label, setLabel] = useState("");
+  const [context, setContext] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -1414,6 +1416,7 @@ function SchedulePanel({
       interview_type: type,
       scheduled_at: fromDateInput(date),
       label: label.trim(),
+      context: context.trim(),
     });
     setSaving(false);
     if (ok) onClose();
@@ -1465,6 +1468,20 @@ function SchedulePanel({
           />
         </label>
       </div>
+
+      {/* Prep and evaluator sessions started from this round open with it. */}
+      <label className="flex flex-col gap-1">
+        <span className="text-[10px] uppercase tracking-widest text-subtle">
+          What you know — optional
+        </span>
+        <textarea
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+          rows={3}
+          placeholder="Who you'll meet, format, length, what they said it would cover."
+          className="bg-bg border border-border rounded px-2 py-1.5 text-xs resize-y leading-relaxed"
+        />
+      </label>
 
       <div className="flex items-center gap-2">
         <button
@@ -1775,30 +1792,36 @@ function Drawer({
           </p>
         )}
         {journey.interviews.map((iv) => (
-          <div key={iv.interview_id} className="flex items-center gap-2 group/iv">
-            <select
-              value={iv.interview_type}
-              onChange={(e) => patchRound(iv.interview_id, { interview_type: e.target.value })}
-              className="bg-panel2 border border-border rounded px-1.5 py-0.5 text-xs max-w-[150px]"
-            >
-              {types.map((t) => (
-                <option key={t.slug} value={t.slug}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <DateCell
-              value={iv.scheduled_at}
-              onSave={(v) => patchRound(iv.interview_id, { scheduled_at: v })}
+          <div key={iv.interview_id} className="space-y-1">
+            <div className="flex items-center gap-2 group/iv">
+              <select
+                value={iv.interview_type}
+                onChange={(e) => patchRound(iv.interview_id, { interview_type: e.target.value })}
+                className="bg-panel2 border border-border rounded px-1.5 py-0.5 text-xs max-w-[150px]"
+              >
+                {types.map((t) => (
+                  <option key={t.slug} value={t.slug}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <DateCell
+                value={iv.scheduled_at}
+                onSave={(v) => patchRound(iv.interview_id, { scheduled_at: v })}
+              />
+              {iv.label && <span className="text-xs text-subtle truncate">{iv.label}</span>}
+              <button
+                onClick={() => removeRound(iv.interview_id)}
+                className="ml-auto text-subtle hover:text-err text-xs opacity-0 group-hover/iv:opacity-100"
+                aria-label="Remove interview round"
+              >
+                ✕
+              </button>
+            </div>
+            <RoundDetails
+              value={iv.context}
+              onSave={(context) => patchRound(iv.interview_id, { context })}
             />
-            {iv.label && <span className="text-xs text-subtle truncate">{iv.label}</span>}
-            <button
-              onClick={() => removeRound(iv.interview_id)}
-              className="ml-auto text-subtle hover:text-err text-xs opacity-0 group-hover/iv:opacity-100"
-              aria-label="Remove interview round"
-            >
-              ✕
-            </button>
           </div>
         ))}
         <button
@@ -1942,6 +1965,27 @@ function Heading({ children }: { children: React.ReactNode }) {
     <h3 className="text-[10px] font-semibold uppercase tracking-widest text-subtle">
       {children}
     </h3>
+  );
+}
+
+function RoundDetails({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (v: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  return (
+    <textarea
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => text.trim() !== value && onSave(text.trim())}
+      rows={text ? 2 : 1}
+      placeholder="Details — who, format, focus"
+      className="w-full text-xs bg-bg border border-border rounded px-2 py-1 resize-y leading-relaxed"
+    />
   );
 }
 

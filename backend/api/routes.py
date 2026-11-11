@@ -358,12 +358,16 @@ class InterviewCreatePayload(BaseModel):
     interview_type: str = "other"
     label: str = ""
     scheduled_at: float | None = None
+    # What you know when it's booked — interviewers, format, focus. The evaluator
+    # and prep sessions launched from this round start from it.
+    context: str = ""
 
 
 class InterviewPatchPayload(BaseModel):
     interview_type: str | None = None
     label: str | None = None
     scheduled_at: float | None = None
+    context: str | None = None
 
 
 def _resolved_type(raw: str) -> str:
@@ -384,6 +388,7 @@ async def add_journey_interview(journey_id: str, payload: InterviewCreatePayload
     fields: dict = {
         "interview_type": _resolved_type(payload.interview_type),
         "label": payload.label,
+        "context": payload.context.strip(),
     }
     if payload.scheduled_at is not None:
         fields["scheduled_at"] = payload.scheduled_at
@@ -409,6 +414,8 @@ async def patch_journey_interview(
         fields["interview_type"] = _resolved_type(fields["interview_type"] or "")
     if "label" in fields and fields["label"] is None:
         fields["label"] = ""
+    if "context" in fields:
+        fields["context"] = (fields["context"] or "").strip()
     if fields:
         await update_interview(interview_id, **fields)
     return await _with_tracker_fields(await get_journey(journey_id))

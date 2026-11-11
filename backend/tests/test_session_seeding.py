@@ -174,7 +174,10 @@ async def test_select_interview_skips_when_the_round_is_known(test_db):
         session_id="s1", assistant_type="interview_prep", journey_id=jid, interview_id=iid
     )
 
-    assert await select_interview_node(state) == {"phase": "interview_briefing"}
+    update = await select_interview_node(state)
+
+    assert update["interview_id"] == iid
+    assert update["phase"] == "interview_briefing"
 
 
 async def test_select_interview_evaluator_lands_on_its_own_next_step(test_db):
@@ -184,7 +187,27 @@ async def test_select_interview_evaluator_lands_on_its_own_next_step(test_db):
         session_id="s1", assistant_type="interview_evaluator", journey_id=jid, interview_id=iid
     )
 
-    assert await select_interview_node(state) == {"phase": "evaluator_context"}
+    assert (await select_interview_node(state))["phase"] == "evaluator_context"
+
+
+async def test_a_launched_round_brings_its_details_and_briefing(test_db):
+    """What was noted when the round was booked is what the evaluator opens with."""
+    jid = await _job()
+    iid = await create_interview(
+        journey_id=jid, profile_id="p1", interview_type="technical",
+        label="pair session", context="Live coding with Ana", briefing="Lead with X",
+    )
+    state = ApplicationState(
+        session_id="s1", assistant_type="interview_evaluator", journey_id=jid,
+        interview_id=iid, interview_briefing="briefing from another round",
+    )
+
+    update = await select_interview_node(state)
+
+    assert update["interview_context"] == "Live coding with Ana"
+    assert update["interview_type"] == "technical"
+    assert update["interview_label"] == "pair session"
+    assert update["interview_briefing"] == "Lead with X"
 
 
 async def test_a_round_that_is_not_on_this_job_still_asks(test_db):

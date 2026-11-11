@@ -69,7 +69,7 @@ async def select_interview_node(state: ApplicationState) -> dict:
             f"Working on **{_describe(chosen)}** ({_badges(chosen)}).",
             key=f"select_interview:seeded:{state.interview_id}",
         )
-        return {"phase": _next_phase(state)}
+        return await _round_update(state, chosen)
 
     question = (
         "Which interview is this briefing for?"
@@ -169,15 +169,6 @@ async def _handle_reply(state: ApplicationState, interviews: list[dict], reply) 
 
 
 async def _continue_round(state: ApplicationState, interview: dict) -> dict:
-    sid = state.session_id
-    is_prep = state.assistant_type == "interview_prep"
-
-    if is_prep and state.interview_context and state.interview_context != interview["context"]:
-        try:
-            await update_interview(interview["interview_id"], context=state.interview_context)
-        except Exception:
-            pass
-
     if interview["briefing"]:
         note = (
             f"Working from the briefing I wrote for this round on "
@@ -185,7 +176,19 @@ async def _continue_round(state: ApplicationState, interview: dict) -> dict:
         )
     else:
         note = "No briefing on record for this round."
-    emit_message(sid, f"**{_describe(interview)}** it is. {note}")
+    emit_message(state.session_id, f"**{_describe(interview)}** it is. {note}")
+    return await _round_update(state, interview)
+
+
+async def _round_update(state: ApplicationState, interview: dict) -> dict:
+    """Load an existing round into the session — its details, its briefing."""
+    is_prep = state.assistant_type == "interview_prep"
+
+    if is_prep and state.interview_context and state.interview_context != interview["context"]:
+        try:
+            await update_interview(interview["interview_id"], context=state.interview_context)
+        except Exception:
+            pass
 
     return {
         "interview_id": interview["interview_id"],

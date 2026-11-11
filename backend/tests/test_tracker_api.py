@@ -212,6 +212,19 @@ async def test_post_round_inherits_the_jobs_profile(client):
     assert (await get_interview(r.json()["interview_id"]))["profile_id"] == "p1"
 
 
+async def test_round_details_are_noted_when_scheduling_and_editable(client):
+    jid = await _job()
+    r = await client.post(
+        f"/api/journeys/{jid}/interviews",
+        json={"interview_type": "technical", "context": "  45 min, live coding with Ana  "},
+    )
+    iid = r.json()["interview_id"]
+    assert (await get_interview(iid))["context"] == "45 min, live coding with Ana"
+
+    await client.patch(f"/api/journeys/{jid}/interviews/{iid}", json={"context": None})
+    assert (await get_interview(iid))["context"] == ""
+
+
 async def test_patch_round_date_can_lift_a_hold(client):
     jid = await _job(applied_at=DAY, on_hold_at=5 * DAY)
     iid = await create_interview(

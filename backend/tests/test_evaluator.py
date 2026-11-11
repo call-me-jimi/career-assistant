@@ -171,3 +171,42 @@ def test_format_transcript_unchanged_without_speaker_labels():
 
     out = _format_transcript([{"start": 0.0, "text": "Tell me about yourself."}])
     assert out == "[00:00] Tell me about yourself."
+
+
+def _patch_context_node(monkeypatch, reply):
+    from backend.agent.nodes import evaluator as ev
+
+    messages: list[str] = []
+    saved: list[tuple] = []
+
+    async def fake_update(interview_id, **fields):
+        saved.append((interview_id, fields))
+
+    monkeypatch.setattr(ev, "emit_message", lambda sid, text, **kw: messages.append(text))
+    monkeypatch.setattr(ev, "interrupt", lambda payload: reply)
+    monkeypatch.setattr(ev, "update_interview", fake_update)
+    return ev, messages, saved
+
+
+async def test_context_noted_at_scheduling_is_shown_and_added_to(monkeypatch):
+    ev, messages, saved = _patch_context_node(monkeypatch, "Ana brought her manager along")
+    state = ApplicationState(
+        session_id="s", interview_id="i1", interview_context="Live coding\n45 min"
+    )
+
+    update = await ev.evaluator_context_node(state)
+
+    assert "> Live coding\n> 45 min" in messages[0]
+    assert "Anything to add" in messages[0]
+    assert update["interview_context"] == "Live coding\n45 min\n\nAna brought her manager along"
+    assert saved == [("i1", {"context": update["interview_context"]})]
+
+
+async def test_none_keeps_the_noted_context(monkeypatch):
+    ev, _, saved = _patch_context_node(monkeypatch, "none")
+    state = ApplicationState(session_id="s", interview_id="i1", interview_context="Live coding")
+
+    update = await ev.evaluator_context_node(state)
+
+    assert update["interview_context"] == "Live coding"
+    assert not saved

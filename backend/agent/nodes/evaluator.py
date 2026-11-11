@@ -35,10 +35,13 @@ from backend.tools.transcribe import get_cached_provider
 async def evaluator_context_node(state: ApplicationState) -> dict:
     sid = state.session_id
     if state.interview_context:
+        quoted = "\n".join(f"> {line}" for line in state.interview_context.splitlines())
         prompt = (
-            "Here's what I already have about this round:\n\n"
-            f"> {state.interview_context}\n\n"
-            "Reply `none` to keep that, or describe the interview again to replace it."
+            "Here's what you noted about this round:\n\n"
+            f"{quoted}\n\n"
+            "Anything to add now that it's happened — who you actually spoke with, "
+            "how long it ran, what came up that you didn't expect? Reply `none` to "
+            "go straight to the recording."
         )
     else:
         round_name = type_label(state.interview_type) if state.interview_type else "interview"
@@ -50,9 +53,12 @@ async def evaluator_context_node(state: ApplicationState) -> dict:
     emit_message(sid, prompt, key="evaluator_context:prompt")
     reply = interrupt({"kind": "evaluator_context"})
     text = (reply or "").strip() if isinstance(reply, str) else ""
-    if text.lower() == "none":
+    if not text or text.lower() == "none":
         return {"interview_context": state.interview_context, "phase": "evaluator_upload"}
-    if state.interview_id and text:
+    # What was noted when the round was booked stays; the reply adds to it.
+    if state.interview_context:
+        text = f"{state.interview_context}\n\n{text}"
+    if state.interview_id:
         try:
             await update_interview(state.interview_id, context=text)
         except Exception:

@@ -205,8 +205,11 @@ tables in `backend/agent/nodes/export_node.py`:
 
 - **`EXPORT_ITEMS`** — the artifacts each assistant can produce, each with an `available(state)`
   predicate. Unavailable items (no screenshot captured, no transcript, no SWOT generated) are hidden
-  rather than offered and then failed. Every assistant also offers `traces` (`llm_traces.json`:
-  full session state plus every LLM call).
+  rather than offered and then failed. Every assistant also offers `traces` (full session state plus
+  every LLM call), named after the assistant's main file: `cover_letter_llm_traces.json`,
+  `career_swot_llm_traces.json`, and for the per-round assistants
+  `{round}_interview_evaluation_llm_traces.json` / `{round}_interview_briefing_llm_traces.json`,
+  where `{round}` is the interview type (`hiring_manager_`) like the PDF and transcript beside them.
 - **`DELIVERY_OPTIONS`** — how each assistant can hand them over. A single option is applied without
   asking, which is why Career Advisor never sees a delivery question.
 

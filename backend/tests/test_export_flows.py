@@ -333,3 +333,29 @@ def _noop_update():
         return None
 
     return _update
+
+
+@pytest.mark.asyncio
+async def test_a_round_without_its_type_in_state_is_named_from_the_record(
+    replies, monkeypatch, tmp_path
+):
+    """Sessions from before v0.30.0 knew the round's id but not its type."""
+    seen: list[str] = []
+
+    async def capture(key, state_dict, session_id, target):
+        seen.append(state_dict["interview_type"])
+        return str(tmp_path / f"{key}.out")
+
+    async def fake_get_interview(interview_id):
+        return {"interview_id": interview_id, "interview_type": "hiring_manager"}
+
+    monkeypatch.setattr(mod, "_write_item", capture)
+    monkeypatch.setattr(mod, "get_interview", fake_get_interview)
+    state = _state(
+        "interview_evaluator", interview_id="i1", interview_evaluation={"overall_score": 7}
+    )
+    replies.extend([["evaluation", "traces"], "links"])
+
+    await mod.export_node(state)
+
+    assert seen == ["hiring_manager", "hiring_manager"]

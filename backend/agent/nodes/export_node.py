@@ -24,6 +24,7 @@ from backend.agent.interrupts import (
     emit_message,
 )
 from backend.agent.state import ApplicationState, ExportResult
+from backend.storage.interviews import get_interview
 from backend.storage.journeys import get_journey, update_journey
 from backend.storage.traces import list_traces
 from backend.tools import exporters
@@ -139,6 +140,21 @@ async def _resolve_folder(state: ApplicationState) -> Path | None:
     return None
 
 
+async def _round_type(state: ApplicationState) -> str:
+    """The round's type, for the filename prefix.
+
+    Sessions launched from a round before v0.30.0 carried the round's id but not
+    its type, so their files came out unprefixed. The round record still knows.
+    """
+    if state.interview_type or not state.interview_id:
+        return state.interview_type
+    try:
+        interview = await get_interview(state.interview_id)
+    except Exception:
+        return ""
+    return (interview or {}).get("interview_type") or ""
+
+
 async def _remember_folder(state: ApplicationState, written: list[str]) -> None:
     """Persist the folder a job's artifacts landed in, for later sessions."""
     if not state.journey_id or not written:
@@ -234,6 +250,7 @@ async def export_node(state: ApplicationState) -> dict:
 
     # 3. Write them.
     state_dict = state.model_dump(mode="json")
+    state_dict["interview_type"] = await _round_type(state)
     results: list[ExportResult] = list(state.export_results)
     written: list[str] = []
     labels = {i.key: i.label for i in items}

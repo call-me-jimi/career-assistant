@@ -76,6 +76,16 @@ def _round_prefix(state: dict[str, Any]) -> str:
     return f"{slug}_" if slug else ""
 
 
+# The file each assistant exists to produce. Its traces are named after it, so
+# a folder holding several sessions' traces says which one each file is.
+_MAIN_ARTIFACT = {
+    "interview_evaluator": "interview_evaluation",
+    "interview_prep": "interview_briefing",
+    "cover_letter": "cover_letter",
+    "career_advisor": "career_swot",
+}
+
+
 def _ensure_folder(state: dict[str, Any], target_dir: Path | None = None) -> Path:
     """Pick the destination folder.
 
@@ -317,7 +327,9 @@ def export_json(
     target_dir: Path | None = None,
 ) -> str:
     folder = _ensure_folder(state, target_dir)
-    path = _unique_path(folder / f"{_round_prefix(state)}llm_traces.json")
+    artifact = _MAIN_ARTIFACT.get(state.get("assistant_type") or "")
+    stem = f"{_round_prefix(state)}{artifact}_llm_traces" if artifact else "llm_traces"
+    path = _unique_path(folder / f"{stem}.json")
     payload = {"state": state, "llm_traces": traces}
     path.write_text(json.dumps(payload, indent=2, default=str))
     log.info("wrote traces %s", path)

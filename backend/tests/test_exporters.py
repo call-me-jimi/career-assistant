@@ -134,9 +134,9 @@ def test_evaluator_transcript_is_prefixed_with_the_round(interview_type, expecte
     assert path.name == expected
 
 
-def test_evaluator_traces_are_prefixed_but_the_zip_is_not(tmp_path):
+def test_evaluator_traces_are_named_after_the_evaluation_but_the_zip_is_not(tmp_path):
     state = _evaluator_state("technical")
-    assert Path(exporters.export_json(state, [])).name == "technical_llm_traces.json"
+    assert Path(exporters.export_json(state, [])).name == "technical_interview_evaluation_llm_traces.json"
 
     src = tmp_path / "technical_interview_transcript.md"
     src.write_text("x")
@@ -158,7 +158,7 @@ def test_prep_briefing_and_traces_are_prefixed_with_the_round():
     path = Path(exporters.export_pdf(state))
     assert path.name == "hiring_manager_interview_briefing.pdf"
     assert path.exists()
-    assert Path(exporters.export_json(state, [])).name == "hiring_manager_llm_traces.json"
+    assert Path(exporters.export_json(state, [])).name == "hiring_manager_interview_briefing_llm_traces.json"
 
 
 def test_assistants_without_rounds_keep_unprefixed_names():
@@ -166,8 +166,11 @@ def test_assistants_without_rounds_keep_unprefixed_names():
     state = _state()
     state["assistant_type"] = "cover_letter"
     state["interview_type"] = "technical"  # ignored outside the interview flows
-    assert Path(exporters.export_json(state, [])).name == "llm_traces.json"
+    assert Path(exporters.export_json(state, [])).name == "cover_letter_llm_traces.json"
     assert Path(exporters.export_pdf(state)).name == "CoverLetter.JaneDoe.pdf"
+
+    state["assistant_type"] = "career_advisor"
+    assert Path(exporters.export_json(state, [])).name == "career_swot_llm_traces.json"
 
 
 def test_export_transcript_prints_speaker_only_on_change():
@@ -212,7 +215,7 @@ def test_re_export_never_overwrites_an_existing_file():
 def test_re_export_never_overwrites_json_or_zip(tmp_path):
     state = _evaluator_state("panel")
     first = Path(exporters.export_json(state, []))
-    assert Path(exporters.export_json(state, [])).name == "panel_llm_traces (2).json"
+    assert Path(exporters.export_json(state, [])).name == "panel_interview_evaluation_llm_traces (2).json"
     assert first.exists()
 
     src = tmp_path / "artifact.md"

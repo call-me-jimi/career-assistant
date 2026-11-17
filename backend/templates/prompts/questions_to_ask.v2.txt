@@ -34,7 +34,7 @@ ROUND PLAYBOOK
 """
 
 {% endif %}
-Write questions for the people who run this round, not for every possible interviewer. {% if round_playbook %}Follow the "Questions to ask" line of the playbook. {% endif %}Organise them under one heading per likely interviewer (use the names from the interview context when given), 5–8 questions in total. Use the group descriptions below only as guidance on tone.
+Write questions for the people who run this round, not for every possible interviewer. {% if round_playbook %}Follow the "Questions to ask" line of the playbook, but never mention the playbook in your output. {% endif %}Organise them under one heading per likely interviewer (use the names from the interview context when given), 5–8 questions in total. Use the group descriptions below only as guidance on tone.
 
 {% else %}
 The round is not known. Produce a Markdown document organised by interviewer type, with all three groups:

@@ -25,7 +25,7 @@ ROUND PLAYBOOK
 
 {{ round_playbook }}
 
-Tailor the whole briefing to this round using the playbook above. Use "Decides" for the interview snapshot and "Expect" to choose the expected questions, always grounded in this role and this candidate. Follow "Briefing shape": where it gives different counts or extra content for a section, it overrides the defaults in the system prompt. Keep the section order. Ignore the interviewer persona line; it is for mock interviews.
+Tailor the whole briefing to this round using the playbook above. Use "Decides" for the interview snapshot and "Expect" to choose the expected questions, always grounded in this role and this candidate. Follow "Briefing shape": where it gives different counts or extra content for a section, it overrides the defaults in the system prompt. Keep the section order. Ignore the interviewer persona line; it is for mock interviews. The playbook is internal guidance: never mention it or its labels in your output.
 {% else %}
 Tailor the whole briefing to this round. Prepare the candidate for what this round actually decides — a recruiter or screening round turns on clarity, motivation and salary/logistics; a technical round on depth, trade-offs and thinking out loud; a hiring-manager or leadership round on ownership, scope and judgement; a team or peer round on collaboration. Do not pad the briefing with preparation that belongs to a different round.
 {% endif %}

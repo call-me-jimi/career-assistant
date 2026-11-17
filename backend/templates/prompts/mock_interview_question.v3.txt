@@ -18,7 +18,7 @@ ROUND PLAYBOOK
 {{ round_playbook }}
 """
 
-Play the interviewer described under "Interviewer persona", and draw the question from the themes under "Expect" that the transcript has not covered yet. Ignore "Briefing shape"; it is for the written briefing.
+Play the interviewer described under "Interviewer persona", and draw the question from the themes under "Expect" that the transcript has not covered yet. Ignore "Briefing shape"; it is for the written briefing. The playbook is internal guidance: never mention it or its labels in your output.
 
 {% endif %}
 

@@ -159,6 +159,24 @@ function labelOf(options: [string, string][], value: string) {
 
 /* ---------- the timeline ---------- */
 
+const FEEDBACK_OUTCOME_DATE = {
+  rejected: "rejected_at",
+  offer: "offer_at",
+  withdrawn: "dropped_at",
+} as const;
+
+type OutcomeField = (typeof FEEDBACK_OUTCOME_DATE)[keyof typeof FEEDBACK_OUTCOME_DATE];
+
+/* Which outcome a piece of feedback explains, if any. A reason logged with an
+   outcome belongs on the outcome's date — the one the candidate entered — not on
+   the day they typed it in. Feedback written before that outcome date belongs to
+   an earlier one (the job was reopened since), so it explains nothing here. */
+function explainedOutcome(journey: Journey, f: Feedback): OutcomeField | null {
+  const field = FEEDBACK_OUTCOME_DATE[f.outcome as keyof typeof FEEDBACK_OUTCOME_DATE];
+  const outcomeAt = field ? journey[field] : null;
+  return field && outcomeAt && f.created_at >= outcomeAt ? field : null;
+}
+
 type Entry = {
   at: number;
   tone: "accent" | "warn" | "err" | "ok" | "hold" | "subtle";
@@ -204,28 +222,62 @@ function buildTimeline(journey: Journey): Entry[] {
   }
 
   const roundById = new Map(journey.interviews.map((iv) => [iv.interview_id, iv]));
-  for (const f of journey.feedback) {
+  const said = (f: Feedback) => {
     const covers = f.interview_ids
       .map((id) => roundById.get(id))
       .filter((iv): iv is Interview => Boolean(iv))
       .map(describeRound);
+    return {
+      source: f.source && <span className="text-subtle"> — {labelOf(SOURCES, f.source)}</span>,
+      quote: f.feedback_text,
+      attribution: covers.length ? `About: ${covers.join(", ")}` : "About the application",
+    };
+  };
+
+  // The reason given for an outcome is part of that outcome's entry; any further
+  // feedback about the same outcome follows it on the same date (the sort is
+  // stable, and outcomes are pushed first).
+  const attached = new Set<string>();
+  for (const [field, label, tone] of OUTCOME_DATES) {
+    const at = journey[field] as number | null;
+    if (!at) continue;
+    const reason = journey.feedback.find((f) => explainedOutcome(journey, f) === field);
+    if (!reason) {
+      entries.push({ at, tone: tone as Entry["tone"], title: <b>{label}</b> });
+      continue;
+    }
+    attached.add(reason.feedback_id);
+    const { source, quote, attribution } = said(reason);
     entries.push({
-      at: f.created_at,
+      at,
+      tone: tone as Entry["tone"],
+      title: (
+        <>
+          <b>{label}</b>
+          {source}
+        </>
+      ),
+      quote,
+      attribution,
+    });
+  }
+
+  for (const f of journey.feedback) {
+    if (attached.has(f.feedback_id)) continue;
+    const field = explainedOutcome(journey, f);
+    const { source, quote, attribution } = said(f);
+    entries.push({
+      at: (field && journey[field]) || f.created_at,
       tone: "hold",
       title: (
         <>
           <b>They said why</b>
-          {f.source && <span className="text-subtle"> — {labelOf(SOURCES, f.source)}</span>}
+          {source}
         </>
       ),
-      quote: f.feedback_text,
-      attribution: covers.length ? `About: ${covers.join(", ")}` : "About the application",
+      quote,
+      attribution,
     });
-  }
-
-  for (const [field, label, tone] of OUTCOME_DATES) {
-    const at = journey[field] as number | null;
-    if (at) entries.push({ at, tone: tone as Entry["tone"], title: <b>{label}</b> });
   }
 
   return entries.sort((a, b) => a.at - b.at);

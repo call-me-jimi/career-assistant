@@ -148,7 +148,7 @@ def test_render_separates_real_feedback_from_the_simulator():
     )
 
     assert "Recurring hiring-manager concerns" in rendered
-    assert "what real employers said" in rendered
+    assert "Concerns real employers raised" in rendered
     assert rendered.index("simulated concern") < rendered.index("real concern")
 
 

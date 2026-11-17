@@ -165,6 +165,7 @@ KNOWN_TASKS: list[str] = [
     "career_advisor_chat",
     "career_advisor_swot",
     "synthesize_learning",
+    "learn_from_employers",
     "ui_translation",
     "detect_language",
     "analyze_interview_performance",

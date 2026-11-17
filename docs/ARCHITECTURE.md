@@ -290,10 +290,17 @@ own output; the third is the only one fed by the outside world.
     `interview_briefing` inject the most recent entries, with same-company entries prioritised
     inside the window. Cover-letter generation gets none directly — it inherits the signal through
     the strategy it consumes.
-  - **Distilled, over time.** `synthesize_learning` promotes themes recurring across **two or more
-    different employers** into `profile_playbook.employer_feedback_themes`, kept separate from the
-    simulator's `recurring_hm_weaknesses`. Because the cover-letter templates already interpolate
-    the rendered playbook, themes reach generation with no template change.
+  - **Distilled, on every reply.** Adding feedback with text, or deleting it, schedules
+    `learn_from_employers` (`backend/employer_learning.py`) in the background. It reads all the
+    profile's replies (up to 100) and rewrites only the employer part of the playbook:
+    `employer_strengths` (what they valued), `employer_feedback_themes` (concerns, most common
+    first; one employer is enough, `count` says how many) and `employer_feedback_stats` (replies,
+    and how many named nothing specific). Boilerplate is counted but teaches nothing. One run per
+    profile at a time; a burst of replies folds into as few runs as possible. Profiles with replies
+    recorded before this existed are learned once, the first time `/learned` is opened. These stay
+    separate from the simulator's `recurring_hm_weaknesses`, and `synthesize_learning` no longer
+    writes them. Because the cover-letter templates already interpolate the rendered playbook,
+    strengths and concerns reach generation with no template change.
 
   **Evaluator calibration.** `list_evaluator_calibration` joins each feedback entry to the
   evaluations it covers (pinned rounds, or every evaluated round of the job when the entry is
@@ -357,7 +364,8 @@ Tables:
 - **application_records** / **application_hm_iterations** — completed cover-letter applications and
   their hiring-manager iterations; the history `synthesize_learning` reflects over.
 - **profile_playbook** — per-profile learned guidance injected into cover-letter generation,
-  including `employer_feedback_themes` distilled from what real companies said.
+  including `employer_strengths` and `employer_feedback_themes` distilled from what real companies
+  said.
 - **profile_suggestions** — LLM-proposed candidate-profile edits awaiting approve / reject.
 - **coaching_insights** — evaluator findings surfaced to later interview-prep sessions. Carries
   `journey_id` / `interview_id` so an evaluation can be paired with the employer feedback covering

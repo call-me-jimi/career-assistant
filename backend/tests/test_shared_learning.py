@@ -89,6 +89,7 @@ async def test_an_unshared_lesson_stays_where_it_was_learned(test_db):
         "prefer_phrasing": [],
         "recurring_hm_weaknesses": [],
         "employer_feedback_themes": [],
+        "employer_strengths": [],
     }
 
 
@@ -111,6 +112,7 @@ async def test_a_profile_does_not_see_its_own_shared_items_twice(test_db):
         "prefer_phrasing": [],
         "recurring_hm_weaknesses": [],
         "employer_feedback_themes": [],
+        "employer_strengths": [],
     }
 
 

@@ -15,6 +15,7 @@ LIST_CATEGORIES = (
     "prefer_phrasing",
     "recurring_hm_weaknesses",
     "employer_feedback_themes",
+    "employer_strengths",
 )
 
 # Which key holds an item's text, per category. Used to dedupe own items against
@@ -24,6 +25,7 @@ _LABEL_KEY = {
     "prefer_phrasing": "phrase",
     "recurring_hm_weaknesses": "weakness",
     "employer_feedback_themes": "theme",
+    "employer_strengths": "theme",
 }
 
 
@@ -37,6 +39,8 @@ def _empty() -> dict[str, Any]:
         "prefer_phrasing": [],
         "recurring_hm_weaknesses": [],
         "employer_feedback_themes": [],
+        "employer_strengths": [],
+        "employer_feedback_stats": {},
         "tone_notes": "",
         "updated_at": None,
     }
@@ -47,7 +51,8 @@ async def get_playbook(profile_id: str) -> dict[str, Any]:
         cur = await db.execute(
             """
             SELECT never_say, prefer_phrasing, recurring_hm_weaknesses,
-                   employer_feedback_themes, tone_notes, updated_at
+                   employer_feedback_themes, tone_notes, updated_at,
+                   employer_strengths, employer_feedback_stats
             FROM profile_playbook WHERE profile_id = ?
             """,
             (profile_id,),
@@ -60,6 +65,8 @@ async def get_playbook(profile_id: str) -> dict[str, Any]:
         "prefer_phrasing": json.loads(row[1]) if row[1] else [],
         "recurring_hm_weaknesses": json.loads(row[2]) if row[2] else [],
         "employer_feedback_themes": json.loads(row[3]) if row[3] else [],
+        "employer_strengths": json.loads(row[6]) if row[6] else [],
+        "employer_feedback_stats": json.loads(row[7]) if row[7] else {},
         "tone_notes": row[4] or "",
         "updated_at": row[5],
     }
@@ -99,13 +106,14 @@ def _normalize_weakness_items(raw: Any) -> list[dict[str, str]]:
     return items
 
 
-def _normalize_theme_items(raw: Any) -> list[dict[str, str]]:
-    """Coerce employer_feedback_themes to a list of {theme, evidence} dicts.
+def _normalize_theme_items(raw: Any) -> list[dict[str, Any]]:
+    """Coerce employer_feedback_themes / employer_strengths to {theme, evidence} dicts.
 
     `evidence` is what makes a theme trustworthy — which employers said it, how often —
-    so it is kept even though it is optional.
+    so it is kept even though it is optional. `count`, how many employers said it, is
+    kept when there is one.
     """
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     for item in raw or []:
         if isinstance(item, str):
             theme, evidence = item, ""
@@ -114,15 +122,26 @@ def _normalize_theme_items(raw: Any) -> list[dict[str, str]]:
         else:
             continue
         if theme:
-            items.append({"theme": theme, "evidence": evidence, "shared": _shared_flag(item)})
+            out: dict[str, Any] = {"theme": theme, "evidence": evidence}
+            count = item.get("count") if isinstance(item, dict) else None
+            if isinstance(count, int) and not isinstance(count, bool) and count > 0:
+                out["count"] = count
+            out["shared"] = _shared_flag(item)
+            items.append(out)
     return items
 
 
 async def upsert_playbook(profile_id: str, payload: dict[str, Any]) -> None:
+    """Write the playbook. A key the payload leaves out keeps its stored value: the
+    cover-letter synthesis and the employer learning each write only their own part."""
+    payload = {**await get_playbook(profile_id), **payload}
     never_say = _normalize_phrase_items(payload.get("never_say"))
     prefer_phrasing = _normalize_phrase_items(payload.get("prefer_phrasing"))
     recurring_hm_weaknesses = _normalize_weakness_items(payload.get("recurring_hm_weaknesses"))
     employer_feedback_themes = _normalize_theme_items(payload.get("employer_feedback_themes"))
+    employer_strengths = _normalize_theme_items(payload.get("employer_strengths"))
+    stats = payload.get("employer_feedback_stats")
+    employer_feedback_stats = stats if isinstance(stats, dict) else {}
     tone_notes = payload.get("tone_notes") or ""
     now = time.time()
     async with connect() as db:
@@ -130,15 +149,18 @@ async def upsert_playbook(profile_id: str, payload: dict[str, Any]) -> None:
             """
             INSERT INTO profile_playbook (
                 profile_id, never_say, prefer_phrasing, recurring_hm_weaknesses,
-                employer_feedback_themes, tone_notes, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                employer_feedback_themes, tone_notes, updated_at,
+                employer_strengths, employer_feedback_stats
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(profile_id) DO UPDATE SET
                 never_say = excluded.never_say,
                 prefer_phrasing = excluded.prefer_phrasing,
                 recurring_hm_weaknesses = excluded.recurring_hm_weaknesses,
                 employer_feedback_themes = excluded.employer_feedback_themes,
                 tone_notes = excluded.tone_notes,
-                updated_at = excluded.updated_at
+                updated_at = excluded.updated_at,
+                employer_strengths = excluded.employer_strengths,
+                employer_feedback_stats = excluded.employer_feedback_stats
             """,
             (
                 profile_id,
@@ -148,6 +170,8 @@ async def upsert_playbook(profile_id: str, payload: dict[str, Any]) -> None:
                 json.dumps(employer_feedback_themes),
                 tone_notes,
                 now,
+                json.dumps(employer_strengths),
+                json.dumps(employer_feedback_stats),
             ),
         )
         await db.commit()
@@ -155,12 +179,7 @@ async def upsert_playbook(profile_id: str, payload: dict[str, Any]) -> None:
 
 async def remove_playbook_item(profile_id: str, category: str, index: int) -> bool:
     """Remove a single item from a list-valued playbook category. Returns True if removed."""
-    if category not in {
-        "never_say",
-        "prefer_phrasing",
-        "recurring_hm_weaknesses",
-        "employer_feedback_themes",
-    }:
+    if category not in LIST_CATEGORIES:
         return False
     playbook = await get_playbook(profile_id)
     items = playbook.get(category) or []
@@ -260,9 +279,10 @@ def render_playbook_for_prompt(
     prefer = playbook.get("prefer_phrasing") or []
     weaknesses = playbook.get("recurring_hm_weaknesses") or []
     themes = playbook.get("employer_feedback_themes") or []
+    strengths = playbook.get("employer_strengths") or []
     tone = (playbook.get("tone_notes") or "").strip()
 
-    if not (never_say or prefer or weaknesses or themes or tone):
+    if not (never_say or prefer or weaknesses or themes or strengths or tone):
         return ""
 
     lines: list[str] = []
@@ -286,9 +306,18 @@ def render_playbook_for_prompt(
             w = item if isinstance(item, str) else (item.get("weakness", "") if isinstance(item, dict) else "")
             if w:
                 lines.append(f"- {w}")
+    if strengths:
+        lines.append(
+            "What real employers explicitly valued in this candidate — lead with these "
+            "where the role calls for them, without quoting the employers:"
+        )
+        for item in strengths:
+            theme, evidence = _theme_evidence(item)
+            if theme:
+                lines.append(f"- {theme}" + (f" ({evidence})" if evidence else ""))
     if themes:
         lines.append(
-            "Recurring themes in what real employers said about past applications — "
+            "Concerns real employers raised about past applications — "
             "address these proactively with concrete evidence. Never reference a past "
             "rejection, apologise, or hedge:"
         )

@@ -10,9 +10,11 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from backend.api.routes import router
-from backend.storage.feedback import list_feedback
+from backend.storage.feedback import add_feedback, list_feedback
 from backend.storage.interviews import create_interview, update_interview
 from backend.storage.journeys import create_journey, get_journey
+from backend.storage.playbook import upsert_playbook
+from backend.storage.profiles import save_profile
 
 
 @pytest.fixture
@@ -220,3 +222,58 @@ async def test_midprocess_feedback_snapshots_empty(client):
     )
 
     assert (await list_feedback(jid))[0]["outcome"] == ""
+
+
+# --- each reply is learned from (backend/employer_learning.py) ---------------
+
+
+async def test_a_rejection_with_a_reason_relearns_the_profile(client, relearned):
+    jid = await _job()
+
+    await client.post(
+        f"/api/journeys/{jid}/outcome",
+        json={"kind": "rejected", "feedback_text": "Not enough forecasting experience."},
+    )
+
+    assert relearned == ["p1"]
+
+
+async def test_a_rejection_without_a_reason_learns_nothing(client, relearned):
+    jid = await _job()
+
+    await client.post(f"/api/journeys/{jid}/outcome", json={"kind": "rejected"})
+
+    assert relearned == []
+
+
+async def test_mid_process_feedback_and_its_removal_each_relearn(client, relearned):
+    jid = await _job()
+
+    r = await client.post(f"/api/journeys/{jid}/feedback", json={"feedback_text": "Strong in AI."})
+    await client.delete(f"/api/journeys/{jid}/feedback/{r.json()['feedback_id']}")
+
+    assert relearned == ["p1", "p1"]
+
+
+async def test_a_job_without_a_profile_learns_nothing(client, relearned):
+    jid = await _job(profile_id=None)
+
+    await client.post(
+        f"/api/journeys/{jid}/outcome", json={"kind": "rejected", "feedback_text": "No."}
+    )
+
+    assert relearned == []
+
+
+async def test_replies_recorded_before_learning_existed_are_learned_once(client, relearned):
+    await save_profile(name="CV", cv_text="", candidate_profile="", profile_id="p1")
+    jid = await _job()
+    await add_feedback(journey_id=jid, profile_id="p1", feedback_text="Not enough forecasting.")
+
+    await client.get("/api/profiles/p1/playbook")
+    assert relearned == ["p1"]
+
+    # Once learned, the stats say so and opening the page queues nothing.
+    await upsert_playbook("p1", {"employer_feedback_stats": {"replies": 1}})
+    await client.get("/api/profiles/p1/playbook")
+    assert relearned == ["p1"]

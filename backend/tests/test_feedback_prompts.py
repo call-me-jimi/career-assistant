@@ -157,8 +157,16 @@ def test_synthesis_system_prompt_keeps_real_and_simulated_signal_apart():
     system = load_system_prompt("synthesize_learning")
 
     assert "employer_feedback_themes" in system
-    assert "at least two different employers" in system
-    assert "Never merge the two" in system
+    assert "Do not return them" in system
+    assert "never copy them into `recurring_hm_weaknesses`" in system
+
+
+def test_employer_learning_prompt_ignores_boilerplate_and_the_bare_rejection():
+    system = load_system_prompt("learn_from_employers")
+
+    assert "Never infer a concern from the fact of a rejection" in system
+    assert "is boilerplate" in system
+    assert "A single employer is enough" in system
 
 
 # ---- node wiring ---------------------------------------------------------

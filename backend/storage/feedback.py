@@ -40,7 +40,6 @@ _STATUS_TO_OUTCOME = {
 # Which stage a round implies, when feedback doesn't say. Anything not listed is
 # a middle round.
 _TYPE_TO_STAGE = {
-    "recruiter": "screening",
     "screening": "screening",
     "final": "final",
     "leadership": "final",

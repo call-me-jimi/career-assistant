@@ -64,7 +64,7 @@ async def test_whole_process_feedback_fans_out_to_every_evaluated_round(test_db)
         "The panel liked the delivery record but wanted more strategic framing."
     }
     rounds = " ".join(p["round"] for p in pairs)
-    assert "Screening" in rounds and "Hiring manager" in rounds
+    assert "Recruiter / screening" in rounds and "Hiring manager" in rounds
 
 
 @pytest.mark.asyncio
@@ -82,7 +82,7 @@ async def test_pinned_feedback_pairs_only_with_those_rounds(test_db):
     pairs = await list_evaluator_calibration("p1", limit=10)
 
     assert len(pairs) == 1
-    assert "Screening" in pairs[0]["round"]
+    assert "Recruiter / screening" in pairs[0]["round"]
 
 
 @pytest.mark.asyncio

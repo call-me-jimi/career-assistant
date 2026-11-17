@@ -180,14 +180,12 @@ function coverLetterStep(j: Journey): string {
 /* Progress strip: ten interview columns collapse into six aligned slots. */
 const SLOT_LABELS = ["Applied", "Screening", "Manager", "Deep dive", "Final", "Decision"];
 const SLOT_OF: Record<string, number> = {
-  recruiter: 1,
   screening: 1,
   hiring_manager: 2,
   technical: 3,
   case_study: 3,
   panel: 3,
   team_peer: 3,
-  mixed: 3,
   other: 3,
   leadership: 4,
   final: 4,

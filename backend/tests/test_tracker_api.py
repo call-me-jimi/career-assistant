@@ -60,7 +60,7 @@ async def test_list_returns_status_rounds_and_events(client):
     row = r.json()["journeys"][0]
 
     assert row["status"] == "in_progress"
-    assert row["interviews"][0]["type_label"] == "Screening"
+    assert row["interviews"][0]["type_label"] == "Recruiter / screening"
     assert [e["text"] for e in row["events"]] == ["Followed up."]
 
 

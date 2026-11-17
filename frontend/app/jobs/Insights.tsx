@@ -36,7 +36,7 @@ const C = {
 const DAY = 86_400_000;
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const FIRST_ROUNDS: Record<string, number> = { recruiter: 1, screening: 2 };
+const FIRST_ROUNDS: Record<string, number> = { screening: 1 };
 
 /* ---------- dates ---------- */
 
@@ -433,7 +433,7 @@ function Summary({ apps, quietDays }: { apps: App[]; quietDays: number }) {
     [
       "Rounds held",
       `${rounds.length}`,
-      `${roundCount((t) => t === "recruiter")} recruiter · ${roundCount((t) => t === "screening")} screening · ` +
+      `${roundCount((t) => t === "screening")} screening · ` +
         `${roundCount((t) => !FIRST_ROUNDS[t])} later${cases ? `, ${cases} of them case studies` : ""}`,
     ],
   ];
@@ -780,7 +780,6 @@ function Cadence({ apps, all, cutoff, today, showTip, hideTip }: ChartProps) {
 
 const TABLE_COLS: [string, string][] = [
   ["Submitted", C.sub],
-  ["Recruiter", C.inv],
   ["Screening", C.inv],
   ["Second stage", C.inv],
   ["Rejections", C.rej],
@@ -795,15 +794,15 @@ function PeriodTable({ all, cutoff, today }: ChartProps) {
   const { ps, rows, max, total } = useMemo(() => {
     const ps = periods(cutoff, today, grain);
     const at = indexer(ps, grain);
-    const rows = ps.map(() => [0, 0, 0, 0, 0]);
+    const rows = ps.map(() => [0, 0, 0, 0]);
     const add = (d: Date | null, c: number) => {
       const i = at(d);
       if (i !== undefined) rows[i][c]++;
     };
     all.forEach((a) => {
       add(a.applied, 0);
-      a.rounds.forEach((r) => add(r.held, FIRST_ROUNDS[r.type] ?? 3));
-      add(a.rejected, 4);
+      a.rounds.forEach((r) => add(r.held, FIRST_ROUNDS[r.type] ?? 2));
+      add(a.rejected, 3);
     });
     const max = TABLE_COLS.map((_, c) => Math.max(1, ...rows.map((r) => r[c])));
     const total = TABLE_COLS.map((_, c) => rows.reduce((s, r) => s + r[c], 0));

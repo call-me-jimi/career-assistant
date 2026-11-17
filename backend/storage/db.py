@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS profile_playbook (
     prefer_phrasing          TEXT NOT NULL DEFAULT '[]',
     recurring_hm_weaknesses  TEXT NOT NULL DEFAULT '[]',
     employer_feedback_themes TEXT NOT NULL DEFAULT '[]',
+    employer_strengths       TEXT NOT NULL DEFAULT '[]',
+    employer_feedback_stats  TEXT NOT NULL DEFAULT '{}',
     tone_notes               TEXT NOT NULL DEFAULT '',
     updated_at               REAL NOT NULL
 );
@@ -316,6 +318,17 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         await db.execute(
             "ALTER TABLE profile_playbook "
             "ADD COLUMN employer_feedback_themes TEXT NOT NULL DEFAULT '[]'"
+        )
+    # What real employers said, learned on each reply (backend/employer_learning.py):
+    # what they liked, and how many replies the lessons rest on.
+    if "employer_strengths" not in playbook_cols:
+        await db.execute(
+            "ALTER TABLE profile_playbook ADD COLUMN employer_strengths TEXT NOT NULL DEFAULT '[]'"
+        )
+    if "employer_feedback_stats" not in playbook_cols:
+        await db.execute(
+            "ALTER TABLE profile_playbook "
+            "ADD COLUMN employer_feedback_stats TEXT NOT NULL DEFAULT '{}'"
         )
 
     # Which job and which round an evaluation belongs to. Without these an evaluation

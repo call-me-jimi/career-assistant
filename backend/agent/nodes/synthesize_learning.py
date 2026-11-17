@@ -155,6 +155,10 @@ async def synthesize_learning_node(state: ApplicationState) -> dict:
         suggestion_out = payload.get("suggestion") if isinstance(payload, dict) else None
 
         if isinstance(playbook_out, dict):
+            # What employers said is learned on each reply (backend/employer_learning.py),
+            # not here: a stale copy from this call must not overwrite it.
+            for key in ("employer_feedback_themes", "employer_strengths", "employer_feedback_stats"):
+                playbook_out.pop(key, None)
             await upsert_playbook(state.profile_id, playbook_out)
 
         pending: dict[str, Any] | None = None

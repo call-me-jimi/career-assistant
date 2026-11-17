@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from backend.agent.interrupts import emit_message, emit_state
 from backend.agent.runner import registry
+from backend.employer_learning import is_learning, schedule_employer_learning
 from backend.config import KNOWN_TASKS, LLMConfig, ModelPricing, load_settings, save_settings
 from backend.llm.translate import translate_label
 from backend.storage.feedback import (
@@ -20,6 +21,7 @@ from backend.storage.feedback import (
     infer_stage,
     list_evaluator_calibration,
     list_feedback,
+    list_recent_feedback,
 )
 from backend.storage.cv_files import attach_cv, cv_path
 from backend.storage.events import add_event, delete_event, list_events, update_event
@@ -510,6 +512,13 @@ async def remove_journey_event(journey_id: str, event_id: str) -> dict:
     return {"deleted": True}
 
 
+def _relearn(profile_id: str | None) -> None:
+    """What employers said changed: learn from it again, in the background
+    (backend/employer_learning.py folds a burst of changes into as few runs as it can)."""
+    if profile_id:
+        schedule_employer_learning(profile_id)
+
+
 class FeedbackPayload(BaseModel):
     # No `outcome`: it is derived from the job's dates when the row is written.
     model_config = {"extra": "forbid"}
@@ -545,6 +554,8 @@ async def add_journey_feedback(journey_id: str, payload: FeedbackPayload) -> dic
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    if payload.feedback_text.strip():
+        _relearn(journey["profile_id"])
     return {"feedback_id": feedback_id}
 
 
@@ -597,16 +608,19 @@ async def log_journey_outcome(journey_id: str, payload: OutcomePayload) -> dict:
             )
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
+        _relearn(journey["profile_id"])
 
     return await _with_tracker_fields(await get_journey(journey_id))
 
 
 @router.delete("/journeys/{journey_id}/feedback/{feedback_id}")
 async def remove_journey_feedback(journey_id: str, feedback_id: str) -> dict:
-    owned = {e["feedback_id"] for e in await list_feedback(journey_id)}
-    if feedback_id not in owned:
+    entry = {e["feedback_id"]: e for e in await list_feedback(journey_id)}.get(feedback_id)
+    if entry is None:
         raise HTTPException(404, "feedback not found")
     await delete_feedback(feedback_id)
+    if (entry.get("feedback_text") or "").strip():
+        _relearn(entry.get("profile_id"))
     return {"deleted": True}
 
 
@@ -926,7 +940,16 @@ async def update_settings(payload: SettingsPayload) -> dict:
 async def profile_playbook(profile_id: str) -> dict:
     if not await get_profile(profile_id):
         raise HTTPException(404, "profile not found")
-    return {**await get_playbook(profile_id), "shared": await list_shared_items(profile_id)}
+    playbook = await get_playbook(profile_id)
+    # Replies recorded before employer learning existed: learn from them once. Not while
+    # a run is going, so reloading the page doesn't queue another.
+    if (
+        not playbook["employer_feedback_stats"]
+        and not is_learning(profile_id)
+        and await list_recent_feedback(profile_id, limit=1)
+    ):
+        _relearn(profile_id)
+    return {**playbook, "shared": await list_shared_items(profile_id)}
 
 
 class SharePayload(BaseModel):

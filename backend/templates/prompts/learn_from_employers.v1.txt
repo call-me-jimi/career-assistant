@@ -1,0 +1,13 @@
+LESSONS SO FAR (JSON)
+"""
+{{ current_lessons }}
+"""
+
+WHAT EMPLOYERS WROTE ({{ reply_count }} replies, newest first)
+"""
+{{ employer_feedback }}
+"""
+
+OUTPUT LANGUAGE: {{ language }}
+
+Return the updated strengths, concerns and the count of unspecific replies as a single JSON object, per the system instructions.

@@ -15,3 +15,14 @@ async def test_db(tmp_path, monkeypatch):
         await db.commit()
     monkeypatch.setattr(db_module, "DB_PATH", path)
     return path
+
+
+@pytest.fixture(autouse=True)
+def relearned(monkeypatch):
+    """Profiles the api asked to learn from employers again. Recorded, never run: a
+    test that records a reply must not reach a real model in the background."""
+    calls: list[str] = []
+    import backend.api.routes as routes
+
+    monkeypatch.setattr(routes, "schedule_employer_learning", calls.append)
+    return calls

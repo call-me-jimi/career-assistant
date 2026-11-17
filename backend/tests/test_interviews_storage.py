@@ -51,7 +51,7 @@ async def test_briefing_write_stamps_time(test_db):
 async def test_list_is_scoped_to_journey_and_ordered(test_db):
     j1 = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
     j2 = await create_journey(profile_id="p1", company_name="Other", job_title="Manager")
-    first = await create_interview(journey_id=j1, profile_id="p1", interview_type="recruiter")
+    first = await create_interview(journey_id=j1, profile_id="p1", interview_type="case_study")
     second = await create_interview(journey_id=j1, profile_id="p1", interview_type="technical")
     await create_interview(journey_id=j2, profile_id="p1", interview_type="screening")
 
@@ -62,7 +62,7 @@ async def test_list_is_scoped_to_journey_and_ordered(test_db):
 @pytest.mark.asyncio
 async def test_delete_removes_one_round_only(test_db):
     jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
-    kept = await create_interview(journey_id=jid, profile_id="p1", interview_type="recruiter")
+    kept = await create_interview(journey_id=jid, profile_id="p1", interview_type="case_study")
     doomed = await create_interview(journey_id=jid, profile_id="p1", interview_type="screening")
 
     assert await delete_interview(doomed) is True
@@ -112,6 +112,19 @@ async def test_migration_backfills_existing_journey_briefing(tmp_path, monkeypat
     assert rounds[0]["briefing_at"] == 900.0
 
 
+@pytest.mark.asyncio
+async def test_migrate_folds_merged_round_types(test_db):
+    jid = await create_journey(profile_id="p1", company_name="ACME", job_title="Engineer")
+    for slug in ("recruiter", "mixed", "technical"):
+        await create_interview(journey_id=jid, profile_id="p1", interview_type=slug)
+    async with aiosqlite.connect(test_db) as db:
+        await _migrate(db)
+        await db.commit()
+
+    types = sorted(r["interview_type"] for r in await list_interviews(jid))
+    assert types == ["other", "screening", "technical"]
+
+
 # ---- taxonomy helpers --------------------------------------------------------
 
 
@@ -125,6 +138,9 @@ async def test_migration_backfills_existing_journey_briefing(tmp_path, monkeypat
         ("Case study / presentation", "case_study"),
         ("team/peer", "team_peer"),
         ("tech", "technical"),
+        ("recruiter", "screening"),
+        ("Recruiter / screening", "screening"),
+        ("mixed", "other"),
         ("", None),
         ("something else entirely", None),
     ],
@@ -139,3 +155,8 @@ def test_labels_and_description():
     described = describe_type("technical", "pair session")
     assert described.startswith("Technical — ")
     assert "pair session" in described
+
+
+def test_merged_slugs_still_read():
+    assert type_label("recruiter") == "Recruiter / screening"
+    assert describe_type("mixed").startswith("Other / mixed — ")

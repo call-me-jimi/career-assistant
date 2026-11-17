@@ -15,8 +15,10 @@ from backend.storage.db import connect
 
 # Round taxonomy: slug → (label, one-line hint).
 INTERVIEW_TYPES: dict[str, tuple[str, str]] = {
-    "recruiter": ("Recruiter", "external or internal recruiter — logistics and fit"),
-    "screening": ("Screening", "first HR/talent round, CV walk-through"),
+    "screening": (
+        "Recruiter / screening",
+        "first call with an in-house or agency recruiter — CV, motivation, logistics",
+    ),
     "hiring_manager": ("Hiring manager", "the manager who owns the role"),
     "technical": ("Technical", "coding, architecture or domain deep-dive"),
     "case_study": ("Case study / presentation", "case, take-home or live presentation"),
@@ -24,12 +26,15 @@ INTERVIEW_TYPES: dict[str, tuple[str, str]] = {
     "team_peer": ("Team / peer", "future colleagues — culture and collaboration"),
     "leadership": ("Leadership", "director, VP or C-level — strategy and vision"),
     "final": ("Final round", "closing round, offer/negotiation adjacent"),
-    "mixed": ("Mixed", "spans several of the above"),
-    "other": ("Other", "anything else"),
+    "other": ("Other / mixed", "spans several of the above, or anything else"),
 }
 
 # Extra spellings users type at the picker, mapped onto a slug.
 _TYPE_ALIASES: dict[str, str] = {
+    # Slugs merged away (recruiter into screening, mixed into other); old session
+    # state can still carry them.
+    "recruiter": "screening",
+    "mixed": "other",
     "hm": "hiring_manager",
     "manager": "hiring_manager",
     "hiring": "hiring_manager",
@@ -51,7 +56,7 @@ _TYPE_ALIASES: dict[str, str] = {
 
 
 def type_label(slug: str) -> str:
-    entry = INTERVIEW_TYPES.get(slug)
+    entry = INTERVIEW_TYPES.get(_TYPE_ALIASES.get(slug, slug))
     return entry[0] if entry else (slug or "Unspecified round")
 
 
@@ -59,7 +64,7 @@ def describe_type(slug: str, label: str = "") -> str:
     """One-line round description for prompts. Empty when the round is unclassified."""
     if not slug:
         return ""
-    name, hint = INTERVIEW_TYPES.get(slug, (slug, ""))
+    name, hint = INTERVIEW_TYPES.get(_TYPE_ALIASES.get(slug, slug), (slug, ""))
     text = f"{name} — {hint}" if hint else name
     return f'{text} (the candidate calls it "{label}")' if label else text
 

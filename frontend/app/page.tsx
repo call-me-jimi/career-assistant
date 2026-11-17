@@ -100,7 +100,7 @@ const TRACK: {
     title: "Interview Prep",
     phase: "Prepare",
     short: "Walk in knowing what they'll ask.",
-    long: "Likely questions, the stories worth rehearsing, and where a hiring manager will probe for doubt.",
+    long: "Likely questions for this round, the stories worth rehearsing, and where the interviewer will probe for doubt.",
     Icon: QuestionBubbleIcon,
   },
   {

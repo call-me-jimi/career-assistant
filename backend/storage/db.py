@@ -441,6 +441,12 @@ async def _migrate(db: aiosqlite.Connection) -> None:
         "UPDATE job_interviews SET scheduled_at = created_at WHERE scheduled_at IS NULL"
     )
 
+    # Round types merged away: recruiter calls into screening, mixed into other.
+    for old, new in (("recruiter", "screening"), ("mixed", "other")):
+        await db.execute(
+            "UPDATE job_interviews SET interview_type = ? WHERE interview_type = ?", (new, old)
+        )
+
     # An employer's verdict already sits in job_feedback — move it onto the date
     # column that derive_status() reads. 'ghosted' maps to nothing on purpose:
     # no response is not an outcome date, so those rows stay Applied.

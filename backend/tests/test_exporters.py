@@ -112,7 +112,7 @@ def test_export_transcript_writes_standalone_file():
     assert "[01:05]" not in content
 
 
-def _evaluator_state(interview_type="recruiter"):
+def _evaluator_state(interview_type="screening"):
     state = _state()
     state["assistant_type"] = "interview_evaluator"
     state["interview_type"] = interview_type
@@ -124,7 +124,7 @@ def _evaluator_state(interview_type="recruiter"):
 @pytest.mark.parametrize(
     "interview_type, expected",
     [
-        ("recruiter", "recruiter_interview_transcript.md"),
+        ("screening", "screening_interview_transcript.md"),
         ("hiring_manager", "hiring_manager_interview_transcript.md"),
         ("", "interview_transcript.md"),  # unclassified round keeps the plain name
     ],

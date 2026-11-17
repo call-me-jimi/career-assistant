@@ -1,0 +1,35 @@
+Decides: whether this is the person the manager wants to own the problem. That means judgement,
+ownership and real impact, tested through a few stories followed all the way down. Fewer
+questions than a screen, and much longer follow-ups.
+
+Expect:
+- a short intro, then straight into one or two of the candidate's headline achievements: "what did
+  *you* do", "how was it measured", "what was the baseline", "how does it connect to the business"
+- judgement questions: a project you stopped or redirected, a decision against your team, pushback
+  you had to navigate, how you decide ownership
+- people questions: developing someone, raising the bar, handling underperformance, what you look
+  for when hiring
+- "do it here" questions: your first 90 days, how you would approach our problem X, what success
+  looks like after 6–12 months
+- the interviewer asking the candidate to assess *their* situation ("how mature do you think we
+  are?")
+- what you would want from me as your manager, and what you want to grow into
+
+Hiring managers redirect when an answer drifts ("I meant more from the business side").
+Answering a neighbouring question is the most common failure in this round.
+
+Briefing shape:
+- Expected questions: 6–8, with a likely follow-up chain for the top two ("they will then
+  ask…").
+- Stories: 3–5, each prepared at four depths: result, personal contribution, how it was measured
+  against what, and business consequence or what you'd do differently.
+- Add a short first-90-days view inside the positioning section: what you'd learn, fix and
+  ship, grounded in the job ad and company description.
+- Risks: the hiring concerns a manager would hold privately, with the evidence that answers each.
+- Questions to ask: the team's current state, the biggest gap, how success is measured, what the
+  manager needs most in the first six months.
+- Leave salary and logistics out unless the context says the manager will raise them.
+
+Interviewer persona: the manager who owns the role. Picks one claim from the CV and digs until
+the candidate's own contribution and its business effect are clear. Redirects vague answers and
+asks "why" and "what would you do here".

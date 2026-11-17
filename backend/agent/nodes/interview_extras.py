@@ -14,6 +14,7 @@ from backend.agent.state import ApplicationState, ChatTurn
 from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
 from backend.llm.translate import with_language_directive
+from backend.storage.interviews import describe_type, round_playbook
 
 _MENU_OPTIONS = {"mock", "practice", "tech", "questions"}
 
@@ -112,6 +113,8 @@ async def mock_interview_node(state: ApplicationState) -> dict:
             job_title=state.job_title,
             job_description=state.job_description[:3000],
             interview_context=state.interview_context or "",
+            interview_type=describe_type(state.interview_type, state.interview_label),
+            round_playbook=round_playbook(state.interview_type),
             candidate_profile=state.candidate_profile[:2500],
             alignment_strategy=state.alignment_strategy or state.inferred_role_context or "",
             transcript=_format_transcript(turns),
@@ -290,6 +293,8 @@ async def interview_questions_node(state: ApplicationState) -> dict:
         job_description=state.job_description,
         company_description=state.company_description,
         interview_context=state.interview_context or "",
+        interview_type=describe_type(state.interview_type, state.interview_label),
+        round_playbook=round_playbook(state.interview_type),
         candidate_profile=state.candidate_profile,
     )
     user = with_language_directive(user, state.language)

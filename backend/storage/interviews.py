@@ -11,6 +11,7 @@ import time
 import uuid
 from typing import Any
 
+from backend.llm.prompts import load_round_playbook
 from backend.storage.db import connect
 
 # Round taxonomy: slug → (label, one-line hint).
@@ -67,6 +68,11 @@ def describe_type(slug: str, label: str = "") -> str:
     name, hint = INTERVIEW_TYPES.get(_TYPE_ALIASES.get(slug, slug), (slug, ""))
     text = f"{name} — {hint}" if hint else name
     return f'{text} (the candidate calls it "{label}")' if label else text
+
+
+def round_playbook(slug: str) -> str:
+    """The prompts' playbook for this round type; "" when it has none (other, say)."""
+    return load_round_playbook(_TYPE_ALIASES.get(slug, slug))
 
 
 def resolve_type(text: str) -> str | None:

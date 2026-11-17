@@ -9,7 +9,7 @@ from backend.llm.prompts import load_system_prompt, render_user_prompt
 from backend.llm.service import call_llm
 from backend.llm.translate import with_language_directive
 from backend.storage.feedback import employer_feedback_block
-from backend.storage.interviews import describe_type
+from backend.storage.interviews import describe_type, round_playbook
 
 
 async def interview_briefing_node(state: ApplicationState) -> dict:
@@ -32,6 +32,7 @@ async def interview_briefing_node(state: ApplicationState) -> dict:
         job_title=state.job_title,
         location=state.location,
         interview_type=describe_type(state.interview_type, state.interview_label),
+        round_playbook=round_playbook(state.interview_type),
         interview_context=state.interview_context or "",
         job_description=state.job_description,
         company_description=state.company_description,

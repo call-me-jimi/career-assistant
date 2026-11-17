@@ -1,0 +1,54 @@
+Generate a tailored list of thoughtful questions the candidate should be ready to ask the interviewer.
+
+ROLE
+{{ job_title }} at {{ company_name }}
+
+JOB DESCRIPTION
+"""
+{{ job_description }}
+"""
+
+COMPANY DESCRIPTION
+"""
+{{ company_description }}
+"""
+
+INTERVIEW CONTEXT
+"""
+{{ interview_context }}
+"""
+
+CANDIDATE PROFILE (so questions reflect their seniority and genuine interests)
+"""
+{{ candidate_profile }}
+"""
+
+{% if interview_type %}
+INTERVIEW ROUND
+{{ interview_type }}
+
+{% if round_playbook %}
+ROUND PLAYBOOK
+"""
+{{ round_playbook }}
+"""
+
+{% endif %}
+Write questions for the people who run this round, not for every possible interviewer. {% if round_playbook %}Follow the "Questions to ask" line of the playbook, but never mention the playbook in your output. {% endif %}Organise them under one heading per likely interviewer (use the names from the interview context when given), 5–8 questions in total. Use the group descriptions below only as guidance on tone.
+
+{% else %}
+The round is not known. Produce a Markdown document organised by interviewer type, with all three groups:
+
+{% endif %}
+### For the hiring manager
+4–6 questions specific to *this* team's scope, top priorities, success measurement, biggest open problem. No generic "what's a typical day".
+
+### For a peer / future teammate
+3–5 questions that surface culture, decision-making, recent friction points, what good looks like from a peer's view.
+
+### For leadership / skip-level
+3–5 questions about strategy, where the team sits in the company's bets, what changes in 12 months.
+
+For each question, add one short italic line: *why this question lands* — what signal the candidate sends by asking it (seniority, genuine interest, risk awareness, etc.).
+
+Tailor every question to this company / this role. No questions that would work for any company.

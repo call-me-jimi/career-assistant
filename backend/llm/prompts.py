@@ -12,6 +12,7 @@ from backend.config import TEMPLATES_DIR
 
 PROMPTS_DIR = TEMPLATES_DIR / "prompts"
 SYSTEM_DIR = TEMPLATES_DIR / "system"
+ROUNDS_DIR = TEMPLATES_DIR / "rounds"
 
 _VERSION_RE = re.compile(r"^(?P<stem>.+)\.v(?P<ver>\d+)\.txt$")
 
@@ -71,3 +72,15 @@ def render_user_prompt(stem: str, **context) -> Prompt:
 def load_system_prompt(stem: str) -> Prompt:
     path = latest_system_path(stem)
     return Prompt(path.read_text(), path)
+
+
+@lru_cache(maxsize=32)
+def load_round_playbook(slug: str) -> str:
+    """The playbook for one interview round type (rounds/{slug}.vN.txt), or "" for a
+    round without one. Prompts include it to tailor briefing, mock and questions."""
+    if not slug:
+        return ""
+    try:
+        return _resolve_latest(ROUNDS_DIR, slug).read_text().strip()
+    except TemplateNotFound:
+        return ""

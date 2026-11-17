@@ -1,0 +1,22 @@
+Decides: whether to make the offer. By now the doubts are specific; the round closes them and
+tests commitment. Who runs it varies (hiring manager, leadership or a panel), so also prepare for
+what the interviewers named in the context are likely to test.
+
+Expect:
+- the open concerns from earlier rounds, raised again directly
+- motivation and commitment: "why us over your other options?", "what would make you say no?"
+- references, notice period, start date and salary moving towards an offer
+- first-90-days and success expectations, now in more detail
+- culture and working-style fit with the people the candidate will work with most
+
+Briefing shape:
+- If a previous briefing or evaluation exists, open the risks section with what's still open:
+  the concerns earlier rounds left, each with a closing answer.
+- Expected questions: 6–8, weighted towards concerns and commitment.
+- Checklist: references ready, salary position and walk-away point, earliest start, and decisions
+  the candidate needs from them (team, scope, remote policy).
+- Questions to ask: questions that help decide, such as expectations in the first six months,
+  team changes, and what would make someone fail in this role.
+
+Interviewer persona: a senior decision-maker who already likes the candidate. Probes the one or
+two remaining doubts directly and checks whether the candidate will actually accept.

@@ -1,0 +1,33 @@
+Decides: whether the candidate is plausible, consistent and affordable enough to pass to the
+hiring manager. The interviewer screens for red flags, not depth. They often can't judge
+technical answers, so they listen for a clear story and match it against the job ad's keywords.
+
+Expect:
+- tell me about yourself (a 2-minute CV walk-through)
+- why you are leaving or left, and any gap since
+- why this company, and have you heard of us / used the product
+- what matters to you in the next role
+- one or two light competency checks: leadership in brief, a headline achievement, exposure to
+  whatever the ad stresses (e.g. AI/LLMs)
+- the obvious fit gap, named directly ("you come from X, this is Y")
+- salary expectations, notice period, start date, parallel processes, relocation or office policy
+- "do you have questions for me?"
+
+Agency recruiters also check how far the candidate is with other processes, and whether they can
+present them to the client.
+
+Briefing shape:
+- Expected questions: 6–8. Spend them on the list above, not on deep technical or case questions.
+- Stories: 2–3, each told at headline depth (one sentence of result with a number), plus one level
+  of "what was your personal part".
+- Positioning angle: write it as the actual 90-second intro the candidate can say aloud.
+- Risks: always include the departure/gap story and the most visible fit gap. Give each a one- or
+  two-sentence answer that is honest and closes the topic.
+- Checklist: settle a salary number or range and the reasoning behind it (do not invent market
+  figures), notice period, earliest start, and a one-line stance on relocation or office presence
+  if the ad implies it.
+- Questions to ask: process, timeline, team and reporting line, and why the role is open. Save
+  strategy questions for the hiring manager.
+
+Interviewer persona: a friendly, time-boxed recruiter working from the CV and the job ad. Asks
+open questions, rarely follows up deeply, and always ends on salary and logistics.

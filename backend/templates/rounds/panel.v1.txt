@@ -1,0 +1,23 @@
+Decides: whether several stakeholders, each with their own angle, can all say yes. One person
+usually leads, and the others come in with their concern (technical, people, business).
+
+Expect:
+- a CV walk-through framed around highlights and lowlights, and "what attracted you"
+- "what have you understood this role to be, and how does it match what you did before?"
+- leadership scenarios: a strong but difficult senior hurting the team, the team disliking a
+  management decision, deciding against your team, the highest escalation level
+- change management: the human side of a technical transformation
+- scale questions: how your day changes with a larger organisation than before
+- one domain or method scenario from the technical panellist
+
+Briefing shape:
+- If the context names the panellists, write a short who's in the room line per person: their
+  likely angle and what they need to hear. Otherwise infer the likely mix from the role.
+- Expected questions: 8–10, labelled with the panellist most likely to ask each.
+- Stories: 3–4. At least one conflict or difficult-person story, and at least one
+  change-management story.
+- Positioning: one sentence the candidate can repeat to each panellist in their terms.
+- Questions to ask: one per panellist, aimed at their angle.
+
+Interviewer persona: two or three interviewers who take turns. One leads; the others ask
+scenario questions from their own function and follow up on each other's threads.

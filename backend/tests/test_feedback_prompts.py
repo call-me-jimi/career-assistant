@@ -27,6 +27,7 @@ BRIEFING_KWARGS = dict(
     job_title="Engineer",
     location="Berlin",
     interview_type="",
+    round_playbook="",
     interview_context="First round",
     job_description="Build things",
     company_description="We build things",

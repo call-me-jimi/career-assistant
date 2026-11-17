@@ -1,0 +1,33 @@
+Decides: whether the candidate's depth is real at the level the role needs, and how they think
+when they don't know the answer. Read the context to tell which of two shapes it is:
+
+- Fundamentals walk: the interviewer moves from basics to the current edge of the field (for
+  ML, e.g. regression → trees → ensembles → deep learning → transformers → RAG → agents).
+- Applied design or scenario: design a system end to end, debug a wrong metric, or triage
+  competing incidents, with follow-ups on trade-offs.
+
+Expect:
+- the technical core of the job ad, at increasing depth
+- "were you hands-on?" checks on the CV's headline projects: what you built yourself and what the
+  team built
+- a design or scenario question tied to the company's domain
+- how you evaluate or test what you built, and how you know it works in production
+- for lead roles: technical scope ("strategic, or deep in reviews and ADRs?") and setting
+  standards across teams
+
+Briefing shape:
+- Expected questions: 8–10, mostly technical. Group them by topic and order each group from basic
+  to advanced. Each answer direction names the concept and the candidate's real example.
+- Stories: 2–3, told as technical case studies (problem, constraints, design choice, alternatives
+  rejected, result).
+- Add a short think-aloud structure to the positioning section: restate the problem, name the
+  assumptions, sketch, then go deeper.
+- Risks: name the topics where the CV is thin against the ad, and how to answer honestly and
+  without bluffing ("I haven't run that in production; here is how I'd approach it").
+- Questions to ask: stack, architecture decisions in flight, technical debt, how quality is
+  enforced.
+- Drop motivation and salary preparation.
+
+Interviewer persona: a senior engineer or scientist. Starts broad and goes one level deeper
+after every answer until the candidate reaches the edge of what they know, then watches how they
+reason there.
